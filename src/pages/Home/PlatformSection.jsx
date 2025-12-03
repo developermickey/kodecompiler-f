@@ -1,4 +1,5 @@
 import { ArrowRight, Code, Award, Book, Briefcase, CheckCircle } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
 
 const PlatformSection = () => {
   const features = [
@@ -106,13 +107,13 @@ int main() {
               ))}
             </div>
 
-            <a
+            <NavLink
               href="/learn-more"
-              className="w-full sm:w-auto px-8 py-4 bg-[#0652e9] text-white text-lg font-semibold rounded-xl hover:bg-[#0547d1] transition-all duration-200 shadow-lg hover:shadow-xl hover:shadow-[#0652e9]/30 hover:scale-105 transform"
+              className="w-[200px] flex items-center justify-center gap-1 px-8 py-4 bg-[#0652e9] text-white text-lg font-semibold rounded-xl hover:bg-[#0547d1] transition-all duration-200 shadow-lg hover:shadow-xl hover:shadow-[#0652e9]/30 hover:scale-105 transform"
             >
               <span>Learn more</span>
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </a>
+            </NavLink>
           </div>
 
           {/* Right Side - Code Editor Demo */}
