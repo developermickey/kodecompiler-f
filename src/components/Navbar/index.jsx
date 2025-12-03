@@ -71,12 +71,6 @@ const Navbar = () => {
               About Us
             </NavLink>
             <NavLink
-              to="/pricing"
-              className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-all duration-200"
-            >
-              Pricing
-            </NavLink>
-            <NavLink
               to="https://interview.kodecompiler.com"
               target="_blank"
               rel="noopener noreferrer"
@@ -180,12 +174,6 @@ const Navbar = () => {
             className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-all duration-200"
           >
             About Us
-          </NavLink>
-          <NavLink
-            to="/pricing"
-            className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-all duration-200"
-          >
-            Pricing
           </NavLink>
           <NavLink
             to="https://interview.kodecompiler.com"
