@@ -96,7 +96,7 @@ const Navbar = () => {
             </NavLink>
             <NavLink
               to="/register"
-              className="px-5 py-2 rounded-lg text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 transition-all duration-200 shadow-sm"
+              className="px-5 py-2 rounded-lg text-sm font-medium text-white bg-[#0652e9] hover:bg-[#0547d1]  transition-all duration-200 shadow-sm"
             >
               Create a free account
             </NavLink>
