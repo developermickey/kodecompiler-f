@@ -108,7 +108,7 @@ int main() {
 
             <a
               href="/learn-more"
-              className="inline-flex items-center space-x-2 text-[#0652e9] font-semibold text-lg hover:text-[#0547d1] transition-colors group"
+              className="w-full sm:w-auto px-8 py-4 bg-[#0652e9] text-white text-lg font-semibold rounded-xl hover:bg-[#0547d1] transition-all duration-200 shadow-lg hover:shadow-xl hover:shadow-[#0652e9]/30 hover:scale-105 transform"
             >
               <span>Learn more</span>
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
