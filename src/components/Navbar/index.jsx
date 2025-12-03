@@ -21,7 +21,7 @@ const Navbar = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <NavLink 
-            href="/" 
+            to="/" 
             className="flex items-center space-x-2 text-2xl font-bold text-gray-900 hover:text-gray-700 transition-colors duration-200"
           >
             <img src={LOGO} alt='Kode Compiler'className='mt-0 w-10' />
@@ -36,11 +36,11 @@ const Navbar = () => {
                 <ChevronDown className="ml-1 h-4 w-4" />
               </button>
               <div className="absolute left-0 mt-1 w-56 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 bg-white rounded-lg shadow-xl border border-gray-100 py-2">
-                <NavLink href="/guest-editor" className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors">
+                <NavLink to="/guest-editor" className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors">
                   <span className="font-medium">Guest-Compiler</span>
                   <p className="text-xs text-gray-500 mt-0.5">Code without signing up</p>
                 </NavLink>
-                <NavLink href="/problems" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                <NavLink to="/problems" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                   <span className="font-medium">Arena</span>
                   <p className="text-xs text-gray-500 mt-0.5">Practice problems</p>
                 </NavLink>
@@ -53,11 +53,11 @@ const Navbar = () => {
                 <ChevronDown className="ml-1 h-4 w-4" />
               </button>
               <div className="absolute left-0 mt-1 w-56 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 bg-white rounded-lg shadow-xl border border-gray-100 py-2">
-                <NavLink href="/weekly-challenges" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                <NavLink to="/weekly-challenges" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                   <span className="font-medium">Contests</span>
                   <p className="text-xs text-gray-500 mt-0.5">Weekly challenges</p>
                 </NavLink>
-                <NavLink href="/interview-experiences" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                <NavLink to="/interview-experiences" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                   <span className="font-medium">Interviews</span>
                   <p className="text-xs text-gray-500 mt-0.5">Real experiences</p>
                 </NavLink>
@@ -65,19 +65,19 @@ const Navbar = () => {
             </div>
 
             <NavLink
-              href="/resources"
+              to="/about-us"
               className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-all duration-200"
             >
               About Us
             </NavLink>
             <NavLink
-              href="/pricing"
+              to="/pricing"
               className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-all duration-200"
             >
               Pricing
             </NavLink>
             <NavLink
-              href="https://interview.kodecompiler.com"
+              to="https://interview.kodecompiler.com"
               target="_blank"
               rel="noopener noreferrer"
               className="px-4 py-2 rounded-md text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 transition-all duration-200"
@@ -89,13 +89,13 @@ const Navbar = () => {
           {/* Desktop CTA Buttons */}
           <div className="hidden lg:flex lg:items-center lg:space-x-3">
             <NavLink
-              href="/login"
+              to="/login"
               className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-all duration-200 border border-gray-300"
             >
               Log In
             </NavLink>
             <NavLink
-              href="/register"
+              to="/register"
               className="px-5 py-2 rounded-lg text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 transition-all duration-200 shadow-sm"
             >
               Create a free account
@@ -147,10 +147,10 @@ const Navbar = () => {
               <ChevronDown className={`h-4 w-4 transform transition-transform duration-200 ${openDropdown === 'products' ? 'rotate-180' : ''}`} />
             </button>
             <div className={`overflow-hidden transition-all duration-200 ${openDropdown === 'products' ? 'max-h-40' : 'max-h-0'}`}>
-              <NavLink href="/guest-editor" className="block px-6 py-2 text-sm text-green-600 hover:bg-green-50 rounded-md ml-3 my-1">
+              <NavLink to="/guest-editor" className="block px-6 py-2 text-sm text-green-600 hover:bg-green-50 rounded-md ml-3 my-1">
                 Guest-Compiler
               </NavLink>
-              <NavLink href="/problems" className="block px-6 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md ml-3 my-1">
+              <NavLink to="/problems" className="block px-6 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md ml-3 my-1">
                 Arena
               </NavLink>
             </div>
@@ -166,29 +166,29 @@ const Navbar = () => {
               <ChevronDown className={`h-4 w-4 transform transition-transform duration-200 ${openDropdown === 'solutions' ? 'rotate-180' : ''}`} />
             </button>
             <div className={`overflow-hidden transition-all duration-200 ${openDropdown === 'solutions' ? 'max-h-40' : 'max-h-0'}`}>
-              <NavLink href="/weekly-challenges" className="block px-6 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md ml-3 my-1">
+              <NavLink to="/weekly-challenges" className="block px-6 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md ml-3 my-1">
                 Contests
               </NavLink>
-              <NavLink href="/interview-experiences" className="block px-6 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md ml-3 my-1">
+              <NavLink to="/interview-experiences" className="block px-6 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md ml-3 my-1">
                 Interviews
               </NavLink>
             </div>
           </div>
 
           <NavLink
-            href="/resources"
+            to="/about-us"
             className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-all duration-200"
           >
-            Resources
+            About Us
           </NavLink>
           <NavLink
-            href="/pricing"
+            to="/pricing"
             className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-all duration-200"
           >
             Pricing
           </NavLink>
           <NavLink
-            href="https://interview.kodecompiler.com"
+            to="https://interview.kodecompiler.com"
             target="_blank"
             rel="noopener noreferrer"
             className="block px-3 py-2 rounded-md text-base font-medium text-red-600 hover:text-red-700 hover:bg-red-50 transition-all duration-200"
@@ -199,13 +199,13 @@ const Navbar = () => {
           {/* Mobile CTA Buttons */}
           <div className="pt-4 space-y-2 border-t border-gray-100 mt-4">
             <NavLink
-              href="/login"
+              to="/login"
               className="block w-full px-4 py-2.5 rounded-lg text-center text-base font-medium text-gray-700 hover:text-gray-900 bg-white hover:bg-gray-50 transition-all duration-200 border border-gray-300"
             >
               Log In
             </NavLink>
             <NavLink
-              href="/register"
+              to="/register"
               className="block w-full px-4 py-2.5 rounded-lg text-center text-base font-medium text-white bg-gray-900 hover:bg-gray-800 transition-all duration-200 shadow-sm"
             >
               Create a free account
