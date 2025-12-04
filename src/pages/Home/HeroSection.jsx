@@ -27,7 +27,7 @@ const HeroSection = () => {
   ];
 
   return (
-    <div className="bg-gradient-to-b from-white to-gray-50 py-16 md:py-24 lg:py-32">
+    <div className="bg-gradient-to-b from-white to-gray-50 py-16 md:py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Main Hero Content */}
         <div className="text-center max-w-6xl mx-auto">
@@ -114,7 +114,7 @@ const HeroSection = () => {
             </p>
             
             {/* Scrolling Container with Fade Effect */}
-            <div className="relative overflow-hidden">
+            <div className="relative overflow-hidden ">
               {/* Left Fade */}
               <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-gray-50 to-transparent z-10 pointer-events-none"></div>
               
@@ -122,7 +122,7 @@ const HeroSection = () => {
               <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-gray-50 to-transparent z-10 pointer-events-none"></div>
               
               {/* Scrolling Animation Container */}
-              <div className="flex animate-scroll">
+              <div className="flex animate-scroll mt-8">
                 {/* First Set of Logos */}
                 <div className="flex items-center justify-around min-w-full px-8 gap-12 flex-shrink-0">
                   <img src={GOOGLE} alt='' className="w-32 grayscale hover:grayscale-0 object-cover h-auto company-logo-filter" width={120} height={120} />
