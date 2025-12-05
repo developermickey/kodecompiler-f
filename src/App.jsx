@@ -10,6 +10,7 @@ import GuestEditor from './pages/GuestEditor'
 import Arena from './pages/Arena'
 import Welcome from './pages/User/Welcome'
 import PrivacyPolicy from './pages/PrivacyPolicy'
+import NotFound from './pages/NotFound'
 
 const App = () => {
   return (
@@ -22,8 +23,10 @@ const App = () => {
         <Route path="/about-us" element={<About />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/welcome" element={<Welcome />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="*" element={<NotFound />} />
+        <Route path="/welcome" element={<Welcome />} />
+
       </Routes>
       <Footer />
     </BrowserRouter>
