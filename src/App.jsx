@@ -17,6 +17,7 @@ const App = () => {
     <BrowserRouter>
       <Navbar />
       <Routes>
+        
         <Route path="/" element={<Home />} />
         <Route path="/guest-editor" element={<GuestEditor />} />
         <Route path="/problems" element={<Arena />} />
@@ -24,8 +25,11 @@ const App = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-        <Route path="*" element={<NotFound />} />
+       
         <Route path="/welcome" element={<Welcome />} />
+        <Route path="*" element={<NotFound />} />
+
+         
 
       </Routes>
       <Footer />
