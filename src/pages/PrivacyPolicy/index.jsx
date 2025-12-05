@@ -4,7 +4,7 @@ const PrivacyPolicy = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Header Section */}
-      <header className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-800 shadow-2xl">
+      <header className="bg-[#0652e9] shadow-2xl">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20 text-center text-white">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4">
             Privacy Policy
@@ -16,7 +16,7 @@ const PrivacyPolicy = () => {
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-24">
         <section className="mb-16 lg:mb-20">
-          <h2 className="text-3xl lg:text-4xl font-bold text-slate-900 mb-6 border-b-4 border-indigo-500 pb-4">
+          <h2 className="text-3xl lg:text-4xl font-bold text-slate-900 mb-6 border-b-4 border-[#0652e9] pb-4">
             Introduction
           </h2>
           <div className="prose prose-lg max-w-none text-slate-700 leading-relaxed">
@@ -32,7 +32,7 @@ const PrivacyPolicy = () => {
         </section>
 
         <section className="mb-16 lg:mb-20">
-          <h2 className="text-3xl lg:text-4xl font-bold text-slate-900 mb-8 border-b-4 border-green-500 pb-4">
+          <h2 className="text-3xl lg:text-4xl font-bold text-slate-900 mb-8 border-b-4 border-[#0652e9] pb-4">
             Information We Collect
           </h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -72,7 +72,7 @@ const PrivacyPolicy = () => {
         </section>
 
         <section className="mb-16 lg:mb-20">
-          <h2 className="text-3xl lg:text-4xl font-bold text-slate-900 mb-8 border-b-4 border-blue-500 pb-4">
+          <h2 className="text-3xl lg:text-4xl font-bold text-slate-900 mb-8 border-b-4 border-[#0652e9] pb-4">
             How We Use Your Information
           </h2>
           <div className="bg-gradient-to-r from-emerald-50 to-green-50 p-8 lg:p-12 rounded-3xl border-l-8 border-green-500 shadow-xl">
@@ -98,7 +98,7 @@ const PrivacyPolicy = () => {
         </section>
 
         <section className="mb-16 lg:mb-20">
-          <h2 className="text-3xl lg:text-4xl font-bold text-slate-900 mb-8 border-b-4 border-amber-500 pb-4">
+          <h2 className="text-3xl lg:text-4xl font-bold text-slate-900 mb-8 border-b-4 border-[#0652e9] pb-4">
             🔒 Code Security Guarantee
           </h2>
           <div className="grid md:grid-cols-2 gap-6">
@@ -122,7 +122,7 @@ const PrivacyPolicy = () => {
         </section>
 
         <section className="mb-16 lg:mb-20">
-          <h2 className="text-3xl lg:text-4xl font-bold text-slate-900 mb-8 border-b-4 border-purple-500 pb-4">
+          <h2 className="text-3xl lg:text-4xl font-bold text-slate-900 mb-8 border-b-4 border-[#0652e9] pb-4">
             Your Rights & Data Retention
           </h2>
           <div className="grid md:grid-cols-2 gap-8">
