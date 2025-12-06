@@ -1,5 +1,5 @@
 import { ArrowRight } from 'lucide-react';
-import CTAIMG from "../../assets/image-cta.png"
+import CTAIMG from "../../assets/img-cta-option-bgr.png"
 import { NavLink } from 'react-router-dom';
 
 const CTASection = () => {
@@ -46,7 +46,7 @@ const CTASection = () => {
             <img
               src={CTAIMG}
               alt="Developer coding illustration"
-              className="w-full h-auto max-w-sm sm:max-w-md lg:max-w-lg xl:max-w-xl object-contain object-bottom"
+              className="w-full h-[550px] max-w-sm sm:max-w-md lg:max-w-lg xl:max-w-xl object-contain object-bottom"
             />
           </div>
         </div>
