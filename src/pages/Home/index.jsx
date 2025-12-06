@@ -5,6 +5,7 @@ import CodeCompilerSection from './CodeCompilerSection'
 import InterviewPreparation from './InterviewPreparation'
 import WeeklyContests from './WeeklyContests'
 import InterviewExperience from './InterviewExperience'
+import CTASection from '../../components/CtaSection'
 
 const Home = () => {
   return (
@@ -15,6 +16,7 @@ const Home = () => {
       <InterviewPreparation/>
       <WeeklyContests />
       <InterviewExperience />
+      <CTASection />
 
     </>
   )
