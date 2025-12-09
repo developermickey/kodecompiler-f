@@ -16,7 +16,10 @@ const Home = () => {
       <InterviewPreparation/>
       <WeeklyContests />
       <InterviewExperience />
-      <CTASection />
+      <CTASection 
+        title="Ready to get started?"
+        para="Join thousands of developers who are mastering coding interviews and landing their dream jobs. Start practicing today with our comprehensive platform."
+      />
 
     </>
   )

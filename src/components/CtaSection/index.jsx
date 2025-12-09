@@ -2,7 +2,7 @@ import { ArrowRight } from 'lucide-react';
 import CTAIMG from "../../assets/img-cta-option-bgr.png"
 import { NavLink } from 'react-router-dom';
 
-const CTASection = () => {
+const CTASection = ({title, para}) => {
   return (
     <div className="relative bg-gradient-to-br from-[#0652e9] via-[#0547d1] to-[#0652e9] overflow-hidden">
       {/* Background Pattern */}
@@ -17,11 +17,10 @@ const CTASection = () => {
           {/* Left Content */}
           <div className="text-white pt-16 md:pt-20 lg:pt-24 pb-8 lg:pb-16">
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-6 leading-tight">
-              Ready to get started?
+             {title} 
             </h2>
             <p className="text-lg sm:text-xl text-blue-100 mb-8 leading-relaxed max-w-xl">
-              Join thousands of developers who are mastering coding interviews and landing their dream jobs. Start practicing today with our comprehensive platform.
-            </p>
+              {para} </p>
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 mb-12">
