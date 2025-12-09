@@ -87,14 +87,28 @@ const Navbar = () => {
               About Us
             </NavLink>
 
-            <NavLink
+            {/* <NavLink
               to="https://interview.kodecompiler.com"
               target="_blank"
               rel="noopener noreferrer"
               className="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md transition-all"
             >
               For Recruiters
-            </NavLink>
+            </NavLink> */}
+
+<NavLink
+  to="https://interview.kodecompiler.com"
+  target="_blank"
+  rel="noopener noreferrer"
+  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-md hover:shadow-lg hover:scale-105 rounded-full transition-all duration-300"
+>
+  <span>For Recruiters</span>
+  <span className="flex h-2 w-2">
+    <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-white opacity-75"></span>
+    <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+  </span>
+</NavLink>
+            
           </div>
 
           {/* RIGHT SIDE AUTH / PROFILE */}
@@ -244,6 +258,19 @@ const Navbar = () => {
           >
             About Us
           </NavLink>
+
+          <NavLink
+  to="https://interview.kodecompiler.com"
+  target="_blank"
+  rel="noopener noreferrer"
+  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-md hover:shadow-lg hover:scale-105 rounded-full transition-all duration-300"
+>
+  <span>For Recruiters</span>
+  <span className="flex h-2 w-2">
+    <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-white opacity-75"></span>
+    <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+  </span>
+</NavLink>
 
           {!user ? (
             <div className="pt-4 space-y-3 border-t border-gray-100">
