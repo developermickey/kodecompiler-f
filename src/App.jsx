@@ -31,7 +31,6 @@ const App = () => {
         <Route path="/terms-of-service" element={<TermsOfService />} />
         <Route path="/refund-policy" element={<RefundPolicy />} />
         <Route path="/disclaimer" element={<Disclaimer />} />
-       
         <Route path="/welcome" element={<Welcome />} />
         <Route path="*" element={<NotFound />} />
 
