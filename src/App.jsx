@@ -11,6 +11,9 @@ import Arena from './pages/Arena'
 import Welcome from './pages/User/Welcome'
 import PrivacyPolicy from './pages/PrivacyPolicy'
 import NotFound from './pages/NotFound'
+import TermsOfService from './pages/TermsOfService'
+import RefundPolicy from './pages/RefundPolicy'
+import Disclaimer from './pages/Disclaimer'
 
 const App = () => {
   return (
@@ -25,6 +28,9 @@ const App = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-of-service" element={<TermsOfService />} />
+        <Route path="/refund-policy" element={<RefundPolicy />} />
+        <Route path="/disclaimer" element={<Disclaimer />} />
        
         <Route path="/welcome" element={<Welcome />} />
         <Route path="*" element={<NotFound />} />
