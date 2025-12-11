@@ -128,7 +128,7 @@ const About = () => {
                   <div className="pl-4 text-purple-400">let <span className="text-white">right</span> = <span className="text-white">arr.length</span> - <span className="text-orange-400">1</span>;</div>
                   <div className="pl-4 text-gray-500 my-2">...</div>
                   <div className="pl-4 text-purple-400">return <span className="text-green-400">"Hired"</span>;</div>
-                  <div className="text-purple-400">};</div>
+                  <div className="text-purple-400">{"};"}</div>
                   
                   {/* Floating Success Badge */}
                   <div className="absolute bottom-8 right-8 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-bounce">
