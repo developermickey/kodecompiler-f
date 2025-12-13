@@ -21,10 +21,7 @@ const Arena = () => {
   const [solved, setSolved] = useState([]);
   const user = useSelector((state) => state.auth.user);
  
-  // Company Data - Replace with your API
-  
 
-  // Fetch Data (Replace with your API calls)
   useEffect(  () => {
 
    const fetchAllData = async () =>
@@ -72,32 +69,7 @@ const Arena = () => {
             
   }, [problems,solved])
 
-  // const fetchProblems = async () => {
-  //   try {
-  //     setLoading(true);
-  //     setProblems(fetchedata.problems);
-  //   } catch (error) {
-  //     console.error('Error fetching problems:', error);
-  //     setLoading(false);
-  //   }
-  // };
-
-  // const fetchStats = async () => {
-  //   try { 
-  //   setStats({ total: fetchedata.total , easy: fetchedata.easy , medium: fetchedata.medium , hard: fetchedata.hard, solved: solved.solvedCount });
-  //   } catch (error) {
-  //     console.error('Error fetching stats:', error);
-  //   }
-  // };
-
-  // const fetchCategories = async () => {
-  //   try {
-      
-  //     setCategories([...new Set(problems.map(p => p.category))]);
-  //   } catch (error) {
-  //     console.error('Error fetching categories:', error);
-  //   }
-  // };
+ 
 
   
   const filteredProblems = useMemo(() => {
