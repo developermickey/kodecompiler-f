@@ -15,7 +15,9 @@ export const loginUser = createAsyncThunk(
           'Content-Type': 'application/json',
         },
         withCredentials: true, // Important for httpOnly cookies
+       
       });
+       console.log(response);
       
       // Store user data in localStorage
       localStorage.setItem('user', JSON.stringify({
