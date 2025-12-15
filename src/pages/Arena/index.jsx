@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, CheckCircle, BarChart3, X, Loader, Building2, Briefcase, ArrowLeft, TrendingUp, Target, Award, Sparkles, Zap, Trophy } from 'lucide-react';
 import { useSelector } from "react-redux";
+import { fetchProblems } from "../../redux/slices/problemSlice";
+import { fetchUserProgress } from "../../redux/slices/userprogressSlice";
+import { useDispatch } from "react-redux";
+
 const Arena = () => {
 
   // State Management
@@ -10,68 +14,37 @@ const Arena = () => {
   const [showCompanyMode, setShowCompanyMode] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState('all');
   const [companySearchQuery, setCompanySearchQuery] = useState('');
-  const [solvedProblemIds , setsolvedProblemIds ] = useState([]);
-  
-  // Data State
-  const [problems, setProblems] = useState([]);
-  const [stats, setStats] = useState({ total: 0, easy: 0, medium: 0, hard: 0, solved: 0 });
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [fetchedata, setFetchedData] = useState([]);
-  const [solved, setSolved] = useState([]);
+
+  const dispatch = useDispatch();
   const user = useSelector((state) => state.auth.user);
- 
-
-  useEffect(  () => {
-
-   const fetchAllData = async () =>
-    {
-        try
-        {
-            
-            const response = await fetch("http://localhost:5000/api/problems");
-            const data = await response.json();
-            setFetchedData(data);
-            setProblems(data.problems);
-
-            if(user)
-            {
-             const solvedResponse = await fetch(
-              "http://localhost:5000/api/problems/user-progress",
-              {
-                method: "GET",
-                credentials: "include"
-              }
-            );
-             const solvedData = await solvedResponse.json();
-             setSolved(solvedData);
-             setsolvedProblemIds(solvedData.problemIds||[]);
-            }
-           // fetchCategories();
-              setLoading(false);
-        }
-        catch (error)
-        {
-            console.error("Error fetching data:", error);
-        }
-    };
-
-    fetchAllData();
-    
   
-  }, []);
 
-  useEffect(()=>{
 
-           
-            setStats({ total: fetchedata.total , easy: fetchedata.easy , medium: fetchedata.medium , hard: fetchedata.hard, solved: solved.solvedCount });
-            setCategories([...new Set(problems.map(p => p.category))]);
-            
-  }, [problems,solved])
+  useEffect(() => {
+    dispatch(fetchProblems());
+    if (user) 
+      dispatch(fetchUserProgress());
+  }, [dispatch, user]);
 
- 
 
-  
+
+  const { list: problems, stats, loading } = useSelector(
+  (state) => state.problems
+  );
+
+  const {
+    solvedProblemIds,
+    solvedCount
+  } = useSelector((state) => state.userProgress);
+
+  const categories = useMemo(
+  () => [...new Set(problems.map(p => p.category))],
+  [problems]
+);
+
+
+
+   
   const filteredProblems = useMemo(() => {
     return problems.filter(problem => {
       const matchesSearch = problem.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -338,20 +311,20 @@ const companySolvedPercentage =
               </button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4" >
               {companyFilteredProblems.map((problem) => (
-                <div key={problem.problem_id} className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all border border-slate-100 group">
-                  <div className="flex items-center justify-between">
+                <div key={problem.problem_id} className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all border border-slate-100 group" >
+                  <div className="flex items-center justify-between" onClick={() => handleSolve(problem.problem_id)}>
                     <div className="flex-1">
                       <div className="flex items-center gap-4 mb-2">
                         <span className="text-slate-400 font-medium">#{problem.problem_id}</span>
-                        <h3 className="text-xl font-bold text-slate-800 group-hover:text-[#0652e9] transition-colors">
+                        <h3 className="cursor-pointer text-xl font-bold text-slate-800 group-hover:text-[#0652e9] transition-colors">
                           {problem.title}
                         </h3>
                         <span className={`px-3 py-1 rounded-full text-sm font-medium ${getDifficultyColor(problem.difficulty)}`}>
                           {problem.difficulty}
                         </span>
-                        {problem.solved && (
+                        {solvedProblemIds.includes(problem.problem_id) && (
                           <div className="flex items-center gap-1 text-emerald-600">
                             <CheckCircle className="w-5 h-5" />
                             <span className="text-sm font-medium">Solved</span>
@@ -378,7 +351,7 @@ const companySolvedPercentage =
                     </div>
                     <button 
                       onClick={() => handleSolve(problem.problem_id)}
-                      className="w-full sm:w-auto px-6 py-2 bg-[#0652e9] text-white text-lg font-semibold rounded-xl hover:bg-[#0547d1] transition-all duration-200 shadow-lg hover:shadow-xl hover:shadow-[#0652e9]/30 hover:scale-105 transform"
+                      className="cursor-pointer w-full sm:w-auto px-6 py-2 bg-[#0652e9] text-white text-lg font-semibold rounded-xl hover:bg-[#0547d1] transition-all duration-200 shadow-lg hover:shadow-xl hover:shadow-[#0652e9]/30 hover:scale-105 transform"
                     >
                       {solvedProblemIds.includes(problem.problem_id) ? 'Resolve' : 'Solve'}
                     </button>
@@ -418,7 +391,7 @@ const companySolvedPercentage =
                 <div className="flex items-center gap-3">
                   <Trophy className="w-8 h-8 text-amber-300" />
                   <div>
-                    <div className="text-2xl font-bold text-white">{stats.solved||0}</div>
+                    <div className="text-2xl font-bold text-white">{solvedCount||0}</div>
                     <div className="text-indigo-100 text-sm">Solved</div>
                   </div>
                 </div>
@@ -427,7 +400,7 @@ const companySolvedPercentage =
                 <div className="flex items-center gap-3">
                   <Zap className="w-8 h-8 text-emerald-300" />
                   <div>
-                    <div className="text-2xl font-bold text-white">{Math.round((stats.solved / stats.total) * 100) || 0}%</div>
+                    <div className="text-2xl font-bold text-white">{Math.round((solvedCount / stats.total) * 100) || 0}%</div>
                     <div className="text-indigo-100 text-sm">Progress</div>
                   </div>
                 </div>
@@ -487,7 +460,7 @@ const companySolvedPercentage =
           <div className="bg-gradient-to-br from-[#0652e9] to-indigo-600 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all group cursor-pointer">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-4xl font-bold text-white mb-2">{stats.solved||0}</div>
+                <div className="text-4xl font-bold text-white mb-2">{solvedCount||0}</div>
                 <div className="text-indigo-50 text-sm font-medium">Solved</div>
               </div>
               <CheckCircle className="w-10 h-10 text-indigo-100 group-hover:scale-110 transition-transform" />
@@ -530,7 +503,7 @@ const companySolvedPercentage =
             </select>
             <button
               onClick={() => setShowCompanyMode(true)}
-              className="px-6 py-3 bg-gradient-to-r from-[#0652e9] to-indigo-600 text-white rounded-xl hover:from-[#0547d1] hover:to-indigo-700 transition-all flex items-center gap-2 font-medium shadow-lg hover:shadow-xl hover:scale-105 transform"
+              className="cursor-pointer px-6 py-3 bg-gradient-to-r from-[#0652e9] to-indigo-600 text-white rounded-xl hover:from-[#0547d1] hover:to-indigo-700 transition-all flex items-center gap-2 font-medium shadow-lg hover:shadow-xl hover:scale-105 transform"
             >
               <Building2 className="w-5 h-5" />
               Companies
@@ -587,18 +560,18 @@ const companySolvedPercentage =
         ) : (
           <div className="space-y-4">
             {filteredProblems.map((problem) => (
-              <div key={problem.problem_id} className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all border border-slate-200 hover:border-[#0652e9]/30 group">
+              <div key={problem.problem_id} className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all border border-slate-200 hover:border-[#0652e9]/30 group" onClick={() => handleSolve(problem.problem_id)}>
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-4 mb-2">
                       <span className="text-slate-400 font-medium">#{problem.problem_id}</span>
-                      <h3 className="text-xl font-bold text-slate-800 group-hover:text-[#0652e9] transition-colors">
+                      <h3 className="cursor-pointer text-xl font-bold text-slate-800 group-hover:text-[#0652e9] transition-colors">
                         {problem.title}
                       </h3>
                       <span className={`px-3 py-1 rounded-full text-sm font-medium ${getDifficultyColor(problem.difficulty)}`}>
                         {problem.difficulty}
                       </span>
-                      {problem.solved && (
+                      {solvedProblemIds.includes(problem.problem_id) && (
                         <div className="flex items-center gap-1 text-emerald-600">
                           <CheckCircle className="w-5 h-5" />
                           <span className="text-sm font-medium">Solved</span>
@@ -625,7 +598,7 @@ const companySolvedPercentage =
                   
                   <button 
                     onClick={() => handleSolve(problem.problem_id)}
-                    className="w-full sm:w-auto px-8 py-3 bg-gradient-to-r from-[#0652e9] to-indigo-600 text-white text-lg font-semibold rounded-xl hover:from-[#0547d1] hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl hover:shadow-[#0652e9]/30 hover:scale-105 transform"
+                    className="cursor-pointer w-full sm:w-auto px-8 py-3 bg-gradient-to-r from-[#0652e9] to-indigo-600 text-white text-lg font-semibold rounded-xl hover:from-[#0547d1] hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl hover:shadow-[#0652e9]/30 hover:scale-105 transform"
                   >
                    {solvedProblemIds.includes(problem.problem_id) ? 'Resolve' : 'Solve'}
 
