@@ -17,6 +17,47 @@ const Arena = () => {
 
   const dispatch = useDispatch();
   const user = useSelector((state) => state.auth.user);
+<<<<<<< HEAD
+=======
+ 
+
+  useEffect(  () => {
+
+   const fetchAllData = async () =>
+    {
+        try
+        {
+            
+            const response = await fetch("http://localhost:8000/api/problems");
+            const data = await response.json();
+            setFetchedData(data);
+            setProblems(data.problems);
+
+            if(user)
+            {
+             const solvedResponse = await fetch(
+              "http://localhost:8000/api/problems/user-progress",
+              {
+                method: "GET",
+                credentials: "include"
+              }
+            );
+             const solvedData = await solvedResponse.json();
+             setSolved(solvedData);
+             setsolvedProblemIds(solvedData.problemIds||[]);
+            }
+           // fetchCategories();
+              setLoading(false);
+        }
+        catch (error)
+        {
+            console.error("Error fetching data:", error);
+        }
+    };
+
+    fetchAllData();
+    
+>>>>>>> 0cb9311 (WIP: local changes)
   
 
 
