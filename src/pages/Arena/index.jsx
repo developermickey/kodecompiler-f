@@ -312,7 +312,7 @@ const companySolvedPercentage =
             </div>
           ) : (
             <div className="space-y-4" >
-              {companyFilteredProblems.map((problem) => (
+              {companyFilteredProblems != null && companyFilteredProblems.map((problem) => (
                 <div key={problem.problem_id} className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all border border-slate-100 group" >
                   <div className="flex items-center justify-between" onClick={() => handleSolve(problem.problem_id)}>
                     <div className="flex-1">
@@ -333,7 +333,7 @@ const companySolvedPercentage =
                       </div>
                       <p className="text-slate-600 mb-3">{problem.description}</p>
                       <div className="flex items-center gap-2">
-                        {problem.tags.map((tag) => (
+                        {problem.tags != null && problem.tags.map((tag) => (
                           <span key={tag} className="px-3 py-1 bg-indigo-50 text-[#0652e9] rounded-lg text-sm font-medium">
                             {tag}
                           </span>
@@ -580,7 +580,7 @@ const companySolvedPercentage =
                     </div>
                     <p className="text-slate-600 mb-3">{problem.description}</p>
                     <div className="flex items-center gap-2">
-                      {problem.tags.map((tag) => (
+                      {problem.tags && problem.tags.map((tag) => (
                         <span key={tag} className="px-3 py-1 bg-indigo-50 text-[#0652e9] rounded-lg text-sm font-medium hover:bg-indigo-100 transition-colors">
                           {tag}
                         </span>
