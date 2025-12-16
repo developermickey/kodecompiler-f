@@ -26,11 +26,7 @@ const App = () => {
         <Route path="/" element={<Home />} />
         <Route path="/guest-editor" element={<GuestEditor />} />
         <Route path="/problems" element={<Arena />} />
-<<<<<<< HEAD
          <Route path="/problem/:problemId" element={<Problem />} />
-=======
-        <Route path="/weekly-challenges" element={<WeeklyChallenges />} />
->>>>>>> 0cb9311 (WIP: local changes)
         <Route path="/about-us" element={<About />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
