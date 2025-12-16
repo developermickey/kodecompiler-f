@@ -8,6 +8,7 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import GuestEditor from './pages/GuestEditor'
 import Arena from './pages/Arena'
+import Problem from './pages/Problem'
 import Welcome from './pages/User/Welcome'
 import PrivacyPolicy from './pages/PrivacyPolicy'
 import NotFound from './pages/NotFound'
@@ -24,6 +25,7 @@ const App = () => {
         <Route path="/" element={<Home />} />
         <Route path="/guest-editor" element={<GuestEditor />} />
         <Route path="/problems" element={<Arena />} />
+         <Route path="/problem/:problemId" element={<Problem />} />
         <Route path="/about-us" element={<About />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
