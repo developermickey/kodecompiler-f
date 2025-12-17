@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { 
   Settings, History, Moon, Sun, Type, X, Loader, Play, 
@@ -9,7 +8,8 @@ import {
   Minimize2, Download, ExternalLink, Bookmark, BookmarkCheck,
   RefreshCw, Sparkles, Cpu, HardDrive, Eye, EyeOff, Filter,
   Search, TrendingUp, Users, Star, Calendar, GitBranch, FileText,
-  HelpCircle, ListChecks, Send, AlertCircle as AlertIcon, Pause
+  HelpCircle, ListChecks, Send, AlertCircle as AlertIcon, Pause,
+  ThumbsUp, ThumbsDown, User
 } from "lucide-react";
 import Editor from "@monaco-editor/react";
 import NotFound from "../NotFound";
@@ -43,7 +43,17 @@ const Problem = () => {
   const [submissions, setSubmissions] = useState([]);
   const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
   const [selectedsubLanguage, setSeletcedsubLanguage] = useState(null);
-  const [selectedcode, setSelectedCode] = useState(null)
+  const [selectedcode, setSelectedCode] = useState(null);
+  const [solutions, setSolutions] = useState([]);
+  const [isLoadingSolutions, setIsLoadingSolutions] = useState(false);
+const [selectedSolutionId, setSelectedSolutionId] = useState(null);
+  const [solutionsFilter, setSolutionsFilter] = useState("all");
+  const [expandedSolutionId, setExpandedSolutionId] = useState(null);
+  const [solutionLanguages, setSolutionLanguages] = useState([]);
+  const [showLanguageFilter, setShowLanguageFilter] = useState(false);
+  //const [filteredsolution , setFilteredSolution] = useState();
+  const [votechange, setvotechange] = useState(true);
+
   const MONACO_LANG_MAP = {
     python: "python",
     javascript: "javascript",
@@ -145,7 +155,6 @@ const Problem = () => {
   };
 }, [darkMode]);
 
-
   // Fetch data from API
   useEffect(() => {
     const fetchData = async () => {
@@ -220,7 +229,6 @@ const Problem = () => {
 
           const data = await res.json();
 
-          // Map backend response → UI format (if needed)
           const formatted = data.map(sub => ({
             id: sub.id || sub._id,
             date: new Date(sub.submitted_at).toLocaleString(),
@@ -247,6 +255,63 @@ const Problem = () => {
       fetchSubmissions();
     }, [leftPanelTab, problemId, problem]);
 
+  // Fetch solutions
+  useEffect(() => {
+    if (leftPanelTab !== "solutions" || !problemId) return;
+
+    const fetchSolutions = async () => {
+      setIsLoadingSolutions(true);
+      try {
+        const url = new URL(`http://localhost:5000/api/solutions/problem/${problemId}`);
+      
+        
+        const res = await fetch(url, {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (!res.ok) {
+          throw new Error("Failed to fetch solutions");
+        }
+
+        const data = await res.json();
+        
+        // // Filter verified solutions if selected
+        // let filteredData = data;
+        // if (solutionsFilter === "verified") {
+        //   filteredData = data.filter(sol => sol.is_verified);
+        // }
+        
+        // // Extract unique languages from solutions
+        const languages = [...new Set(data.map(sol => sol.language))];
+        setSolutionLanguages(languages);
+        
+        setSolutions(data);
+        
+        
+        // Auto-select first solution
+       
+        if (!selectedSolutionId && data.length > 0) {
+          setSelectedSolutionId(data[0]._id);
+        }
+      } catch (err) {
+        console.error("Error fetching solutions:", err);
+        setSolutions([]);
+      } finally {
+        setIsLoadingSolutions(false);
+      }
+    };
+
+    fetchSolutions();
+  }, [leftPanelTab, problemId, votechange]);
+
+
+
+  const selectedSolution = useMemo(() => {
+  return solutions.find(s => s._id === selectedSolutionId) || null;
+}, [solutions, selectedSolutionId]);
+
+
 
   // Resizing logic for main panel
   useEffect(() => {
@@ -272,7 +337,6 @@ const Problem = () => {
         }
       }
     };
-
     const handleMouseUp = () => {
       setIsResizing(false);
       setIsResizingTestCase(false);
@@ -287,12 +351,60 @@ const Problem = () => {
     };
   }, [isResizing, isResizingTestCase]);
 
+
+  const filteredSolutions = useMemo(() => 
+    {
+      
+      if (solutionsFilter === "all") 
+        return solutions;
+      return solutions.filter(s => s.language === solutionsFilter);
+    }, [solutionsFilter, solutions]);
+
+  
+
+  
+
   // Scroll to section
   const scrollToSection = (ref) => {
     if (ref.current) {
       ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
+
+  const handlevote = async (vote,solutionId)=>
+  {
+
+    const res = await fetch(
+     `http://localhost:5000/api/solutions/${solutionId}/vote`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          solution_id: solutionId,   // ✅ ADD THIS
+          vote_type: vote            // "upvote" or "downvote"
+        })
+      }
+    );
+
+
+     if (!res.ok)
+      {
+        const err = await res.json();
+        console.error("422 error details:", err);
+        throw new Error("Vote failed");
+        return;
+      }
+
+      
+      setvotechange(!votechange);
+      
+
+      return res.json();
+
+  }
 
   const handleRun = async () =>
     {
@@ -345,7 +457,6 @@ const Problem = () => {
         setIsRunning(false);
       }
     };
-
 
   const handleSubmit = () => {
     setIsRunning(true);
@@ -464,130 +575,140 @@ const Problem = () => {
     }
   };
 
+  // Language filter options for solutions
+  const languageFilterOptions = [
+    { value: "all", label: "All Languages" },
+    { value: "verified", label: "Verified Only" },
+    ...solutionLanguages.map(lang => ({
+      value: lang,
+      label: lang.charAt(0).toUpperCase() + lang.slice(1),
+     
+    }))
+  ];
+
   return (
     <div className={`h-screen flex flex-col ${bgPrimary} overflow-hidden`}>
       {/* Timer Modal */}
       {showTimerModal && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center">
-    {/* Backdrop */}
-    <div
-      className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-      onClick={() => setShowTimerModal(false)}
-    />
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowTimerModal(false)}
+          />
 
-    {/* Modal */}
-    <div
-      className={`${bgSecondary} relative w-[380px] rounded-xl border ${borderColor} shadow-2xl p-6 z-10`}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between mb-5">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-blue-600/15 flex items-center justify-center">
-            ⏱️
-          </div>
-          <div>
-            <h3 className={`${textPrimary} font-semibold text-lg`}>
-              Timer Settings
-            </h3>
-            <p className={`${textTertiary} text-xs`}>
-              Set your focus duration
-            </p>
-          </div>
-        </div>
-
-        <button
-          onClick={() => setShowTimerModal(false)}
-          className={`cursor-pointer p-1.5 rounded-md ${hoverBg} transition-colors`}
-          aria-label="Close"
-        >
-          <X className={`w-4 h-4 ${textTertiary}`} />
-        </button>
-      </div>
-
-      {/* Content */}
-      <div className="space-y-5">
-        {/* Input */}
-        <div>
-          <label
-            className={`${textSecondary} text-sm font-medium mb-2 block`}
+          {/* Modal */}
+          <div
+            className={`${bgSecondary} relative w-[380px] rounded-xl border ${borderColor} shadow-2xl p-6 z-10`}
           >
-            Duration (minutes)
-          </label>
+            {/* Header */}
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-blue-600/15 flex items-center justify-center">
+                  ⏱️
+                </div>
+                <div>
+                  <h3 className={`${textPrimary} font-semibold text-lg`}>
+                    Timer Settings
+                  </h3>
+                  <p className={`${textTertiary} text-xs`}>
+                    Set your focus duration
+                  </p>
+                </div>
+              </div>
 
-          <div className="relative">
-            <input
-              type="number"
-              min="1"
-              max="180"
-              value={customTimerMinutes}
-              onChange={(e) =>
-                setCustomTimerMinutes(
-                  Math.max(1, Math.min(180, Number(e.target.value) || 1 ))
-                )
-              }
-              className={`w-full pl-4 pr-12 py-2.5 rounded-lg text-sm border ${borderColor}
-                ${
-                  darkMode
-                    ? "bg-zinc-900 text-zinc-100 focus:ring-blue-500"
-                    : "bg-gray-50 text-gray-900 focus:ring-blue-500"
-                }
-                focus:outline-none focus:ring-2`}
-            />
+              <button
+                onClick={() => setShowTimerModal(false)}
+                className={`cursor-pointer p-1.5 rounded-md ${hoverBg} transition-colors`}
+                aria-label="Close"
+              >
+                <X className={`w-4 h-4 ${textTertiary}`} />
+              </button>
+            </div>
 
-            <span
-              className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs ${textTertiary}`}
-            >
-              min
-            </span>
+            {/* Content */}
+            <div className="space-y-5">
+              {/* Input */}
+              <div>
+                <label
+                  className={`${textSecondary} text-sm font-medium mb-2 block`}
+                >
+                  Duration (minutes)
+                </label>
+
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="1"
+                    max="180"
+                    value={customTimerMinutes}
+                    onChange={(e) =>
+                      setCustomTimerMinutes(
+                        Math.max(1, Math.min(180, Number(e.target.value) || 1 ))
+                      )
+                    }
+                    className={`w-full pl-4 pr-12 py-2.5 rounded-lg text-sm border ${borderColor}
+                      ${
+                        darkMode
+                          ? "bg-zinc-900 text-zinc-100 focus:ring-blue-500"
+                          : "bg-gray-50 text-gray-900 focus:ring-blue-500"
+                      }
+                      focus:outline-none focus:ring-2`}
+                  />
+
+                  <span
+                    className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs ${textTertiary}`}
+                  >
+                    min
+                  </span>
+                </div>
+
+                <p className={`${textTertiary} text-xs mt-1`}>
+                  Max 180 minutes • Recommended: 25–50
+                </p>
+              </div>
+
+              {/* Info */}
+              <div
+                className={`rounded-lg border ${borderColor} p-3 text-xs ${textSecondary}
+                  ${darkMode ? "bg-zinc-800/40" : "bg-gray-100"}`}
+              >
+                ⏳ Current timer will be set to{" "}
+                <span className="font-semibold text-blue-500">
+                  {customTimerMinutes} minutes
+                </span>{" "}
+                ({customTimerMinutes * 60} seconds)
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    setTimer(customTimerMinutes * 60);
+                    setIsTimerRunning(false);
+                    setShowTimerModal(false);
+                  }}
+                  className="cursor-pointer flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-colors"
+                >
+                  ▶ Apply
+                </button>
+
+                <button
+                  onClick={resetTimer}
+                  className={`cursor-pointer flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-sm border ${borderColor}
+                    ${
+                      darkMode
+                        ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
+                        : "bg-white hover:bg-gray-100 text-gray-700"
+                    } transition-colors`}
+                >
+                  ↺ Reset
+                </button>
+              </div>
+            </div>
           </div>
-
-          <p className={`${textTertiary} text-xs mt-1`}>
-            Max 180 minutes • Recommended: 25–50
-          </p>
         </div>
-
-        {/* Info */}
-        <div
-          className={`rounded-lg border ${borderColor} p-3 text-xs ${textSecondary}
-            ${darkMode ? "bg-zinc-800/40" : "bg-gray-100"}`}
-        >
-          ⏳ Current timer will be set to{" "}
-          <span className="font-semibold text-blue-500">
-            {customTimerMinutes} minutes
-          </span>{" "}
-          ({customTimerMinutes * 60} seconds)
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-3 pt-2">
-          <button
-            onClick={() => {
-              setTimer(customTimerMinutes * 60);
-              setIsTimerRunning(false);
-              setShowTimerModal(false);
-            }}
-            className="cursor-pointer flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-colors"
-          >
-            ▶ Apply
-          </button>
-
-          <button
-            onClick={resetTimer}
-            className={`cursor-pointer flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-sm border ${borderColor}
-              ${
-                darkMode
-                  ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
-                  : "bg-white hover:bg-gray-100 text-gray-700"
-              } transition-colors`}
-          >
-            ↺ Reset
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
-
+      )}
 
       {/* ===== TOP NAVIGATION ===== */}
       <div className={`${bgSecondary} border-b ${borderColor} px-5 py-2.5 flex items-center justify-between`}>
@@ -618,6 +739,18 @@ const Problem = () => {
               <ListChecks className="w-3 h-3" />
               Submissions
             </button>
+
+            <button 
+              onClick={() => setLeftPanelTab("solutions")}
+              className={`cursor-pointer px-3 py-1.5 text-xs font-medium rounded flex items-center gap-1.5 transition-colors ${
+                leftPanelTab === "solutions" 
+                  ? `${activeBg} ${textPrimary}` 
+                  : `${textTertiary} ${hoverBg}`
+              }`}
+            >
+              <Code className="w-3 h-3" />
+              Solutions
+            </button>
             <button className={`px-3 py-1.5 text-xs font-medium rounded ${textTertiary} ${hoverBg} transition-colors`}>
               <BarChart3 className="w-3 h-3" />
             </button>
@@ -644,67 +777,66 @@ const Problem = () => {
             ${darkMode ? 'bg-zinc-800/70' : 'bg-gray-100'}
             shadow-sm`}
           >
-  {/* Clock Icon */}
-  <div
-    className={`flex items-center justify-center w-7 h-7 rounded-lg
-    ${
-      timer < 300
-        ? 'bg-rose-500/15'
-        : 'bg-blue-500/15'
-    }`}
-  >
-    <Clock
-      className={`w-3.5 h-3.5 ${
-        timer < 300 ? 'text-rose-500' : 'text-blue-500'
-      }`}
-    />
-  </div>
+            {/* Clock Icon */}
+            <div
+              className={`flex items-center justify-center w-7 h-7 rounded-lg
+              ${
+                timer < 300
+                  ? 'bg-rose-500/15'
+                  : 'bg-blue-500/15'
+              }`}
+            >
+              <Clock
+                className={`w-3.5 h-3.5 ${
+                  timer < 300 ? 'text-rose-500' : 'text-blue-500'
+                }`}
+              />
+            </div>
 
-  {/* Time */}
-  <span
-      className={`font-mono font-semibold text-sm tracking-wide
-      ${timer < 300 ? 'text-rose-500' : textPrimary}`}
-    >
-      {formatTime(timer)}
-    </span>
+            {/* Time */}
+            <span
+                className={`font-mono font-semibold text-sm tracking-wide
+                ${timer < 300 ? 'text-rose-500' : textPrimary}`}
+              >
+                {formatTime(timer)}
+              </span>
 
-    {/* Divider */}
-    <div className={`h-5 w-px ${darkMode ? 'bg-zinc-700' : 'bg-gray-300'}`} />
+              {/* Divider */}
+              <div className={`h-5 w-px ${darkMode ? 'bg-zinc-700' : 'bg-gray-300'}`} />
 
-    {/* Play / Pause */}
-    
-    <button
-      onClick={() => setIsTimerRunning(!isTimerRunning)}
-      className={`cursor-pointer p-1.5 rounded-lg transition-colors
-      ${
-        darkMode
-          ? 'hover:bg-zinc-700 text-zinc-300'
-          : 'hover:bg-gray-200 text-gray-700'
-      }`}
-      title={isTimerRunning ? 'Pause Timer' : 'Start Timer'}
-    >
-      {isTimerRunning ? (
-        <Pause className="w-4 h-4" />
-      ) : (
-        <Play className="w-4 h-4" />
-      )}
-    </button>
+              {/* Play / Pause */}
+              
+              <button
+                onClick={() => setIsTimerRunning(!isTimerRunning)}
+                className={`cursor-pointer p-1.5 rounded-lg transition-colors
+                ${
+                  darkMode
+                    ? 'hover:bg-zinc-700 text-zinc-300'
+                    : 'hover:bg-gray-200 text-gray-700'
+                }`}
+                title={isTimerRunning ? 'Pause Timer' : 'Start Timer'}
+              >
+                {isTimerRunning ? (
+                  <Pause className="w-4 h-4" />
+                ) : (
+                  <Play className="w-4 h-4" />
+                )}
+              </button>
 
-    {/* Settings */}
-    <button
-      onClick={() => setShowTimerModal(true)}
-      className={`cursor-pointer p-1.5 rounded-lg transition-colors
-      ${
-        darkMode
-          ? 'hover:bg-zinc-700 text-zinc-300'
-          : 'hover:bg-gray-200 text-gray-700'
-      }`}
-      title="Timer Settings"
-    >
-      <Settings className="w-4 h-4" />
-    </button>
-  </div>
-
+              {/* Settings */}
+              <button
+                onClick={() => setShowTimerModal(true)}
+                className={`cursor-pointer p-1.5 rounded-lg transition-colors
+                ${
+                  darkMode
+                    ? 'hover:bg-zinc-700 text-zinc-300'
+                    : 'hover:bg-gray-200 text-gray-700'
+                }`}
+                title="Timer Settings"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+            </div>
 
           {/* Action Buttons */}
           <button className={`cursor-pointer p-2 rounded-lg ${hoverBg} transition-colors`}>
@@ -995,7 +1127,7 @@ const Problem = () => {
                 </div>
               )}
             </>
-          ) : (
+          ) : leftPanelTab === "submissions" ? (
             /* ===== SUBMISSIONS TAB ===== */
             <div>
               <div className="mb-6">
@@ -1065,6 +1197,7 @@ const Problem = () => {
                       })}
                     </div>
                   </div>
+                  
 
                   {/* Most Recent Submission Details */}
                   {selectedcode && (
@@ -1112,7 +1245,385 @@ const Problem = () => {
                 </div>
               )}
             </div>
-          )}
+          ) : leftPanelTab === "solutions" ? (
+            /* ===== SOLUTIONS TAB ===== */
+            <div>
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h1 className={`text-xl font-bold ${textPrimary} mb-2`}>Solutions</h1>
+                    <p className={`${textSecondary} text-sm`}>
+                      Browse solutions submitted by other users
+                    </p>
+                  </div>
+                  
+                  {/* Language Filter Dropdown */}
+                  <div className="relative">
+                    <button
+                    
+                      onClick={() => setShowLanguageFilter(!showLanguageFilter)}
+                      className={`cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg ${darkMode 
+                        ? 'bg-zinc-800 hover:bg-zinc-700' 
+                        : 'bg-gray-100 hover:bg-gray-200'
+                      } border ${borderColor} text-sm font-medium ${textPrimary} transition-colors`}
+                    >
+                      <Filter className="w-4 h-4" />
+                      {solutionsFilter === "all" ? "All Languages" : 
+                       solutionsFilter === "verified" ? "Verified Only" : 
+                       solutionsFilter.charAt(0).toUpperCase() + solutionsFilter.slice(1)}
+                      <ChevronDown className={`w-4 h-4 ${textTertiary} transition-transform ${showLanguageFilter ? 'rotate-180' : ''}`} />
+                    </button>
+                    
+                    {showLanguageFilter && (
+                      <div className={`absolute right-0 mt-2 w-56 ${bgSecondary} ${borderColor} border rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto`}>
+                        <div className="p-2">
+                          {languageFilterOptions.map((option) => (
+                            <button
+                              key={option.value}
+                              onClick={() => {
+                                setSolutionsFilter(option.value);
+                                setShowLanguageFilter(false);
+                                
+                              }}
+                              className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded ${solutionsFilter === option.value
+                                ? `${darkMode ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600'}`
+                                : `${textSecondary} ${darkMode ? 'hover:bg-zinc-800' : 'hover:bg-gray-100'}`
+                              } transition-colors`}
+                            >
+                             
+                              <span className="flex-1 text-left">{option.label}</span>
+                              {solutionsFilter === option.value && (
+                                <Check className="w-4 h-4" />
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Filter Status */}
+                <div className="flex items-center justify-between mb-6">
+                  <div className={`text-sm ${textSecondary}`}>
+                    Showing <span className={`font-bold ${textPrimary}`}>{solutions.length}</span> solution{solutions.length !== 1 ? 's' : ''}
+                    {solutionsFilter !== "all" && (
+                      <span className="ml-2">
+                        filtered by: <span className={`font-medium ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+                          {solutionsFilter === "verified" ? "Verified Only" : 
+                           solutionsFilter.charAt(0).toUpperCase() + solutionsFilter.slice(1)}
+                        </span>
+                      </span>
+                    )}
+                  </div>
+                  
+                  {solutionsFilter !== "all" && (
+                    <button
+                      onClick={() => setSolutionsFilter("all")}
+                      className={`cursor-pointer text-xs px-3 py-1.5 rounded ${darkMode 
+                        ? 'bg-zinc-800 hover:bg-zinc-700' 
+                        : 'bg-gray-100 hover:bg-gray-200'
+                      } ${textSecondary} transition-colors flex items-center gap-1.5`}
+                    >
+                      <X className="w-3 h-3" />
+                      Clear Filter
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Loading State */}
+              {isLoadingSolutions ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center space-y-4">
+                    <div className="relative">
+                      <div className="w-12 h-12 border-3 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto"></div>
+                      <Code className="w-6 h-6 text-blue-400 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+                    </div>
+                    <p className="text-zinc-400 font-medium">Loading solutions...</p>
+                  </div>
+                </div>
+              ) : !filteredSolutions? (
+                <div className={`flex flex-col items-center justify-center h-64 ${darkMode ? 'bg-zinc-800/20' : 'bg-gray-50'} rounded-lg border ${borderColor}`}>
+                  <Code className="w-12 h-12 text-zinc-500 mb-4" />
+                  <h3 className={`${textPrimary} font-medium mb-2`}>
+                    {solutionsFilter === "all" ? "No solutions yet" : "No matching solutions"}
+                  </h3>
+                  <p className={`${textSecondary} text-sm text-center max-w-md`}>
+                    {solutionsFilter === "all" 
+                      ? "Be the first to submit a solution for this problem!" 
+                      : `No ${solutionsFilter === "verified" ? "verified" : solutionsFilter} solutions found. Try a different filter.`}
+                  </p>
+                  {solutionsFilter !== "all" && (
+                    <button
+                      onClick={() => setSolutionsFilter("all")}
+                      className="mt-4 cursor-pointer px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
+                    >
+                      Show All Solutions
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Solutions List */}
+                  <div className={`${darkMode ? 'bg-zinc-800/30' : 'bg-gray-50'} border ${borderColor} rounded-lg overflow-hidden`}>
+                    <div className={`grid grid-cols-12 px-4 py-3 ${darkMode ? 'bg-zinc-800/40' : 'bg-gray-100'} border-b ${borderColor} text-xs font-medium ${textTertiary}`}>
+                      <div className="col-span-1">Votes</div>
+                      <div className="col-span-4">Solution</div>
+                      <div className="col-span-2">Language</div>
+                      <div className="col-span-3">User</div>
+                      <div className="col-span-2">Date</div>
+                    </div>
+                    
+                    <div className="divide-y divide-zinc-800">
+                      {filteredSolutions && filteredSolutions.map((solution) => (
+                        <div 
+                          key={solution._id}
+                          className={`grid grid-cols-12 px-4 py-3 items-center hover:${darkMode ? 'bg-zinc-800/20' : 'bg-gray-50'} transition-colors cursor-pointer ${
+                            selectedSolution?._id === solution._id ? (darkMode ? 'bg-zinc-800/40' : 'bg-blue-50/50') : ''
+                          }`}
+                         onClick={() => setSelectedSolutionId(solution._id)}
+
+                        >
+                          {/* Votes */}
+                          <div className="col-span-1">
+                            <div className="flex flex-col items-center">
+                              <div className="flex items-center gap-1">
+                                <ThumbsUp className="w-3 h-3 text-emerald-500" />
+                                <span className={`text-xs font-bold ${textPrimary}`}>{solution.upvotes || 0}</span>
+                              </div>
+                              {solution.is_verified && (
+                                <div className="mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                                  Verified
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Solution Preview */}
+                          <div className="col-span-4">
+                            <div className="flex flex-col">
+                              <span className={`text-sm font-medium ${textPrimary} truncate`}>
+                                {solution.title || "Untitled Solution"}
+                              </span>
+                             
+                            </div>
+                          </div>
+
+                          {/* Language */}
+                          <div className="col-span-2">
+                            <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                              darkMode 
+                                ? 'bg-zinc-800 text-zinc-300' 
+                                : 'bg-gray-200 text-gray-700'
+                            }`}>
+                              {solution.language}
+                            </span>
+                          </div>
+
+                          {/* User */}
+                          <div className="col-span-3">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-6 h-6 rounded-full ${darkMode ? 'bg-zinc-700' : 'bg-gray-300'} flex items-center justify-center`}>
+                                <User className="w-3 h-3 text-zinc-400" />
+                              </div>
+                              <span className={`text-xs ${textSecondary} truncate`}>
+                                {solution.username}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Date */}
+                          <div className={`col-span-2 text-xs ${textSecondary}`}>
+                            {new Date(solution.created_at).toLocaleDateString()}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Selected Solution Details */}
+                  {selectedSolution && (
+                    <div className={`border ${borderColor} rounded-lg overflow-hidden ${darkMode ? 'bg-zinc-800/20' : 'bg-gray-50'}`}>
+                      <div className={`px-4 py-3 ${darkMode ? 'bg-zinc-800/40' : 'bg-gray-100'} border-b ${borderColor}`}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className={`${textPrimary} font-medium text-sm`}>
+                              {selectedSolution.title || "Solution Details"}
+                            </h3>
+                            <div className="flex items-center gap-3 mt-1">
+                              <div className="flex items-center gap-1">
+                                <User className="w-3 h-3 text-zinc-400" />
+                                <span className={`text-xs ${textTertiary}`}>
+                                  {selectedSolution.username}
+                                </span>
+                              </div>
+                              <span className={`text-xs px-2 py-0.5 rounded ${darkMode ? 'bg-zinc-800 text-zinc-300' : 'bg-gray-200 text-gray-700'}`}>
+                                {selectedSolution.language}
+                              </span>
+                              {selectedSolution.is_verified && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                                  <Check className="w-3 h-3" />
+                                  Verified
+                                </span>
+                              )}
+                              <span className={`text-xs ${textTertiary}`}>
+                                {new Date(selectedSolution.created_at).toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setExpandedSolutionId(expandedSolutionId === selectedSolution._id ? null : selectedSolution._id);
+                              }}
+                              className={`cursor-pointer p-1.5 rounded ${darkMode ? 'hover:bg-zinc-700' : 'hover:bg-gray-200'}`}
+                            >
+                              {expandedSolutionId === selectedSolution._id ? 
+                                <ChevronUp className="w-4 h-4 text-zinc-400" /> : 
+                                <ChevronDown className="w-4 h-4 text-zinc-400" />
+                              }
+                            </button>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(selectedSolution.code);
+                                setCopied(true);
+                                setTimeout(() => setCopied(false), 2000);
+                              }}
+                              className={`cursor-pointer p-1.5 rounded ${darkMode ? 'hover:bg-zinc-700' : 'hover:bg-gray-200'}`}
+                              title="Copy code"
+                            >
+                              <Copy className={`w-4 h-4 ${textTertiary}`} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Solution Code */}
+                      <div className="p-4">
+                        {selectedSolution.description && (
+                          <div className="mb-4">
+                            <h4 className={`text-sm font-medium ${textPrimary} mb-2`}>Description</h4>
+                            <p className={`text-sm ${textSecondary}`}>{selectedSolution.description}</p>
+                          </div>
+                        )}
+                        
+                        <div className="mb-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className={`text-sm font-medium ${textPrimary}`}>Code</h4>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={()=>handlevote("upvote",selectedSolution._id)}
+                                className={`cursor-pointer flex items-center gap-1 px-2 py-1 rounded text-xs ${darkMode ? 'hover:bg-zinc-800' : 'hover:bg-gray-100'}`}
+                              >
+                                <ThumbsUp className="w-3 h-3 text-emerald-500" />
+                                <span className={textSecondary}>{selectedSolution.upvotes || 0}</span>
+                              </button>
+                              <button
+                                 onClick={()=>handlevote("downvote",selectedSolution._id)}
+                                className={`cursor-pointer flex items-center gap-1 px-2 py-1 rounded text-xs ${darkMode ? 'hover:bg-zinc-800' : 'hover:bg-gray-100'}`}
+                              >
+                                <ThumbsDown className="w-3 h-3 text-rose-500" />
+                              </button>
+                            </div>
+                          </div>
+                          
+                          <div className={`${expandedSolutionId === selectedSolution._id ? '' : 'max-h-96 overflow-hidden'}`}>
+                            <pre className={`text-xs font-mono p-4 rounded ${darkMode 
+                              ? 'bg-zinc-900 text-zinc-300' 
+                              : 'bg-white text-gray-800'
+                            } overflow-x-auto border ${borderColor}`}>
+                              {selectedSolution.code}
+                            </pre>
+                            
+                            {expandedSolutionId !== selectedSolution._id && (
+                              <div className="relative">
+                                <div className={`absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t ${darkMode ? 'from-zinc-800' : 'from-gray-50'} to-transparent`}></div>
+                                <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2">
+                                  <button
+                                    onClick={() => setExpandedSolutionId(selectedSolution._id)}
+                                    className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs font-medium ${darkMode 
+                                      ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300' 
+                                      : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                                    } flex items-center gap-1`}
+                                  >
+                                    <ChevronDown className="w-3 h-3" />
+                                    Show Full Code
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Solution Stats */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className={`p-3 rounded-lg ${darkMode ? 'bg-zinc-800/30' : 'bg-gray-100'} border ${borderColor}`}>
+                            <div className={`text-xs ${textTertiary} mb-1`}>Time Complexity</div>
+                            <div className={`text-sm font-medium ${textPrimary}`}>
+                              {selectedSolution.time_complexity || "Not specified"}
+                            </div>
+                          </div>
+                          <div className={`p-3 rounded-lg ${darkMode ? 'bg-zinc-800/30' : 'bg-gray-100'} border ${borderColor}`}>
+                            <div className={`text-xs ${textTertiary} mb-1`}>Space Complexity</div>
+                            <div className={`text-sm font-medium ${textPrimary}`}>
+                              {selectedSolution.space_complexity || "Not specified"}
+                            </div>
+                          </div>
+                          
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Solutions Stats */}
+                  <div className="grid grid-cols-4 gap-3">
+                    <div className={`p-4 rounded-lg ${darkMode ? 'bg-blue-500/10 border-blue-500/20' : 'bg-blue-100 border-blue-200'} border`}>
+                      <div className={`text-xs ${darkMode ? 'text-blue-300' : 'text-blue-700'} mb-1`}>Total Solutions</div>
+                      <div className={`text-xl font-bold ${darkMode ? 'text-blue-300' : 'text-blue-700'}`}>
+                        {solutions.length}
+                      </div>
+                    </div>
+                    <div className={`p-4 rounded-lg ${darkMode ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-emerald-100 border-emerald-200'} border`}>
+                      <div className={`text-xs ${darkMode ? 'text-emerald-300' : 'text-emerald-700'} mb-1`}>Verified</div>
+                      <div className={`text-xl font-bold ${darkMode ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                        {solutions.filter(s => s.is_verified).length}
+                      </div>
+                    </div>
+                    <div className={`p-4 rounded-lg ${darkMode ? 'bg-amber-500/10 border-amber-500/20' : 'bg-amber-100 border-amber-200'} border`}>
+                      <div className="flex items-center justify-between">
+                      <div>
+                          <div className={`text-xs ${darkMode ? 'text-amber-300' : 'text-amber-700'} mb-1`}>Top Language</div>
+                          <div className={`text-xl font-bold ${darkMode ? 'text-amber-300' : 'text-amber-700'}`}>
+                            {(() => {
+                              const langCount = {};
+                              solutions.forEach(s => {
+                                langCount[s.language] = (langCount[s.language] || 0) + 1;
+                              });
+                              const topLang = Object.entries(langCount).sort((a, b) => b[1] - a[1])[0];
+                              return topLang ? topLang[0] : "-";
+                            })()}
+                          </div>
+                        </div>
+                        <Code className={`w-8 h-8 ${darkMode ? 'text-amber-300/40' : 'text-amber-700/40'}`} />
+                      </div>
+                    </div>
+                    <div className={`p-4 rounded-lg ${darkMode ? 'bg-purple-500/10 border-purple-500/20' : 'bg-purple-100 border-purple-200'} border`}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className={`text-xs ${darkMode ? 'text-purple-300' : 'text-purple-700'} mb-1`}>Most Upvoted</div>
+                          <div className={`text-xl font-bold ${darkMode ? 'text-purple-300' : 'text-purple-700'}`}>
+                            {solutions.length > 0 ? Math.max(...solutions.map(s => s.upvotes || 0)) : '-'}
+                          </div>
+                        </div>
+                        <ThumbsUp className={`w-8 h-8 ${darkMode ? 'text-purple-300/40' : 'text-purple-700/40'}`} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null}
         </div>
 
         {/* ===== RESIZER HANDLE ===== */}
