@@ -14,6 +14,8 @@ import NotFound from './pages/NotFound'
 import TermsOfService from './pages/TermsOfService'
 import RefundPolicy from './pages/RefundPolicy'
 import Disclaimer from './pages/Disclaimer'
+import MainCompiler from './pages/MainEditor'
+import LoginPageWithOTP from './pages/Login/LoginWithOTP'
 
 const App = () => {
   return (
@@ -26,14 +28,15 @@ const App = () => {
         <Route path="/problems" element={<Arena />} />
         <Route path="/about-us" element={<About />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/login-otp" element={<LoginPageWithOTP />} />
         <Route path="/register" element={<Register />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-of-service" element={<TermsOfService />} />
         <Route path="/refund-policy" element={<RefundPolicy />} />
         <Route path="/disclaimer" element={<Disclaimer />} />
         <Route path="/welcome" element={<Welcome />} />
+        <Route path="/compiler" element={<MainCompiler />} />
         <Route path="*" element={<NotFound />} />
-
          
 
       </Routes>
