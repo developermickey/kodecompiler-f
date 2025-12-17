@@ -16,6 +16,8 @@ import TermsOfService from './pages/TermsOfService'
 import RefundPolicy from './pages/RefundPolicy'
 import Disclaimer from './pages/Disclaimer'
 import WeeklyChallenges from './pages/WeeklyChallenges'
+import MainCompiler from './pages/MainEditor'
+import LoginPageWithOTP from './pages/Login/LoginWithOTP'
 
 const App = () => {
   return (
@@ -29,6 +31,7 @@ const App = () => {
          <Route path="/problem/:problemId" element={<Problem />} />
         <Route path="/about-us" element={<About />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/login-otp" element={<LoginPageWithOTP />} />
         <Route path="/register" element={<Register />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-of-service" element={<TermsOfService />} />
@@ -36,8 +39,8 @@ const App = () => {
         <Route path="/disclaimer" element={<Disclaimer />} />
         <Route path="/welcome" element={<Welcome />} />
         <Route path="/weekly-challenges" element={<WeeklyChallenges />} />
+        <Route path="/compiler" element={<MainCompiler />} />
         <Route path="*" element={<NotFound />} />
-
          
 
       </Routes>

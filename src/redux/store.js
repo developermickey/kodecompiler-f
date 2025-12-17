@@ -4,8 +4,10 @@ import authReducer from './slices/authSlice';
 import problemsReducer from "./slices/problemSlice";
 import userProgressReducer from "./slices/userprogressSlice";
 import { pastChallengesReducer, weeklyChallengesReducer, normalChallengesReducer } from './slices/challengesSlice';
-import {userchallengeprogressReducer} from "./slices/userchallengesprogressSlice";
-import {globalLeaderboardReducer} from "./slices/challengesGlobalLeaderboardSlice"
+import { userchallengeprogressReducer } from "./slices/userchallengesprogressSlice";
+import { globalLeaderboardReducer } from "./slices/challengesGlobalLeaderboardSlice"
+import codeReducer from './slices/codeSlice'
+
 
 export const store = configureStore({
   reducer: {
@@ -14,10 +16,10 @@ export const store = configureStore({
     userProgress: userProgressReducer,
     weeklyChallenges: weeklyChallengesReducer,
     pastChallenges: pastChallengesReducer,
-    userChallengesprogress : userchallengeprogressReducer,
+    userChallengesprogress: userchallengeprogressReducer,
     normalChallenges: normalChallengesReducer,
-    globalLeaderboard: globalLeaderboardReducer
-
+    globalLeaderboard: globalLeaderboardReducer,
+    code: codeReducer
     // Add other reducers here
   },
 });
