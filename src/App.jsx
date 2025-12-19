@@ -35,6 +35,7 @@ const App = () => {
         <Route path="/refund-policy" element={<RefundPolicy />} />
         <Route path="/disclaimer" element={<Disclaimer />} />
         <Route path="/welcome" element={<Welcome />} />
+        <Route path="/weekly-challenges" element={<WeeklyChallenges />} />
         <Route path="*" element={<NotFound />} />
 
          

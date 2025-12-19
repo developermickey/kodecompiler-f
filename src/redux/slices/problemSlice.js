@@ -15,7 +15,15 @@ const problemsSlice = createSlice({
     stats: { total: 0, easy: 0, medium: 0, hard: 0 },
     loading: false,
   },
-  reducers: {},
+  reducers: {
+
+     resetProblems: (state) => {
+      state.list = [];
+      state.stats = { total: 0, easy: 0, medium: 0, hard: 0 };
+      state.loading = false;
+      state.error = null;
+    }
+  },
   extraReducers: (builder) => {
     builder
       .addCase(fetchProblems.pending, (state) => {
@@ -38,3 +46,4 @@ const problemsSlice = createSlice({
 });
 
 export default problemsSlice.reducer;
+export const { resetProblems } = problemsSlice.actions;

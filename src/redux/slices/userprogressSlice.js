@@ -27,7 +27,16 @@ const userprogressSlice = createSlice({
     loading: false,
     error: null,
   },
-  reducers: {},
+  reducers: {
+    resetUserProgress: (state) => {
+      state.solvedProblemIds = [];
+      state.solvedCount = 0;
+      state.acceptanceRate = 0;
+      state.totalSubmissions = 0;
+      state.loading = false;
+      state.error = null;
+    }
+  },
   extraReducers: (builder) => {
     builder
       .addCase(fetchUserProgress.pending, (state) => {
@@ -48,4 +57,5 @@ const userprogressSlice = createSlice({
   },
 });
 
+export const { resetUserProgress } = userprogressSlice.actions;
 export default userprogressSlice.reducer;
