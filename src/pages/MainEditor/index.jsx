@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import Editor from "@monaco-editor/react";
 import {
   FolderOpen,
   Save,
@@ -50,14 +51,14 @@ const MainCompilerLight = () => {
   const [codeName, setCodeName] = useState("Untitled Project");
   const [activeCodeId, setActiveCodeId] = useState(null);
   const [isCodeLoading, setIsCodeLoading] = useState(false);
-  const [isEditingName, setIsEditingName] = useState(false); // NEW: To toggle input
+  const [isEditingName, setIsEditingName] = useState(false);
 
   // --- Refs ---
-  const lineNumbersRef = useRef(null);
   const containerRef = useRef(null);
   const langMenuRef = useRef(null);
-  const textareaRef = useRef(null);
-  const titleInputRef = useRef(null); // NEW: Focus input on click
+  const titleInputRef = useRef(null);
+  const editorRef = useRef(null);
+  const monacoRef = useRef(null); // To store monaco instance for cleanup
 
   // --- Close Dropdowns on Click Outside ---
   useEffect(() => {
@@ -65,7 +66,6 @@ const MainCompilerLight = () => {
       if (langMenuRef.current && !langMenuRef.current.contains(event.target)) {
         setIsLangMenuOpen(false);
       }
-      // Save name on click outside
       if (
         isEditingName &&
         titleInputRef.current &&
@@ -77,38 +77,6 @@ const MainCompilerLight = () => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isEditingName]);
-
-  // --- Smart Keyboard Handler ---
-  const handleKeyDown = (e) => {
-    const { selectionStart, selectionEnd, value } = e.target;
-    if (e.key === "Tab") {
-      e.preventDefault();
-      const newValue =
-        value.substring(0, selectionStart) +
-        "    " +
-        value.substring(selectionEnd);
-      setCode(newValue);
-      setTimeout(() => {
-        e.target.selectionStart = e.target.selectionEnd = selectionStart + 4;
-      }, 0);
-    }
-    if (e.key === "Enter") {
-      e.preventDefault();
-      const currentLineStart = value.lastIndexOf("\n", selectionStart - 1) + 1;
-      const currentLine = value.substring(currentLineStart, selectionStart);
-      const indentation = currentLine.match(/^\s*/)[0];
-      const newValue =
-        value.substring(0, selectionStart) +
-        "\n" +
-        indentation +
-        value.substring(selectionEnd);
-      setCode(newValue);
-      setTimeout(() => {
-        e.target.selectionStart = e.target.selectionEnd =
-          selectionStart + indentation.length + 1;
-      }, 0);
-    }
-  };
 
   const showNotification = (msg) => {
     setNotification(msg);
@@ -135,10 +103,12 @@ const MainCompilerLight = () => {
   const handleLanguageSelect = (lang) => {
     setLanguage(lang);
     setIsLangMenuOpen(false);
+    
+    // Reset code boilerplate if it's a new empty file (Optional UX choice)
+    // For now we just keep the code as is to avoid data loss
   };
 
   const toggleFilePanel = (tabName) => {
-    console.log(userCodes)
     if (isFilePanelOpen && activeTab === tabName) {
       setIsFilePanelOpen(false);
     } else {
@@ -153,22 +123,19 @@ const MainCompilerLight = () => {
     }
   };
 
-  // --- NEW: Helper to map extensions to languages ---
   const detectLanguageFromExtension = (filename) => {
     if (!filename) return null;
     const ext = filename.split(".").pop().toLowerCase();
-
     const extensionMap = {
       py: "python",
       js: "javascript",
       jsx: "javascript",
       ts: "javascript",
       java: "java",
-      cpp: "c++",
-      c: "c++",
-      cc: "c++",
+      cpp: "cpp",
+      c: "cpp",
+      cc: "cpp",
     };
-
     return extensionMap[ext] || null;
   };
 
@@ -187,7 +154,6 @@ const MainCompilerLight = () => {
       setCode(res.data.code);
       setActiveCodeId(code_id);
 
-      // --- NEW: Auto-detect language based on title extension ---
       const detectedLang = detectLanguageFromExtension(fetchedTitle);
       if (detectedLang) {
         setLanguage(detectedLang);
@@ -232,32 +198,23 @@ const MainCompilerLight = () => {
     };
   }, [isDraggingVert, isDraggingHorz]);
 
-  const lines = code.split("\n").length;
-  const lineNumbers = Array.from(
-    { length: Math.max(lines, 20) },
-    (_, i) => i + 1
-  );
-
-  /* ===================== CORRECT SAVE HANDLER ===================== */
   const handleSave = () => {
     if (!activeCodeId) {
       showNotification("Please select or create a file first.");
       return;
     }
-
-    // Construct the FULL payload based on your API schema
     const payload = {
       title: codeName,
       language: language,
       code: code,
-      description: "", // Add if you have a field for this
+      description: "",
       input: input,
       lastOutput: output || "",
-      folderPath: "/", // Default or from state
+      folderPath: "/",
     };
 
     dispatch(saveCode({ code_id: activeCodeId, payload }))
-      .unwrap() // Allows us to catch errors/success directly here
+      .unwrap()
       .then(() => {
         showNotification("File saved successfully.");
       })
@@ -280,7 +237,71 @@ const MainCompilerLight = () => {
     );
   };
 
-  /* ===================== RENDER ===================== */
+  /* =========================================
+     MONACO CONFIGURATION & AUTOCOMPLETION
+     ========================================= */
+  
+  const handleEditorDidMount = (editor, monaco) => {
+    editorRef.current = editor;
+    monacoRef.current = monaco;
+    editor.focus();
+
+    // --- 1. Register Custom Snippets for C++ ---
+    monaco.languages.registerCompletionItemProvider("cpp", {
+      provideCompletionItems: (model, position) => {
+        const suggestions = [
+          // Common C++ Keywords & Types
+          { label: "cout", kind: monaco.languages.CompletionItemKind.Function, insertText: "std::cout << ${1:value} << std::endl;", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: "Standard Output Stream" },
+          { label: "cin", kind: monaco.languages.CompletionItemKind.Function, insertText: "std::cin >> ${1:variable};", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: "Standard Input Stream" },
+          { label: "vector", kind: monaco.languages.CompletionItemKind.Class, insertText: "std::vector<${1:int}> ${2:v};", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: "Standard Vector" },
+          { label: "map", kind: monaco.languages.CompletionItemKind.Class, insertText: "std::map<${1:key}, ${2:value}> ${3:m};", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: "Standard Map" },
+          { label: "string", kind: monaco.languages.CompletionItemKind.Class, insertText: "std::string ", documentation: "Standard String" },
+          { label: "include", kind: monaco.languages.CompletionItemKind.Snippet, insertText: "#include <${1:iostream}>", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: "Include header" },
+          // Boilerplate
+          {
+            label: "main",
+            kind: monaco.languages.CompletionItemKind.Snippet,
+            insertText: [
+              "int main() {",
+              "\t${1:// code}",
+              "\treturn 0;",
+              "}"
+            ].join("\n"),
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            documentation: "Main function boilerplate"
+          },
+          // Loops
+          { label: "for", kind: monaco.languages.CompletionItemKind.Snippet, insertText: "for (int i = 0; i < ${1:n}; ++i) {\n\t${2}\n}", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: "For Loop" },
+        ];
+        return { suggestions };
+      },
+    });
+
+    // --- 2. Register Custom Snippets for Java ---
+    monaco.languages.registerCompletionItemProvider("java", {
+      provideCompletionItems: (model, position) => {
+        const suggestions = [
+          { label: "sout", kind: monaco.languages.CompletionItemKind.Snippet, insertText: "System.out.println(${1:\"output\"});", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: "Print to console" },
+          { label: "psvm", kind: monaco.languages.CompletionItemKind.Snippet, insertText: "public static void main(String[] args) {\n\t${1}\n}", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: "Main method" },
+          { label: "class", kind: monaco.languages.CompletionItemKind.Snippet, insertText: "class ${1:ClassName} {\n\t${2}\n}", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: "Class definition" },
+        ];
+        return { suggestions };
+      },
+    });
+
+    // --- 3. Register Custom Snippets for Python ---
+    monaco.languages.registerCompletionItemProvider("python", {
+      provideCompletionItems: (model, position) => {
+        const suggestions = [
+          { label: "print", kind: monaco.languages.CompletionItemKind.Function, insertText: "print(${1:\"hello\"})", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: "Print function" },
+          { label: "def", kind: monaco.languages.CompletionItemKind.Snippet, insertText: "def ${1:function_name}(${2:args}):\n\t${3:pass}", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: "Function definition" },
+          { label: "ifmain", kind: monaco.languages.CompletionItemKind.Snippet, insertText: "if __name__ == \"__main__\":\n\t${1:main()}", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: "Main execution block" },
+        ];
+        return { suggestions };
+      },
+    });
+  };
+
   return (
     <div className="flex flex-col h-screen w-full bg-white text-gray-800 font-sans overflow-hidden">
       {notification && (
@@ -290,6 +311,7 @@ const MainCompilerLight = () => {
         </div>
       )}
 
+      {/* HEADER */}
       <header className="h-14 bg-gray-50 border-b border-gray-200 flex items-center justify-between px-4 z-30 select-none shrink-0">
         <div className="flex items-center space-x-2">
           <HeaderButton
@@ -299,12 +321,10 @@ const MainCompilerLight = () => {
             onClick={() => toggleFilePanel("My Codes")}
           />
           <div className="h-6 w-px bg-gray-300 mx-2"></div>
-
-          {/* UPDATED SAVE BUTTON */}
           <HeaderButton
             icon={<Save size={15} />}
             label="Save"
-            onClick={handleSave} // Calls the new logic
+            onClick={handleSave}
           />
           <div className="h-6 w-px bg-gray-300 mx-2"></div>
           <HeaderButton
@@ -317,8 +337,6 @@ const MainCompilerLight = () => {
             <span className="text-xs text-gray-400 mr-2 flex items-center gap-1">
               <FileCode2 size={12} /> Editing:
             </span>
-
-            {/* --- NEW: Editable Title --- */}
             {isEditingName ? (
               <input
                 ref={titleInputRef}
@@ -362,13 +380,13 @@ const MainCompilerLight = () => {
             </button>
             {isLangMenuOpen && (
               <div className="absolute top-full right-0 mt-1 w-32 bg-white border border-gray-200 rounded shadow-xl z-50 overflow-hidden">
-                {["python", "javascript", "java", "c++"].map((lang) => (
+                {["python", "javascript", "java", "cpp"].map((lang) => (
                   <div
                     key={lang}
                     onClick={() => handleLanguageSelect(lang)}
                     className="px-4 py-2 text-xs hover:bg-blue-50 hover:text-blue-600 cursor-pointer capitalize"
                   >
-                    {lang}
+                    {lang === "cpp" ? "C++" : lang}
                   </div>
                 ))}
               </div>
@@ -379,12 +397,12 @@ const MainCompilerLight = () => {
             onClick={handleRun}
             disabled={status === "running"}
             className={`
-                flex items-center gap-2 px-5 py-1.5 rounded shadow-md text-sm font-semibold transition-all active:scale-95
-                ${
-                  status === "running"
-                    ? "bg-blue-400 cursor-not-allowed text-white/80"
-                    : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20"
-                }
+              flex items-center gap-2 px-5 py-1.5 rounded shadow-md text-sm font-semibold transition-all active:scale-95
+              ${
+                status === "running"
+                  ? "bg-blue-400 cursor-not-allowed text-white/80"
+                  : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20"
+              }
             `}
           >
             {status === "running" ? (
@@ -397,8 +415,9 @@ const MainCompilerLight = () => {
         </div>
       </header>
 
-      {/* --- Rest of the Layout (Unchanged) --- */}
+      {/* MAIN CONTENT */}
       <div className="flex flex-1 relative overflow-hidden" ref={containerRef}>
+        {/* FILE SIDEBAR */}
         {isFilePanelOpen && (
           <div className="w-64 bg-gray-50 border-r border-gray-200 flex flex-col shrink-0 animate-in slide-in-from-left-5 duration-200">
             <div className="p-3 border-b border-gray-200 flex justify-between items-center text-xs font-bold text-gray-500 uppercase">
@@ -420,12 +439,11 @@ const MainCompilerLight = () => {
             </div>
             <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
               {activeTab === "My Codes" ? (
-                (
-                  userCodes?.map((item) => (
-                    <div
-                      key={item._id}
-                      onClick={() => handleCodeClick(item._id)}
-                      className={`
+                userCodes?.map((item) => (
+                  <div
+                    key={item._id}
+                    onClick={() => handleCodeClick(item._id)}
+                    className={`
                         flex items-center gap-2 px-3 py-2 text-sm cursor-pointer rounded transition-colors border border-transparent
                         ${
                           activeCodeId === item._id
@@ -433,15 +451,13 @@ const MainCompilerLight = () => {
                             : "text-gray-600 hover:bg-gray-200 hover:text-gray-900"
                         }
                       `}
-                    >
-                      <FileCode size={14} className="shrink-0" />
-                      <span className="truncate">
-                        {item.title || "Untitled"}
-                      </span>
-                    </div>
-                  ))
-                
-                )
+                  >
+                    <FileCode size={14} className="shrink-0" />
+                    <span className="truncate">
+                      {item.title || "Untitled"}
+                    </span>
+                  </div>
+                ))
               ) : (
                 <div className="p-2 text-xs text-gray-400 italic">
                   File explorer placeholder
@@ -451,6 +467,7 @@ const MainCompilerLight = () => {
           </div>
         )}
 
+        {/* EDITOR AREA (Left Width) */}
         <div
           className="flex flex-col h-full bg-white relative"
           style={{ width: `${leftWidth}%` }}
@@ -460,36 +477,48 @@ const MainCompilerLight = () => {
               <Loader2 className="animate-spin text-blue-600" />
             </div>
           )}
+          
           <div className="h-8 bg-gray-50 flex items-center px-4 border-b border-gray-200 shrink-0">
             <span className="text-[11px] font-bold text-gray-500 tracking-wider flex items-center gap-2">
               <FileCode size={12} /> EDITOR
             </span>
           </div>
-          <div className="flex-1 flex overflow-hidden relative group">
-            <div
-              ref={lineNumbersRef}
-              className="w-12 bg-gray-50 text-right pr-3 pt-4 text-gray-400 font-mono text-xs leading-6 select-none overflow-hidden border-r border-gray-100 shrink-0"
-            >
-              {lineNumbers.map((num) => (
-                <div key={num}>{num}</div>
-              ))}
-            </div>
-            <textarea
-              ref={textareaRef}
+
+          <div className="flex-1 overflow-hidden relative">
+            {/* MONACO EDITOR IMPLEMENTATION */}
+            <Editor
+              height="100%"
+              // --- FIXED: Use strict comparison. Previously "c++" || "cpp" always returned "cpp" ---
+              language={language === "c++" ? "cpp" : language}
               value={code}
-              onChange={(e) => setCode(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onScroll={(e) => {
-                if (lineNumbersRef.current)
-                  lineNumbersRef.current.scrollTop = e.target.scrollTop;
+              theme="light" 
+              onChange={(value) => setCode(value)}
+              onMount={handleEditorDidMount}
+              options={{
+                fontSize: 14,
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                padding: { top: 10, bottom: 10 },
+                lineNumbers: "on",
+                glyphMargin: false,
+                folding: true,
+                lineDecorationsWidth: 0,
+                lineNumbersMinChars: 3,
+                wordWrap: "on",
+                // Enable semantic highlighting if available
+                "semanticHighlighting.enabled": true,
               }}
-              className="flex-1 h-full bg-white text-gray-800 font-mono text-sm p-4 pt-4 leading-6 border-none outline-none resize-none custom-scrollbar whitespace-pre"
-              spellCheck="false"
-              autoCapitalize="none"
+              loading={
+                <div className="flex items-center gap-2 text-gray-500">
+                  <Loader2 className="animate-spin" /> Loading Editor...
+                </div>
+              }
             />
           </div>
         </div>
 
+        {/* DRAG HANDLE (Vertical) */}
         <div
           className="w-1 bg-gray-100 hover:bg-blue-500 cursor-col-resize flex items-center justify-center z-10 transition-colors relative group"
           onMouseDown={() => setIsDraggingVert(true)}
@@ -499,6 +528,7 @@ const MainCompilerLight = () => {
           </div>
         </div>
 
+        {/* RIGHT SIDE (IO) */}
         <div
           className="flex flex-col h-full bg-white min-w-0"
           style={{ width: `${100 - leftWidth}%` }}
@@ -517,6 +547,7 @@ const MainCompilerLight = () => {
             />
           </div>
 
+          {/* DRAG HANDLE (Horizontal) */}
           <div
             className="h-1 bg-gray-100 hover:bg-blue-500 cursor-row-resize z-10 transition-colors shrink-0"
             onMouseDown={() => setIsDraggingHorz(true)}
