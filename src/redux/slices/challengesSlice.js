@@ -62,10 +62,44 @@ export const fetchpastchallenges = createAsyncThunk(
     }
 );
 
+export const fetchnormalchallenges = createAsyncThunk(
+    "weekly-challenges/normal",
+    async(_,{rejectWithValue}) =>{
+
+        try{
+
+            const res = await fetch("http://localhost:5000/api/weekly-challenges/normal",
+                {
+                    method:"GET",
+                    credentials:"include",
+                    headers:
+                    {
+                        "Content-Type": "application/json"
+                    }
+                }
+            );
+
+            if(!res.ok)
+            {
+                throw new Error("Failed to fetch Normal Challenges")
+            }
+
+            return await res.json();
+
+
+        }
+        catch(error)
+        {
+            return rejectWithValue(error.message);
+        }
+
+    }
+)
+
 const weeklychallengeslice = createSlice({
     name:"weeklychallenges",
     initialState:{
-        contests:[],
+        weeklycontests:[],
         loading:false,
         error:null
 
@@ -73,7 +107,7 @@ const weeklychallengeslice = createSlice({
     reducers:{
         resetWeeklyChallenges: (state) =>
         {
-            state.contests = [];
+            state.weeklycontests = [];
             state.loading = false;
             state.error = null;
         }
@@ -88,7 +122,7 @@ const weeklychallengeslice = createSlice({
         .addCase(fetchweeklychallenges.fulfilled, (state,action)=>
         {
             state.loading = false;
-            state.contests = action.payload.contests;
+            state.weeklycontests = action.payload.contests;
             
 
         })
@@ -104,7 +138,7 @@ const pastchallengeslice = createSlice({
     name:"pastchallenges",
     initialState:{
 
-       challenges: [],
+       pastchallenges: [],
         total: 0,
         skip: 0,
         limit: 10,
@@ -115,7 +149,7 @@ const pastchallengeslice = createSlice({
     {
         resetPastChallenges: (state) =>
         {
-            state.challenges = [];
+            state.pastchallenges = [];
             state.total = 0;
             state.skip = 0;
             state.limit = 10;
@@ -133,7 +167,7 @@ const pastchallengeslice = createSlice({
         })
         .addCase(fetchpastchallenges.fulfilled, (state,action)=>
         {
-            state.challenges = action.payload.challenges;
+            state.pastchallenges = action.payload.challenges;
             state.total = action.payload.total;
             state.skip = action.payload.skip;
             state.limit = action.payload.limit;
@@ -150,9 +184,44 @@ const pastchallengeslice = createSlice({
     }
     
 })
+
+const normalchallengesslice = createSlice({
+  name: "normalchallenges",
+  initialState: {
+    normalContests: [],
+    normalContestsLoading: false,
+    normalContestsError: null
+  },
+  reducers: {
+    resetNormalChallenges: (state) => {
+      state.normalContests = [];
+      state.normalContestsLoading = false;
+      state.normalContestsError = null;
+    }
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchnormalchallenges.pending, (state) => {
+        state.normalContestsLoading = true;
+        state.normalContestsError = null;
+      })
+      .addCase(fetchnormalchallenges.fulfilled, (state, action) => {
+        state.normalContestsLoading = false;
+        state.normalContestsError = null;
+        state.normalContests = action.payload.contests;
+      })
+      .addCase(fetchnormalchallenges.rejected, (state, action) => {
+        state.normalContestsLoading = false;
+        state.normalContestsError = action.payload;
+      });
+  }
+});
+
 export const weeklyChallengesReducer = weeklychallengeslice.reducer;
 export const { resetWeeklyChallenges } = weeklychallengeslice.actions;
 
 export const pastChallengesReducer = pastchallengeslice.reducer;
 export const { resetPastChallenges } = pastchallengeslice.actions;
 
+export const normalChallengesReducer = normalchallengesslice.reducer;
+export const { resetNormalChallenges } = normalchallengesslice.actions;

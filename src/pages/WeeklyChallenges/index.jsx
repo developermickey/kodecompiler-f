@@ -1,71 +1,105 @@
-import { useState } from 'react';
-import { Trophy, Calendar, Flame, Medal, CheckCircle, Clock, Target, TrendingUp, Award, Users, Zap, ChevronRight, Star, Play, AlertCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Trophy, Calendar, Flame, Medal, CheckCircle, Clock, Target, TrendingUp, Award, Users, Zap, ChevronRight, Star, Play, AlertCircle, Timer } from 'lucide-react';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchnormalchallenges, fetchpastchallenges, fetchweeklychallenges } from "../../redux/slices/challengesSlice"
+import { fetchuserchallengeprogress } from "../../redux/slices/userchallengesprogressSlice"
 
 const WeeklyChallenges = () => {
   const [activeTab, setActiveTab] = useState('weekly');
-  
-  // Mock data for demo
-  const isLoading = false;
-  const error = null;
-  const stats = {
-    currentStreak: 5,
-    longestStreak: 12,
-    weeksParticipated: 20,
-    thisWeekProgress: { solved: 3, total: 5 }
+
+  const dispatch = useDispatch();
+  const user = useSelector((state) => state.auth.user);
+
+  useEffect(() => {
+    dispatch(fetchweeklychallenges());
+    dispatch(fetchpastchallenges({ skip: 0, limit: 10 }));
+    dispatch(fetchnormalchallenges());
+    if (user)
+      dispatch(fetchuserchallengeprogress());
+  }, [dispatch, user]);
+
+  const { weeklycontests, loading, error } = useSelector((state) => state.weeklyChallenges);
+  const { streak, progress, progressloading } = useSelector((state) => state.userChallengesprogress);
+  const { pastchallenges, total, skip, limit } = useSelector((state) => state.pastChallenges);
+  const { normalContests, normalContestsLoading, normalContestsError } = useSelector((state) => state.normalChallenges);
+
+  // Format date function
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
-  const weeklyContests = [
-    {
-      id: 1,
-      title: 'Weekly Contest 125',
-      status: 'live',
-      startTime: '2024-01-15 10:00',
-      endTime: '2024-01-15 12:00',
-      timeLeft: '1h 23m',
-      participants: 1234,
-      problems: 5,
-      difficulty: 'Mixed',
-      solved: 3,
-      points: 450,
-      maxPoints: 500
-    },
-    {
-      id: 2,
-      title: 'Weekly Contest 124',
-      status: 'upcoming',
-      startTime: '2024-01-22 10:00',
-      endTime: '2024-01-22 12:00',
-      startsIn: '2 days',
-      participants: 0,
-      problems: 5,
-      difficulty: 'Mixed',
-      solved: 0,
-      points: 0,
-      maxPoints: 500
-    },
-  ];
+  const formatDuration = (startDate, endDate) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffHours = Math.floor((end - start) / (1000 * 60 * 60));
+    if (diffHours < 24) return `${diffHours}h`;
+    return `${Math.floor(diffHours / 24)}d ${diffHours % 24}h`;
+  };
 
-  const leaderboard = [
-    { rank: 1, username: 'CodeMaster', score: 450, solved: 5, time: '45:23', avatar: '🥇' },
-    { rank: 2, username: 'AlgoExpert', score: 440, solved: 5, time: '48:15', avatar: '🥈' },
-    { rank: 3, username: 'DevPro', score: 420, solved: 4, time: '52:30', avatar: '🥉' },
-    { rank: 4, username: 'CodeNinja', score: 410, solved: 4, time: '55:12', avatar: '👨‍💻' },
-    { rank: 5, username: 'ByteMaster', score: 400, solved: 4, time: '58:45', avatar: '👩‍💻' },
-  ];
+  // Calculate contest status
+  
+
+  // Get status info
+  const getStatusInfo = (status) => {
+    //const status = getContestStatus(startDate, endDate);
+    switch (status) {
+      case 'upcoming':
+        return { 
+          text: 'UPCOMING', 
+          color: 'bg-purple-100 text-purple-800',
+          badgeColor: 'bg-purple-500'
+        };
+      case 'active':
+        return { 
+          text: 'LIVE NOW', 
+          color: 'bg-red-100 text-red-800',
+          badgeColor: 'bg-red-500 animate-pulse'
+        };
+      case 'completed':
+        return { 
+          text: 'COMPLETED', 
+          color: 'bg-green-100 text-green-800',
+          badgeColor: 'bg-green-500'
+        };
+      default:
+        return { 
+          text: 'UPCOMING', 
+          color: 'bg-gray-100 text-gray-800',
+          badgeColor: 'bg-gray-500'
+        };
+    }
+  };
+
+  // Calculate total points
+  const calculateTotalPoints = (questions) => {
+    if (!questions || !Array.isArray(questions)) return 0;
+    return questions.reduce((acc, cur) => acc + (cur.points || 0), 0);
+  };
 
   const tabs = [
-    { id: 'weekly', icon: Trophy, label: 'Weekly Contests', badge: 'LIVE', color: 'red' },
-    { id: 'normal', icon: Target, label: 'Contests', badge: null, color: 'blue' },
-    { id: 'calendar', icon: Calendar, label: 'Upcoming', badge: '3', color: 'purple' },
-    { id: 'past', icon: Clock, label: 'Past Contests', badge: null, color: 'gray' },
+    { id: 'weekly', icon: Trophy, label: 'Weekly Contests', badge: weeklycontests?.length > 0 ? 'LIVE' : null, color: 'red' },
+    { id: 'normal', icon: Target, label: 'Contests', badge: normalContests?.length > 0 ? `LIVE` : null, color: 'blue' },
+    { id: 'calendar', icon: Calendar, label: 'Upcoming', badge: "", color: 'purple' },
+    { id: 'past', icon: Clock, label: 'Past Contests', badge:"COMPLTED" , color: 'green' },
     { id: 'leaderboard', icon: Award, label: 'Global Leaderboard', badge: null, color: 'yellow' },
   ];
+
+  const fetchcontestdetails = (id) => {
+    console.log(id);
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Loading State */}
-        {isLoading && (
+        {(loading || normalContestsLoading) && (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
               <div className="w-16 h-16 border-4 border-[#0652e9] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -74,7 +108,7 @@ const WeeklyChallenges = () => {
           </div>
         )}
 
-        {/* Error State */}
+        {/* Error States */}
         {error && (
           <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg flex items-start space-x-3">
             <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
@@ -84,7 +118,16 @@ const WeeklyChallenges = () => {
           </div>
         )}
 
-        {!isLoading && (
+        {normalContestsError && (
+          <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg flex items-start space-x-3">
+            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm text-red-700">Failed to load normal contests</p>
+            </div>
+          </div>
+        )}
+
+        {!progressloading && (
           <>
             {/* Enhanced Header */}
             <div className="text-center mb-12">
@@ -112,7 +155,7 @@ const WeeklyChallenges = () => {
                   <Star className="w-5 h-5 text-orange-400" />
                 </div>
                 <div className="text-sm font-medium text-orange-600 mb-1">Current Streak</div>
-                <div className="text-4xl font-bold text-orange-900 mb-1">{stats.currentStreak}</div>
+                <div className="text-4xl font-bold text-orange-900 mb-1">{streak.current_streak}</div>
                 <div className="text-xs text-orange-600 font-medium">🔥 Keep it going!</div>
               </div>
 
@@ -124,7 +167,7 @@ const WeeklyChallenges = () => {
                   <Trophy className="w-5 h-5 text-yellow-400" />
                 </div>
                 <div className="text-sm font-medium text-yellow-600 mb-1">Longest Streak</div>
-                <div className="text-4xl font-bold text-yellow-900 mb-1">{stats.longestStreak}</div>
+                <div className="text-4xl font-bold text-yellow-900 mb-1">{streak.longest_streak}</div>
                 <div className="text-xs text-yellow-600 font-medium">🏆 Personal best</div>
               </div>
 
@@ -136,7 +179,7 @@ const WeeklyChallenges = () => {
                   <Zap className="w-5 h-5 text-blue-400" />
                 </div>
                 <div className="text-sm font-medium text-blue-600 mb-1">Weeks Participated</div>
-                <div className="text-4xl font-bold text-blue-900 mb-1">{stats.weeksParticipated}</div>
+                <div className="text-4xl font-bold text-blue-900 mb-1">{streak.weeks_participated}</div>
                 <div className="text-xs text-blue-600 font-medium">📅 Total weeks</div>
               </div>
 
@@ -148,9 +191,9 @@ const WeeklyChallenges = () => {
                   <Award className="w-5 h-5 text-green-400" />
                 </div>
                 <div className="text-sm font-medium text-green-600 mb-1">This Week</div>
-                <div className="text-4xl font-bold text-green-900 mb-1">
-                  {stats.thisWeekProgress.solved}/{stats.thisWeekProgress.total}
-                </div>
+                {progress?.total_solved !== undefined && (
+                  <div className="text-4xl font-bold text-green-900 mb-1">{progress.total_solved}</div>
+                )}
                 <div className="text-xs text-green-600 font-medium">✅ Problems solved</div>
               </div>
             </div>
@@ -172,7 +215,9 @@ const WeeklyChallenges = () => {
                     <span className="text-sm sm:text-base">{tab.label}</span>
                     {tab.badge && (
                       <span className={`px-2 py-0.5 text-white text-xs font-bold rounded-full ${
-                        tab.color === 'red' ? 'bg-red-500 animate-pulse' : 'bg-blue-500'
+                        tab.color === 'red' ? 'bg-red-500 animate-pulse' :
+                        tab.color === 'green' ? 'bg-green-500' : 
+                        tab.color === 'blue' ? 'bg-blue-500 animate-pulse' : 'bg-purple-500'
                       }`}>
                         {tab.badge}
                       </span>
@@ -185,180 +230,436 @@ const WeeklyChallenges = () => {
               </div>
             </div>
 
-            {/* Tab Content */}
+            {/* Weekly Contests Tab */}
             {activeTab === 'weekly' && (
               <div className="space-y-8">
-                {/* Enhanced Contests List */}
-                <div className="space-y-6">
-                  {weeklyContests.map((contest) => (
-                    <div
-                      key={contest.id}
-                      className="bg-white rounded-2xl p-6 sm:p-8 border-2 border-gray-200 shadow-lg hover:shadow-2xl hover:border-[#0652e9] transition-all duration-300 group"
-                    >
-                      {/* Contest Header */}
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-16 h-16 bg-gradient-to-br from-[#0652e9] to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                            <Trophy className="w-8 h-8 text-white" />
-                          </div>
-                          <div>
-                            <h3 className="text-2xl font-bold text-gray-900 mb-1">{contest.title}</h3>
-                            <div className="flex items-center space-x-2">
-                              {contest.status === 'live' ? (
-                                <>
-                                  <span className="flex items-center space-x-1 px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full animate-pulse">
-                                    <span className="w-2 h-2 bg-white rounded-full"></span>
-                                    <span>LIVE NOW</span>
-                                  </span>
-                                  <span className="text-sm text-red-600 font-semibold">⏱ {contest.timeLeft} left</span>
-                                </>
-                              ) : (
-                                <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">
-                                  🕐 Starts in {contest.startsIn}
+                <div className="space-y-4">
+                  {weeklycontests?.map((contest) => {
+                    const statusInfo = getStatusInfo(contest.status);
+                    const totalPoints = calculateTotalPoints(contest.questions);
+                    
+                    return (
+                      <div
+                        key={contest._id}
+                        className="bg-white rounded-xl p-6 border-2 border-gray-200 shadow-lg hover:shadow-xl hover:border-[#0652e9] transition-all duration-300 group"
+                      >
+                        {/* Contest Header */}
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                          <div className="flex items-center space-x-4">
+                            <div className="w-14 h-14 bg-gradient-to-br from-[#0652e9] to-purple-600 rounded-xl flex items-center justify-center shadow-md">
+                              <Trophy className="w-7 h-7 text-white" />
+                            </div>
+                            <div>
+                              <h3 className="text-xl font-bold text-gray-900 mb-1">{contest.title}</h3>
+                              <div className="flex items-center space-x-2">
+                                <span className={`px-3 py-1 ${statusInfo.color} text-xs font-bold rounded-full`}>
+                                  {statusInfo.text}
                                 </span>
-                              )}
+                                <span className="text-sm text-gray-600">
+                                  {formatDate(contest.start_date)} - {formatDate(contest.end_date)}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Progress Bar */}
-                      <div className="mb-6">
-                        <div className="flex items-center justify-between text-sm mb-2">
-                          <span className="font-semibold text-gray-700">Your Progress</span>
-                          <span className="font-bold text-[#0652e9]">{contest.solved}/{contest.problems} solved</span>
-                        </div>
-                        <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-gradient-to-r from-[#0652e9] to-purple-600 rounded-full transition-all duration-500"
-                            style={{ width: `${(contest.solved / contest.problems) * 100}%` }}
-                          ></div>
-                        </div>
-                      </div>
-
-                      {/* Contest Stats */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-                        <div className="flex items-center space-x-2 text-sm">
-                          <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                            <Target className="w-4 h-4 text-purple-600" />
+                        {/* Progress Bar - Only show if user has progress */}
+                        {(contest.my_progress?.questions_solved?.length > 0) && (
+                          <div className="mb-4">
+                            <div className="flex items-center justify-between text-sm mb-2">
+                              <span className="font-semibold text-gray-700">Your Progress</span>
+                              <span className="font-bold text-[#0652e9]">
+                                {contest.my_progress?.questions_solved?.length || 0}/{contest.questions?.length || 0} solved
+                              </span>
+                            </div>
+                            <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-r from-[#0652e9] to-purple-600 rounded-full transition-all duration-500"
+                                style={{
+                                  width: `${contest.questions?.length ?
+                                    ((contest.my_progress?.questions_solved?.length || 0) / contest.questions.length) * 100
+                                    : 0}%`
+                                }}
+                              ></div>
+                            </div>
                           </div>
-                          <div>
-                            <div className="text-gray-500 text-xs">Problems</div>
-                            <div className="font-bold text-gray-900">{contest.problems}</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2 text-sm">
-                          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <Users className="w-4 h-4 text-blue-600" />
-                          </div>
-                          <div>
-                            <div className="text-gray-500 text-xs">Participants</div>
-                            <div className="font-bold text-gray-900">{contest.participants}</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2 text-sm">
-                          <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
-                            <Star className="w-4 h-4 text-yellow-600" />
-                          </div>
-                          <div>
-                            <div className="text-gray-500 text-xs">Points</div>
-                            <div className="font-bold text-gray-900">{contest.points}/{contest.maxPoints}</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2 text-sm">
-                          <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                            <Zap className="w-4 h-4 text-green-600" />
-                          </div>
-                          <div>
-                            <div className="text-gray-500 text-xs">Difficulty</div>
-                            <div className="font-bold text-gray-900">{contest.difficulty}</div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Action Button */}
-                      <button
-                        className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center space-x-2 ${
-                          contest.status === 'live'
-                            ? 'bg-gradient-to-r from-[#0652e9] to-purple-600 text-white hover:shadow-xl hover:scale-105 shadow-lg'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        {contest.status === 'live' ? (
-                          <>
-                            <Play className="w-5 h-5" fill="white" />
-                            <span>Join Contest Now</span>
-                            <ChevronRight className="w-5 h-5" />
-                          </>
-                        ) : (
-                          <>
-                            <Calendar className="w-5 h-5" />
-                            <span>View Details</span>
-                            <ChevronRight className="w-5 h-5" />
-                          </>
                         )}
+
+                        {/* Contest Stats */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                          <div className="flex items-center space-x-2 text-sm">
+                            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                              <Target className="w-4 h-4 text-purple-600" />
+                            </div>
+                            <div>
+                              <div className="text-gray-500 text-xs">Problems</div>
+                              <div className="font-bold text-gray-900">{contest.questions?.length || 0}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2 text-sm">
+                            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                              <Users className="w-4 h-4 text-blue-600" />
+                            </div>
+                            <div>
+                              <div className="text-gray-500 text-xs">Participants</div>
+                              <div className="font-bold text-gray-900">{contest.total_participants || 0}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2 text-sm">
+                            <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                              <Star className="w-4 h-4 text-yellow-600" />
+                            </div>
+                            <div>
+                              <div className="text-gray-500 text-xs">Points</div>
+                              <div className="font-bold text-gray-900">{totalPoints}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2 text-sm">
+                            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                              <Timer className="w-4 h-4 text-green-600" />
+                            </div>
+                            <div>
+                              <div className="text-gray-500 text-xs">Duration</div>
+                              <div className="font-bold text-gray-900">{formatDuration(contest.start_date, contest.end_date)}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Action Button */}
+                        <button
+                          className={`w-full py-3 rounded-lg font-bold text-base transition-all flex items-center justify-center space-x-2 ${
+                            statusInfo.text === 'LIVE NOW'
+                              ? 'bg-gradient-to-r from-[#0652e9] to-purple-600 text-white hover:shadow-xl hover:scale-105 shadow-lg'
+                              : statusInfo.text === 'UPCOMING'
+                              ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:shadow-xl hover:scale-105 shadow-lg'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                          onClick={() => fetchcontestdetails(contest._id)}
+                        >
+                          {statusInfo.text === 'LIVE NOW' ? (
+                            <>
+                             
+                              <span>{contest.my_progress.questions_solved < contest.questions.length ?"Join Contest Now":"Completed"}</span>
+                              <ChevronRight className="w-5 h-5" />
+                            </>
+                          ) : statusInfo.text === 'UPCOMING' ? (
+                            <>
+                              <Calendar className="w-5 h-5" />
+                              <span>Set Reminder</span>
+                              <ChevronRight className="w-5 h-5" />
+                            </>
+                          ) : (
+                            <>
+                              <Calendar className="w-5 h-5" />
+                              <span>View Details</span>
+                              <ChevronRight className="w-5 h-5" />
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Normal Contests Tab - Same layout as Weekly */}
+            {activeTab === 'normal' && (
+              <div className="space-y-8">
+                <div className="space-y-4">
+                  {normalContests?.map((contest) => {
+                    const statusInfo =  getStatusInfo(contest.status);
+                    const totalPoints = calculateTotalPoints(contest.questions);
+                    
+                    return (
+                      <div
+                        key={contest._id}
+                        className="bg-white rounded-xl p-6 border-2 border-gray-200 shadow-lg hover:shadow-xl hover:border-[#0284c7] transition-all duration-300 group"
+                      >
+                        {/* Contest Header */}
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                          <div className="flex items-center space-x-4">
+                            {/* Changed gradient to blue to cyan for normal contests */}
+                            <div className="w-14 h-14 bg-gradient-to-br from-[#0284c7] to-cyan-600 rounded-xl flex items-center justify-center shadow-md">
+                              <Target className="w-7 h-7 text-white" />
+                            </div>
+                            <div>
+                              <h3 className="text-xl font-bold text-gray-900 mb-1">{contest.title}</h3>
+                              <div className="flex items-center space-x-2">
+                                <span className={`px-3 py-1 ${statusInfo.color} text-xs font-bold rounded-full`}>
+                                  {statusInfo.text}
+                                </span>
+                                <span className="text-sm text-gray-600">
+                                  {formatDate(contest.start_date)} - {formatDate(contest.end_date)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Progress Bar - Only show if user has progress */}
+                        {(contest.my_progress?.questions_solved?.length > 0) && (
+                          <div className="mb-4">
+                            <div className="flex items-center justify-between text-sm mb-2">
+                              <span className="font-semibold text-gray-700">Your Progress</span>
+                              <span className="font-bold text-[#0284c7]">
+                                {contest.my_progress?.questions_solved?.length || 0}/{contest.questions?.length || 0} solved
+                              </span>
+                            </div>
+                            <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-r from-[#0284c7] to-cyan-600 rounded-full transition-all duration-500"
+                                style={{
+                                  width: `${contest.questions?.length ?
+                                    ((contest.my_progress?.questions_solved?.length || 0) / contest.questions.length) * 100
+                                    : 0}%`
+                                }}
+                              ></div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Contest Stats - Same fields as weekly */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                          <div className="flex items-center space-x-2 text-sm">
+                            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                              <Target className="w-4 h-4 text-purple-600" />
+                            </div>
+                            <div>
+                              <div className="text-gray-500 text-xs">Problems</div>
+                              <div className="font-bold text-gray-900">{contest.questions?.length || 0}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2 text-sm">
+                            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                              <Users className="w-4 h-4 text-blue-600" />
+                            </div>
+                            <div>
+                              <div className="text-gray-500 text-xs">Participants</div>
+                              <div className="font-bold text-gray-900">{contest.total_participants || 0}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2 text-sm">
+                            <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                              <Star className="w-4 h-4 text-yellow-600" />
+                            </div>
+                            <div>
+                              <div className="text-gray-500 text-xs">Points</div>
+                              <div className="font-bold text-gray-900">{totalPoints}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2 text-sm">
+                            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                              <Timer className="w-4 h-4 text-green-600" />
+                            </div>
+                            <div>
+                              <div className="text-gray-500 text-xs">Duration</div>
+                              <div className="font-bold text-gray-900">{formatDuration(contest.start_date, contest.end_date)}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Action Button - Using different gradient for normal contests */}
+                        <button
+                          className={`w-full py-3 rounded-lg font-bold text-base transition-all flex items-center justify-center space-x-2 ${
+                            statusInfo.text === 'LIVE NOW'
+                              ? 'bg-gradient-to-r from-[#0284c7] to-cyan-600 text-white hover:shadow-xl hover:scale-105 shadow-lg'
+                              : statusInfo.text === 'UPCOMING'
+                              ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:shadow-xl hover:scale-105 shadow-lg'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                          onClick={() => fetchcontestdetails(contest._id)}
+                        >
+                          {statusInfo.text === 'LIVE NOW' ? (
+                            <>
+                              
+                              <span>{contest.my_progress.questions_solved < contest.questions.length ?"Join Contest Now":"Completed"}</span>
+                              <ChevronRight className="w-5 h-5" />
+                            </>
+                          ) : statusInfo.text === 'UPCOMING' ? (
+                            <>
+                              <Calendar className="w-5 h-5" />
+                              <span>Set Reminder</span>
+                              <ChevronRight className="w-5 h-5" />
+                            </>
+                          ) : (
+                            <>
+                              <Calendar className="w-5 h-5" />
+                              <span>View Details</span>
+                              <ChevronRight className="w-5 h-5" />
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })}
+
+                  {/* Empty State for Normal Contests */}
+                  {(!normalContests || normalContests.length === 0) && (
+                    <div className="bg-white rounded-2xl p-12 text-center border-2 border-gray-200 shadow-lg">
+                      <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Target className="w-10 h-10 text-gray-400" />
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-900 mb-2">No Contests Available</h3>
+                      <p className="text-gray-600 mb-6">Check back later for new contests!</p>
+                      <button
+                        onClick={() => setActiveTab('weekly')}
+                        className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-[#0284c7] to-cyan-600 text-white font-bold rounded-lg hover:shadow-lg transition-all"
+                      >
+                        <Target className="w-5 h-5" />
+                        <span>View Weekly Contests</span>
                       </button>
                     </div>
-                  ))}
+                  )}
                 </div>
+              </div>
+            )}
 
-                {/* Enhanced Leaderboard */}
-                <div className="bg-white rounded-2xl p-6 sm:p-8 border-2 border-gray-200 shadow-lg">
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center shadow-md">
-                        <Trophy className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <h2 className="text-2xl font-bold text-gray-900">Weekly Leaderboard</h2>
-                        <p className="text-sm text-gray-600">Top performers this week</p>
-                      </div>
-                    </div>
-                    <button className="text-[#0652e9] font-semibold text-sm hover:underline">View All →</button>
-                  </div>
-
-                  <div className="space-y-3">
-                    {leaderboard.map((entry) => (
+            {/* Past Challenges Tab - Also same layout */}
+            {activeTab === 'past' && (
+              <div className="space-y-8">
+                <div className="space-y-4">
+                  {pastchallenges?.map((contest) => {
+                    const statusInfo = getStatusInfo(contest.status);
+                    const totalPoints = calculateTotalPoints(contest.questions);
+                    
+                    return (
                       <div
-                        key={entry.rank}
-                        className={`flex items-center justify-between p-4 rounded-xl transition-all hover:shadow-md ${
-                          entry.rank <= 3
-                            ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200'
-                            : 'bg-gray-50 border-2 border-gray-200 hover:border-[#0652e9]'
-                        }`}
+                        key={contest._id}
+                        className="bg-white rounded-xl p-6 border-2 border-gray-200 shadow-lg hover:shadow-xl hover:border-emerald-500 transition-all duration-300 group"
                       >
-                        <div className="flex items-center space-x-4">
-                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg shadow-md ${
-                            entry.rank === 1 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-white' :
-                            entry.rank === 2 ? 'bg-gradient-to-br from-gray-300 to-gray-500 text-white' :
-                            entry.rank === 3 ? 'bg-gradient-to-br from-orange-400 to-orange-600 text-white' :
-                            'bg-blue-100 text-blue-700'
-                          }`}>
-                            {entry.rank <= 3 ? entry.avatar : entry.rank}
-                          </div>
-                          <div>
-                            <div className="font-bold text-gray-900 text-lg">{entry.username}</div>
-                            <div className="text-sm text-gray-600">Solved: {entry.solved} problems</div>
+                        {/* Contest Header */}
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                          <div className="flex items-center space-x-4">
+                            {/* Changed gradient to green for past contests */}
+                            <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-md">
+                              <Trophy className="w-7 h-7 text-white" />
+                            </div>
+                            <div>
+                              <h3 className="text-xl font-bold text-gray-900 mb-1">{contest.title}</h3>
+                              <div className="flex items-center space-x-2">
+                                <span className={`px-3 py-1 ${statusInfo.color} text-xs font-bold rounded-full`}>
+                                  {statusInfo.text}
+                                </span>
+                                <span className="text-sm text-gray-600">
+                                  {formatDate(contest.start_date)} - {formatDate(contest.end_date)}
+                                </span>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-[#0652e9]">{entry.score}</div>
-                          <div className="text-xs text-gray-600">⏱ {entry.time}</div>
+
+                        {/* Progress Bar - Only show if user has progress */}
+                        {(contest.my_progress?.questions_solved?.length > 0) && (
+                          <div className="mb-4">
+                            <div className="flex items-center justify-between text-sm mb-2">
+                              <span className="font-semibold text-gray-700">Your Progress</span>
+                              <span className="font-bold text-emerald-600">
+                                {contest.my_progress?.questions_solved?.length || 0}/{contest.questions?.length || 0} solved
+                              </span>
+                            </div>
+                            <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-r from-emerald-500 to-green-600 rounded-full transition-all duration-500"
+                                style={{
+                                  width: `${contest.questions?.length ?
+                                    ((contest.my_progress?.questions_solved?.length || 0) / contest.questions.length) * 100
+                                    : 0}%`
+                                }}
+                              ></div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Contest Stats - Same fields */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                          <div className="flex items-center space-x-2 text-sm">
+                            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                              <Target className="w-4 h-4 text-purple-600" />
+                            </div>
+                            <div>
+                              <div className="text-gray-500 text-xs">Problems</div>
+                              <div className="font-bold text-gray-900">{contest.questions?.length || 0}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2 text-sm">
+                            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                              <Users className="w-4 h-4 text-blue-600" />
+                            </div>
+                            <div>
+                              <div className="text-gray-500 text-xs">Participants</div>
+                              <div className="font-bold text-gray-900">{contest.total_participants || 0}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2 text-sm">
+                            <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                              <Star className="w-4 h-4 text-yellow-600" />
+                            </div>
+                            <div>
+                              <div className="text-gray-500 text-xs">Points</div>
+                              <div className="font-bold text-gray-900">{totalPoints}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2 text-sm">
+                            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                              <Timer className="w-4 h-4 text-green-600" />
+                            </div>
+                            <div>
+                              <div className="text-gray-500 text-xs">Duration</div>
+                              <div className="font-bold text-gray-900">{formatDuration(contest.start_date, contest.end_date)}</div>
+                            </div>
+                          </div>
                         </div>
+
+                        {/* Action Button - Green gradient for past contests */}
+                        <button
+                          className={`w-full py-3 rounded-lg font-bold text-base transition-all flex items-center justify-center space-x-2 ${
+                            statusInfo.text === 'LIVE NOW'
+                              ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:shadow-xl hover:scale-105 shadow-lg'
+                              : statusInfo.text === 'UPCOMING'
+                              ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:shadow-xl hover:scale-105 shadow-lg'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                          onClick={() => fetchcontestdetails(contest._id)}
+                        >
+        
+                            <>
+                              <Calendar className="w-5 h-5" />
+                              <span>View Details</span>
+                              <ChevronRight className="w-5 h-5" />
+                            </>
+                          
+                        </button>
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
+
+                  {/* Empty State for Past Contests */}
+                  {(!pastchallenges || pastchallenges.length === 0) && (
+                    <div className="bg-white rounded-2xl p-12 text-center border-2 border-gray-200 shadow-lg">
+                      <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Clock className="w-10 h-10 text-gray-400" />
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-900 mb-2">No Past Contests Yet</h3>
+                      <p className="text-gray-600 mb-6">Participate in current contests to build your history!</p>
+                      <button
+                        onClick={() => setActiveTab('weekly')}
+                        className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-[#0652e9] to-purple-600 text-white font-bold rounded-lg hover:shadow-lg transition-all"
+                      >
+                        <Trophy className="w-5 h-5" />
+                        <span>View Active Contests</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
             {/* Empty States for Other Tabs */}
-            {activeTab !== 'weekly' && (
+            {activeTab !== 'weekly' && activeTab !== 'past' && activeTab !== 'normal' && (
               <div className="bg-white rounded-2xl p-12 text-center border-2 border-gray-200 shadow-lg">
                 <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  {activeTab === 'normal' && <Target className="w-10 h-10 text-gray-400" />}
                   {activeTab === 'calendar' && <Calendar className="w-10 h-10 text-gray-400" />}
-                  {activeTab === 'past' && <Clock className="w-10 h-10 text-gray-400" />}
                   {activeTab === 'leaderboard' && <TrendingUp className="w-10 h-10 text-gray-400" />}
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Coming Soon!</h3>
