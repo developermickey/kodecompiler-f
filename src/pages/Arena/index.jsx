@@ -29,7 +29,7 @@ const Arena = () => {
         try
         {
             
-            const response = await fetch("http://localhost:5000/api/problems");
+            const response = await fetch("http://localhost:8000/api/problems");
             const data = await response.json();
             setFetchedData(data);
             setProblems(data.problems);
@@ -37,7 +37,7 @@ const Arena = () => {
             if(user)
             {
              const solvedResponse = await fetch(
-              "http://localhost:5000/api/problems/user-progress",
+              "http://localhost:8000/api/problems/user-progress",
               {
                 method: "GET",
                 credentials: "include"
