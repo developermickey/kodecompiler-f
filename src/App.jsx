@@ -14,6 +14,7 @@ import NotFound from './pages/NotFound'
 import TermsOfService from './pages/TermsOfService'
 import RefundPolicy from './pages/RefundPolicy'
 import Disclaimer from './pages/Disclaimer'
+import Interviews from './pages/Interviews'
 
 const App = () => {
   return (
@@ -32,6 +33,7 @@ const App = () => {
         <Route path="/refund-policy" element={<RefundPolicy />} />
         <Route path="/disclaimer" element={<Disclaimer />} />
         <Route path="/welcome" element={<Welcome />} />
+        <Route path="/interview-experiences" element={<Interviews />} />
         <Route path="*" element={<NotFound />} />
 
          
