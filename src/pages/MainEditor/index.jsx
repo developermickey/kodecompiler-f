@@ -144,7 +144,7 @@ const MainCompilerLight = () => {
     setIsCodeLoading(true);
     try {
       const res = await axios.get(
-        `http://localhost:8000/api/codes/${code_id}`,
+        `http://localhost:5000/api/codes/${code_id}`,
         { withCredentials: true }
       );
 
