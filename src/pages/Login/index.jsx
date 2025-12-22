@@ -1,43 +1,46 @@
-// src/pages/Login.jsx
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, NavLink } from 'react-router-dom';
-import { Mail, Lock, AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react';
-import { loginUser, googleLogin, clearMessages } from '../../redux/slices/authSlice';
+import { 
+  Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, 
+  CheckCircle, AlertCircle, Edit2, KeyRound, ShieldAlert 
+} from 'lucide-react';
+import { 
+  loginUser, 
+  googleLogin, 
+  getOTP, 
+  verifyOTP, 
+  clearMessages 
+} from '../../redux/slices/authSlice';
 
-const Login = () => {
+// Added props: wallTitle, wallMessage
+const Login = ({ isModal = false, wallTitle = "", wallMessage = "" }) => {
+  const [authMethod, setAuthMethod] = useState('password'); 
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
+  const [otpEmail, setOtpEmail] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { isLoading, error, success, user } = useSelector((state) => state.auth);
+  const { isLoading, error, success, user, otpSent, verifyingOTP } = useSelector((state) => state.auth);
 
-  // Redirect if already logged in
+  const isBusy = isLoading || verifyingOTP;
+
   useEffect(() => {
-    if (user) {
+    if (user && !isModal) {
       navigate('/welcome');
     }
-  }, [user, navigate]);
+  }, [user, navigate, isModal]);
 
-  // Clear messages on unmount
   useEffect(() => {
-    return () => {
-      dispatch(clearMessages());
-    };
+    return () => { dispatch(clearMessages()); };
   }, [dispatch]);
 
-  // Handle successful login
-  useEffect(() => {
-    if (success) {
-      setTimeout(() => {
-        navigate('/welcome');
-      }, 1000);
-    }
-  }, [success, navigate]);
-
-  const handleSubmit = (e) => {
+  const handlePasswordLogin = (e) => {
     e.preventDefault();
     dispatch(loginUser({ email, password }));
   };
@@ -46,198 +49,248 @@ const Login = () => {
     dispatch(googleLogin());
   };
 
-  // Format error message based on status
-  const getErrorMessage = () => {
-    if (!error) return '';
-
-    const detail = error.detail || '';
-    const detailLower = detail.toLowerCase();
-
-    if (error.status === 403 && detailLower.includes('verify')) {
-      return '📧 <strong>Email Not Verified!</strong><br>Please verify your email to login.';
-    } else if (error.status === 429) {
-      return '🔒 <strong>Too many attempts!</strong><br>Please try again later.';
-    } else if (error.status === 401 && (detailLower.includes('not found') || detailLower.includes('not registered'))) {
-      return '🆕 <strong>This email is not registered!</strong><br><a href="/register" style="color: #0652e9; text-decoration: underline; font-weight: 600;">Click here to Sign Up →</a>';
-    } else if (detail) {
-      return detail;
+  const handleOtpRequest = (e) => {
+    e.preventDefault();
+    if (otpSent) {
+      dispatch(verifyOTP({ email: otpEmail, otp: otpCode }));
+    } else {
+      dispatch(getOTP({ email: otpEmail }));
     }
-    return 'Login failed. Please try again.';
   };
 
+  const handleEditOtpEmail = () => {
+    window.location.reload(); 
+  };
+
+  const getErrorMessage = () => {
+    if (!error) return null;
+    const detail = error.detail || error.message || 'Authentication failed';
+    return (
+      <div className="mb-6 p-3 bg-red-50 border-l-4 border-red-500 rounded-r-md flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+        <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+        <div className="text-sm text-red-700 font-medium">{detail}</div>
+      </div>
+    );
+  };
+
+  // --- DYNAMIC HEADER LOGIC ---
+  // If it's a "Wall" (wallTitle exists), use that. Otherwise use dynamic Login/OTP titles.
+  const displayTitle = wallTitle 
+    ? wallTitle 
+    : (authMethod === 'password' ? 'Welcome Back' : 'Passwordless Login');
+
+  const displaySubtitle = wallMessage 
+    ? wallMessage 
+    : (authMethod === 'password' ? 'Enter your credentials to access your account' : 'Secure login via email verification code');
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full">
-
-        {/* Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
-            <p className="text-gray-600">Sign in to your account</p>
-          </div>
-
-          {/* Error Message */}
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg flex items-start space-x-3 animate-slide-down">
-              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <div className="text-sm text-red-700" dangerouslySetInnerHTML={{ __html: getErrorMessage() }} />
+    <div className={`flex items-center justify-center font-sans ${isModal ? '' : 'min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8'}`}>
+      
+      <div className={`bg-white w-full max-w-[440px] ${isModal ? 'shadow-none' : 'shadow-xl rounded-2xl border border-gray-100'} overflow-hidden transition-all duration-300`}>
+        
+        {/* --- Header --- */}
+        <div className="px-8 pt-8 pb-6 text-center">
+          
+          {/* If it's a Wall, show a Shield/Lock Icon */}
+          {wallTitle && (
+            <div className="flex justify-center mb-4">
+              <div className="bg-blue-50 p-3 rounded-full">
+                <ShieldAlert className="w-8 h-8 text-blue-600" />
               </div>
             </div>
           )}
 
-          {/* Success Message */}
-          {success && (
-            <div className="mb-6 p-4 bg-green-50 border-l-4 border-green-500 rounded-lg flex items-start space-x-3 animate-slide-down">
-              <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="text-sm text-green-700">
-                  <strong>Login successful!</strong><br />
-                  Redirecting to dashboard...
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Login Form */}
-          <div className="space-y-6">
-
-            {/* Email Field */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email
-              </label>
-              <div className="relative">
-                <Mail className="absolute inset-y-0 left-0 h-5 w-5 text-gray-400 ml-3 my-auto pointer-events-none" />
-                <input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0652e9] focus:border-transparent transition-all"
-                  placeholder="Enter your email"
-                />
-              </div>
-            </div>
-
-            {/* Password Field */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute inset-y-0 left-0 h-5 w-5 text-gray-400 ml-3 my-auto pointer-events-none" />
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSubmit(e)}
-                  className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0652e9] focus:border-transparent transition-all"
-                  placeholder="Enter your password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                >
-                  {showPassword ? <EyeOff className="h-5 w-5 text-gray-400" /> : <Eye className="h-5 w-5 text-gray-400" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Forgot Password */}
-            <div className="flex items-center justify-end">
-              <NavLink
-                to="/forgot-password"
-                className="text-sm font-medium text-[#0652e9] hover:text-[#0547d1] transition-colors"
-              >
-                Forgot Password?
-              </NavLink>
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isLoading}
-              className={`w-full py-3 px-4 rounded-lg font-semibold text-white transition-all duration-200 ${
-                isLoading
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-[#0652e9] hover:bg-[#0547d1] hover:shadow-lg hover:shadow-[#0652e9]/30 hover:scale-105 transform'
-              }`}
-            >
-              {isLoading ? (
-                <span className="flex items-center justify-center space-x-2">
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span>Signing in...</span>
-                </span>
-              ) : (
-                'Sign In'
-              )}
-            </button>
-          </div>
-
-          {/* Divider */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-gray-500 font-medium">OR</span>
-            </div>
-          </div>
-
-          {/* Google Login */}
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            className="w-full py-3 px-4 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all flex items-center justify-center space-x-3"
-          >
-            <img
-              src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-              alt="Google"
-              className="w-5 h-5"
-            />
-            <span>Continue with Google</span>
-          </button>
-
-          {/* OTP Login */}
-          <NavLink
-            to="/login-otp"
-            className="mt-4 w-full py-3 px-4 border border-[#0652e9] rounded-lg font-medium text-[#0652e9] hover:bg-blue-50 transition-all flex items-center justify-center space-x-2"
-          >
-            <span>🔐</span>
-            <span>Login with OTP (Email)</span>
-          </NavLink>
-
-          {/* Sign Up Link */}
-          <p className="mt-6 text-center text-gray-600">
-            Don't have an account?{' '}
-            <NavLink to="/register" className="font-semibold text-[#0652e9] hover:text-[#0547d1] transition-colors">
-              Sign up
-            </NavLink>
+          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
+            {displayTitle}
+          </h2>
+          <p className="text-sm text-gray-500 mt-2">
+            {displaySubtitle}
           </p>
         </div>
-      </div>
 
-      {/* Slide Animation */}
-      <style>{`
-        @keyframes slide-down {
-          from { opacity: 0; transform: translateY(-10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-slide-down {
-          animation: slide-down 0.3s ease-out;
-        }
-      `}</style>
+        {/* --- Tabs --- */}
+        <div className="px-8 mb-6">
+          <div className="grid grid-cols-2 p-1 bg-gray-100 rounded-lg">
+            <button
+              onClick={() => { setAuthMethod('password'); dispatch(clearMessages()); }}
+              className={`text-sm font-medium py-2 rounded-md transition-all duration-200 ${
+                authMethod === 'password' 
+                  ? 'bg-white text-blue-600 shadow-sm' 
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Password
+            </button>
+            <button
+              onClick={() => { setAuthMethod('otp'); dispatch(clearMessages()); }}
+              className={`text-sm font-medium py-2 rounded-md transition-all duration-200 ${
+                authMethod === 'otp' 
+                  ? 'bg-white text-blue-600 shadow-sm' 
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              One-Time Code
+            </button>
+          </div>
+        </div>
+
+        <div className="px-8 pb-8">
+          
+          {/* Messages */}
+          {getErrorMessage()}
+          {success && (
+            <div className="mb-6 p-3 bg-green-50 border-l-4 border-green-500 rounded-r-md flex items-center gap-3">
+              <CheckCircle className="w-5 h-5 text-green-500" />
+              <p className="text-sm text-green-700 font-medium">Success! Redirecting...</p>
+            </div>
+          )}
+
+          {/* --- PASSWORD FORM --- */}
+          {authMethod === 'password' && (
+            <form onSubmit={handlePasswordLogin} className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-700">Email</label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all text-sm"
+                    placeholder="name@company.com"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <label className="text-sm font-medium text-gray-700">Password</label>
+                  <NavLink to="/forgot-password" className="text-xs font-medium text-blue-600 hover:text-blue-500">
+                    Forgot?
+                  </NavLink>
+                </div>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all text-sm"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isBusy}
+                className="w-full bg-[#0652e9] hover:bg-[#0547d1] text-white font-semibold py-2.5 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {isBusy ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Sign In'}
+              </button>
+            </form>
+          )}
+
+          {/* --- OTP FORM --- */}
+          {authMethod === 'otp' && (
+            <form onSubmit={handleOtpRequest} className="space-y-5 animate-in fade-in slide-in-from-left-4 duration-300">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-700">Email Address</label>
+                <div className="relative group">
+                  <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 transition-colors ${otpSent ? 'text-gray-300' : 'text-gray-400'}`} />
+                  <input
+                    type="email"
+                    required
+                    disabled={otpSent}
+                    value={otpEmail}
+                    onChange={(e) => setOtpEmail(e.target.value)}
+                    className={`w-full pl-10 pr-10 py-2.5 border rounded-lg outline-none transition-all text-sm ${
+                      otpSent 
+                        ? 'bg-gray-50 border-gray-200 text-gray-500' 
+                        : 'border-gray-300 focus:ring-2 focus:ring-blue-600 focus:border-transparent'
+                    }`}
+                    placeholder="name@company.com"
+                  />
+                  {otpSent && (
+                    <button type="button" onClick={handleEditOtpEmail} className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-600 hover:text-blue-700">
+                      <Edit2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Collapsible OTP Input */}
+              <div className={`transition-all duration-300 ease-in-out overflow-hidden ${otpSent ? 'max-h-24 opacity-100' : 'max-h-0 opacity-0'}`}>
+                <div className="space-y-1.5 pt-1">
+                  <label className="text-sm font-medium text-gray-700">Verification Code</label>
+                  <div className="relative">
+                    <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      type="text"
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value)}
+                      placeholder="Enter 6-digit code"
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all text-sm tracking-widest"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isBusy}
+                className="w-full bg-[#0652e9] hover:bg-[#0547d1] text-white font-semibold py-2.5 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {isBusy ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : otpSent ? (
+                  <>Verify & Login <CheckCircle className="h-4 w-4" /></>
+                ) : (
+                  <>Get Code <ArrowRight className="h-4 w-4" /></>
+                )}
+              </button>
+            </form>
+          )}
+
+          {/* --- Common Footer --- */}
+          <div className="mt-8">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500 font-medium">Or continue with</span>
+              </div>
+            </div>
+
+            <button
+              onClick={handleGoogleLogin}
+              type="button"
+              className="mt-6 w-full bg-white border border-gray-300 text-gray-700 font-medium py-2.5 rounded-lg hover:bg-gray-50 transition-all duration-200 flex items-center justify-center gap-3 text-sm"
+            >
+              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
+              Google
+            </button>
+            
+            <p className="mt-8 text-center text-sm text-gray-600">
+              Don't have an account?{' '}
+              <NavLink to="/register" className="font-semibold text-blue-600 hover:text-blue-500 transition-colors">
+                Sign up
+              </NavLink>
+            </p>
+          </div>
+          
+        </div>
+      </div>
     </div>
   );
 };
