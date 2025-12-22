@@ -44,7 +44,6 @@ const App = () => {
         {/* 1. User Dashboard / Welcome */}
         <Route path="/welcome" element={<Welcome />} />
         <Route path="/weekly-challenges" element={<WeeklyChallenges />} />
-        <Route path="/compiler" element={<MainCompiler />} />
         {/* 2. Main Compiler */}
         <Route
           path="/compiler"
