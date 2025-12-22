@@ -6,6 +6,8 @@ import userProgressReducer from "./slices/userprogressSlice";
 import { pastChallengesReducer, weeklyChallengesReducer, normalChallengesReducer } from './slices/challengesSlice';
 import {userchallengeprogressReducer} from "./slices/userchallengesprogressSlice";
 import {globalLeaderboardReducer} from "./slices/challengesGlobalLeaderboardSlice"
+import {challengesCalendarReducer} from "./slices/challengesSlice";
+
 
 export const store = configureStore({
   reducer: {
@@ -16,7 +18,8 @@ export const store = configureStore({
     pastChallenges: pastChallengesReducer,
     userChallengesprogress : userchallengeprogressReducer,
     normalChallenges: normalChallengesReducer,
-    globalLeaderboard: globalLeaderboardReducer
+    globalLeaderboard: globalLeaderboardReducer,
+    challengesCalendar: challengesCalendarReducer
 
     // Add other reducers here
   },

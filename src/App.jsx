@@ -16,6 +16,7 @@ import TermsOfService from './pages/TermsOfService'
 import RefundPolicy from './pages/RefundPolicy'
 import Disclaimer from './pages/Disclaimer'
 import WeeklyChallenges from './pages/WeeklyChallenges'
+import ContestStartPage from './pages/WeeklyChallenges/ContestStartPage'
 
 const App = () => {
   return (
@@ -36,6 +37,7 @@ const App = () => {
         <Route path="/disclaimer" element={<Disclaimer />} />
         <Route path="/welcome" element={<Welcome />} />
         <Route path="/weekly-challenges" element={<WeeklyChallenges />} />
+        <Route path="/challenge/:id" element={<ContestStartPage />} />
         <Route path="*" element={<NotFound />} />
 
          
