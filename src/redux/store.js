@@ -7,6 +7,9 @@ import { pastChallengesReducer, weeklyChallengesReducer, normalChallengesReducer
 import {userchallengeprogressReducer} from "./slices/userchallengesprogressSlice";
 import {globalLeaderboardReducer} from "./slices/challengesGlobalLeaderboardSlice"
 import {challengesCalendarReducer} from "./slices/challengesSlice";
+import { userchallengeprogressReducer } from "./slices/userchallengesprogressSlice";
+import { globalLeaderboardReducer } from "./slices/challengesGlobalLeaderboardSlice"
+import codeReducer from './slices/codeSlice'
 
 
 export const store = configureStore({
@@ -16,11 +19,12 @@ export const store = configureStore({
     userProgress: userProgressReducer,
     weeklyChallenges: weeklyChallengesReducer,
     pastChallenges: pastChallengesReducer,
-    userChallengesprogress : userchallengeprogressReducer,
+    userChallengesprogress: userchallengeprogressReducer,
     normalChallenges: normalChallengesReducer,
     globalLeaderboard: globalLeaderboardReducer,
     challengesCalendar: challengesCalendarReducer
 
+    code: codeReducer
     // Add other reducers here
   },
 });
