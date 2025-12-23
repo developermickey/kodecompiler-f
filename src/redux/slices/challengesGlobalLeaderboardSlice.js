@@ -3,7 +3,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 
 export const fetchGlobalLeaderboard = createAsyncThunk(
   "weekly-challenges/leaderboard",
-  async ({ limit = 10 } = {}, { rejectWithValue }) => {
+  async ({ limit = 100 } = {}, { rejectWithValue }) => {
     try {
       const res = await fetch(
         `http://localhost:5000/api/weekly-challenges/leaderboard?limit=${limit}`,

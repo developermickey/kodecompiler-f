@@ -96,6 +96,30 @@ export const fetchnormalchallenges = createAsyncThunk(
     }
 )
 
+export const fetchChallengesCalendar = createAsyncThunk(
+  "challenges/calendar",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await fetch(
+        "http://localhost:5000/api/weekly-challenges/calendar",
+        {
+          method: "GET",
+          credentials: "include"
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch calendar");
+      }
+
+      return await res.json();
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+)
+
+
 const weeklychallengeslice = createSlice({
     name:"weeklychallenges",
     initialState:{
@@ -217,6 +241,43 @@ const normalchallengesslice = createSlice({
   }
 });
 
+const challengesCalendarSlice = createSlice({
+  name: "challengesCalendar",
+  initialState: {
+    calender_current: null,
+    calender_upcoming: [],
+    calender_past: [],
+    calender_loading: false,
+    calender_error: null
+  },
+  reducers: {
+    resetCalendar: (state) => {
+      state.calender_current = null;
+      state.calender_upcoming = [];
+      state.calender_past = [];
+      state.calender_loading = false;
+      state.calender_error = null;
+    }
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchChallengesCalendar.pending, (state) => {
+        state.calender_loading = true;
+        state.calender_error = null;
+      })
+      .addCase(fetchChallengesCalendar.fulfilled, (state, action) => {
+        state.calender_loading = false;
+        state.calender_current = action.payload.current;
+        state.calender_upcoming = action.payload.upcoming || [];
+        state.calender_past = action.payload.past || [];
+      })
+      .addCase(fetchChallengesCalendar.rejected, (state, action) => {
+        state.calender_loading = false;
+        state.calender_error = action.payload || "Something went wrong";
+      });
+  }
+});
+
 export const weeklyChallengesReducer = weeklychallengeslice.reducer;
 export const { resetWeeklyChallenges } = weeklychallengeslice.actions;
 
@@ -225,3 +286,6 @@ export const { resetPastChallenges } = pastchallengeslice.actions;
 
 export const normalChallengesReducer = normalchallengesslice.reducer;
 export const { resetNormalChallenges } = normalchallengesslice.actions;
+
+export const { resetCalendar } = challengesCalendarSlice.actions;
+export const challengesCalendarReducer =  challengesCalendarSlice.reducer;
