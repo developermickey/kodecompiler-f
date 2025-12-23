@@ -42,8 +42,15 @@ const Navbar = () => {
         {/* MAIN HEADER */}
         <div className="flex items-center justify-between h-16">
           {/* LOGO */}
-          <NavLink to="/" className="flex items-center gap-2 text-2xl font-bold text-gray-900 hover:text-gray-700 transition-colors">
-            <img src={LOGO} alt="KodeCompiler" className="w-10 h-10 object-contain" />
+          <NavLink
+            to="/"
+            className="flex items-center gap-2 text-2xl font-bold text-gray-900 hover:text-gray-700 transition-colors"
+          >
+            <img
+              src={LOGO}
+              alt="KodeCompiler"
+              className="w-10 h-10 object-contain"
+            />
             <span>KodeCompiler</span>
           </NavLink>
 
@@ -55,13 +62,35 @@ const Navbar = () => {
                 Products <ChevronDown className="h-4 w-4" />
               </button>
               <div className="absolute left-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 py-2 z-50">
-                <NavLink to="/guest-editor" className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors">
-                  <span className="font-medium">Guest-Compiler</span>
-                  <p className="text-xs text-gray-500 mt-0.5">Code without signing up</p>
-                </NavLink>
-                <NavLink to="/problems" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                {user ? (
+                  <NavLink
+                    to="/compiler"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors"
+                  >
+                    <span className="font-medium">Compiler</span>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Code your way to your dream company
+                    </p>
+                  </NavLink>
+                ) : (
+                  <NavLink
+                    to="/guest-editor"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors"
+                  >
+                    <span className="font-medium">Guest-Compiler</span>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Code without signing up
+                    </p>
+                  </NavLink>
+                )}
+                <NavLink
+                  to="/problems"
+                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                >
                   <span className="font-medium">Arena</span>
-                  <p className="text-xs text-gray-500 mt-0.5">Practice problems</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Practice problems
+                  </p>
                 </NavLink>
               </div>
             </div>
@@ -72,18 +101,31 @@ const Navbar = () => {
                 Solutions <ChevronDown className="h-4 w-4" />
               </button>
               <div className="absolute left-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 py-2 z-50">
-                <NavLink to="/weekly-challenges" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                <NavLink
+                  to="/weekly-challenges"
+                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                >
                   <span className="font-medium">Contests</span>
-                  <p className="text-xs text-gray-500 mt-0.5">Weekly challenges</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Weekly challenges
+                  </p>
                 </NavLink>
-                <NavLink to="/interview-experiences" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                <NavLink
+                  to="/interview-experiences"
+                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                >
                   <span className="font-medium">Interviews</span>
-                  <p className="text-xs text-gray-500 mt-0.5">Real experiences</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Real experiences
+                  </p>
                 </NavLink>
               </div>
             </div>
 
-            <NavLink to="/about-us" className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-md transition-all">
+            <NavLink
+              to="/about-us"
+              className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-md transition-all"
+            >
               About Us
             </NavLink>
 
@@ -96,29 +138,34 @@ const Navbar = () => {
               For Recruiters
             </NavLink> */}
 
-<NavLink
-  to="https://interview.kodecompiler.com"
-  target="_blank"
-  rel="noopener noreferrer"
-  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-md hover:shadow-lg hover:scale-105 rounded-full transition-all duration-300"
->
-  <span>For Recruiters</span>
-  <span className="flex h-2 w-2">
-    <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-white opacity-75"></span>
-    <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
-  </span>
-</NavLink>
-            
+            <NavLink
+              to="https://interview.kodecompiler.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-md hover:shadow-lg hover:scale-105 rounded-full transition-all duration-300"
+            >
+              <span>For Recruiters</span>
+              <span className="flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-white opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+              </span>
+            </NavLink>
           </div>
 
           {/* RIGHT SIDE AUTH / PROFILE */}
           <div className="hidden lg:flex items-center gap-4">
             {!user ? (
               <>
-                <NavLink to="/login" className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all">
+                <NavLink
+                  to="/login"
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all"
+                >
                   Log In
                 </NavLink>
-                <NavLink to="/register" className="px-5 py-2 text-sm font-medium text-white rounded-lg bg-[#0652e9] hover:bg-[#0547d1] shadow-sm transition-all">
+                <NavLink
+                  to="/register"
+                  className="px-5 py-2 text-sm font-medium text-white rounded-lg bg-[#0652e9] hover:bg-[#0547d1] shadow-sm transition-all"
+                >
                   Create Account
                 </NavLink>
               </>
@@ -141,26 +188,43 @@ const Navbar = () => {
                         {user.username.charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <h4 className="text-sm font-semibold text-gray-900">{user.username}</h4>
+                        <h4 className="text-sm font-semibold text-gray-900">
+                          {user.username}
+                        </h4>
                         <p className="text-xs text-gray-500">{user.email}</p>
                       </div>
                     </div>
 
                     {/* OPTIONS */}
                     <div className="py-2">
-                      <NavLink to="/account" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                      <NavLink
+                        to="/account"
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
                         <User size={18} /> Account
                       </NavLink>
-                      <NavLink to="/settings" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                      <NavLink
+                        to="/settings"
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
                         <Settings size={18} /> Settings
                       </NavLink>
-                      <NavLink to="/privacy" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                      <NavLink
+                        to="/privacy"
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
                         <Lock size={18} /> Privacy
                       </NavLink>
-                      <NavLink to="/notifications" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                      <NavLink
+                        to="/notifications"
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
                         <Bell size={18} /> Notifications
                       </NavLink>
-                      <NavLink to="/help" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                      <NavLink
+                        to="/help"
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
                         <HelpCircle size={18} /> Help Center
                       </NavLink>
 
@@ -178,7 +242,10 @@ const Navbar = () => {
 
                       <hr className="border-gray-200 my-2" />
 
-                      <NavLink to="/upgrade" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                      <NavLink
+                        to="/upgrade"
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
                         <Rocket size={18} /> Upgrade to PRO
                       </NavLink>
 
@@ -203,31 +270,61 @@ const Navbar = () => {
             aria-expanded={isMobileMenuOpen}
           >
             <div className="w-6 h-5 flex flex-col justify-between">
-              <span className={`h-0.5 w-full bg-current transform transition-all duration-300 ${isMobileMenuOpen ? 'rotate-45 translate-y-2' : ''}`} />
-              <span className={`h-0.5 w-full bg-current transition-all duration-300 ${isMobileMenuOpen ? 'opacity-0' : 'opacity-100'}`} />
-              <span className={`h-0.5 w-full bg-current transform transition-all duration-300 ${isMobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
+              <span
+                className={`h-0.5 w-full bg-current transform transition-all duration-300 ${
+                  isMobileMenuOpen ? "rotate-45 translate-y-2" : ""
+                }`}
+              />
+              <span
+                className={`h-0.5 w-full bg-current transition-all duration-300 ${
+                  isMobileMenuOpen ? "opacity-0" : "opacity-100"
+                }`}
+              />
+              <span
+                className={`h-0.5 w-full bg-current transform transition-all duration-300 ${
+                  isMobileMenuOpen ? "-rotate-45 -translate-y-2" : ""
+                }`}
+              />
             </div>
           </button>
         </div>
       </div>
 
       {/* MOBILE MENU */}
-      <div className={`lg:hidden overflow-hidden transition-all duration-300 ease-in-out ${isMobileMenuOpen ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'}`}>
+      <div
+        className={`lg:hidden overflow-hidden transition-all duration-300 ease-in-out ${
+          isMobileMenuOpen ? "max-h-screen opacity-100" : "max-h-0 opacity-0"
+        }`}
+      >
         <div className="px-4 pt-2 pb-6 space-y-1 bg-white border-t border-gray-100">
           {/* Products Dropdown */}
           <div>
             <button
-              onClick={() => toggleMobileDropdown('products')}
+              onClick={() => toggleMobileDropdown("products")}
               className="w-full flex items-center justify-between px-3 py-3 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-all duration-200 border-b border-gray-100"
             >
               Products
-              <ChevronDown className={`h-5 w-5 transform transition-transform duration-200 ${openDropdown === 'products' ? 'rotate-180' : ''}`} />
+              <ChevronDown
+                className={`h-5 w-5 transform transition-transform duration-200 ${
+                  openDropdown === "products" ? "rotate-180" : ""
+                }`}
+              />
             </button>
-            <div className={`overflow-hidden transition-all duration-200 ${openDropdown === 'products' ? 'max-h-32' : 'max-h-0'}`}>
-              <NavLink to="/guest-editor" className="block px-6 py-2 text-sm text-green-600 hover:bg-green-50 rounded-md ml-3 my-1 font-medium">
+            <div
+              className={`overflow-hidden transition-all duration-200 ${
+                openDropdown === "products" ? "max-h-32" : "max-h-0"
+              }`}
+            >
+              <NavLink
+                to="/guest-editor"
+                className="block px-6 py-2 text-sm text-green-600 hover:bg-green-50 rounded-md ml-3 my-1 font-medium"
+              >
                 Guest-Compiler
               </NavLink>
-              <NavLink to="/problems" className="block px-6 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md ml-3 my-1 font-medium">
+              <NavLink
+                to="/problems"
+                className="block px-6 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md ml-3 my-1 font-medium"
+              >
                 Arena
               </NavLink>
             </div>
@@ -236,17 +333,31 @@ const Navbar = () => {
           {/* Solutions Dropdown */}
           <div>
             <button
-              onClick={() => toggleMobileDropdown('solutions')}
+              onClick={() => toggleMobileDropdown("solutions")}
               className="w-full flex items-center justify-between px-3 py-3 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-all duration-200 border-b border-gray-100"
             >
               Solutions
-              <ChevronDown className={`h-5 w-5 transform transition-transform duration-200 ${openDropdown === 'solutions' ? 'rotate-180' : ''}`} />
+              <ChevronDown
+                className={`h-5 w-5 transform transition-transform duration-200 ${
+                  openDropdown === "solutions" ? "rotate-180" : ""
+                }`}
+              />
             </button>
-            <div className={`overflow-hidden transition-all duration-200 ${openDropdown === 'solutions' ? 'max-h-32' : 'max-h-0'}`}>
-              <NavLink to="/weekly-challenges" className="block px-6 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md ml-3 my-1 font-medium">
+            <div
+              className={`overflow-hidden transition-all duration-200 ${
+                openDropdown === "solutions" ? "max-h-32" : "max-h-0"
+              }`}
+            >
+              <NavLink
+                to="/weekly-challenges"
+                className="block px-6 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md ml-3 my-1 font-medium"
+              >
                 Contests
               </NavLink>
-              <NavLink to="/interview-experiences" className="block px-6 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md ml-3 my-1 font-medium">
+              <NavLink
+                to="/interview-experiences"
+                className="block px-6 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md ml-3 my-1 font-medium"
+              >
                 Interviews
               </NavLink>
             </div>
@@ -260,17 +371,17 @@ const Navbar = () => {
           </NavLink>
 
           <NavLink
-  to="https://interview.kodecompiler.com"
-  target="_blank"
-  rel="noopener noreferrer"
-  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-md hover:shadow-lg hover:scale-105 rounded-full transition-all duration-300"
->
-  <span>For Recruiters</span>
-  <span className="flex h-2 w-2">
-    <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-white opacity-75"></span>
-    <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
-  </span>
-</NavLink>
+            to="https://interview.kodecompiler.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-md hover:shadow-lg hover:scale-105 rounded-full transition-all duration-300"
+          >
+            <span>For Recruiters</span>
+            <span className="flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-white opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+            </span>
+          </NavLink>
 
           {!user ? (
             <div className="pt-4 space-y-3 border-t border-gray-100">
