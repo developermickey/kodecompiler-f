@@ -33,6 +33,7 @@ const Arena = () => {
     solvedCount
   } = useSelector((state) => state.userProgress);
 
+
   const categories = useMemo(
     () => [...new Set(problems.map(p => p.category))],
     [problems]

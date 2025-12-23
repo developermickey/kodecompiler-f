@@ -2,15 +2,21 @@ import React, { useEffect, useState } from 'react';
 import { Trophy, Clock, Award, FileText, AlertCircle, CheckCircle, Calendar, Target, Code } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { useSelector } from "react-redux";
+import { useRef } from "react";
+
 
 export default function ContestStartPage() {
   const [agreed, setAgreed] = useState(false);
   const [contestData, setContestData] = useState(null);
+  const [contestleaderboard, setContestleaderboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [leaderboardskip , setleaderboardskip] = useState(0);
 
   const { id } = useParams(); // ✅ FIX 1
   const user = useSelector((state) => state.auth.user);
+  const leaderboardRef = useRef(null);
+
 
   useEffect(() => {
 
@@ -58,7 +64,50 @@ export default function ContestStartPage() {
     if (id) {
       fetchContestData();
     }
-  }, [id]); // ✅ FIX 2
+  }, [id]); 
+
+
+
+   useEffect(() => {
+
+     setLoading(true);
+
+     const fetchContestleaderboard = async () => {
+      try {
+
+        console.log("entered");
+
+        const res = await fetch(
+          `http://localhost:5000/api/weekly-challenges/${id}/leaderboard?skip=${leaderboardskip}`,
+          { credentials: "include" }
+        );
+
+        if (!res.ok) {
+          throw new Error("Unable to fetch contest data");
+        }
+
+        const data = await res.json();
+        setContestleaderboard(data);
+        console.log(data);
+
+        
+      }
+       catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchContestleaderboard();
+
+  }, [id,contestData,leaderboardskip]); 
+
+
+  useEffect(() => {
+  leaderboardRef.current?.scrollIntoView({ behavior: "smooth" });
+}, [leaderboardskip]);
+
 
   // ===== LOADING STATE =====
   if (loading) return <div>Loading contest...</div>;
@@ -93,6 +142,29 @@ export default function ContestStartPage() {
       minute: '2-digit'
     });
   };
+
+  const handleNext = () => {
+  setleaderboardskip((prev) => prev + 10);
+
+  setTimeout(() => {
+    leaderboardRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  }, 100);
+};
+
+const handleBack = () => {
+  setleaderboardskip((prev) => prev - 10);
+
+  setTimeout(() => {
+    leaderboardRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  }, 100);
+};
+
 
   const rules = [
     {
@@ -375,7 +447,97 @@ export default function ContestStartPage() {
             Make sure you have a stable internet connection before starting
           </p>
         </div>
-         </>:""}
+         </>:<div ref={leaderboardRef}>
+  
+         <div className="bg-white rounded-lg shadow-md p-6 border border-slate-200">
+  <div className="flex items-center gap-2 mb-4">
+    <Trophy className="w-5 h-5 text-amber-500" />
+    <h2 className="text-base font-semibold text-slate-900">
+      Contest Leaderboard
+    </h2>
+  </div>
+
+  {/* Header */}
+  <div className="grid grid-cols-12 text-xs font-semibold text-slate-500 border-b pb-2 mb-3">
+    <div className="col-span-2">Rank</div>
+    <div className="col-span-5">User</div>
+    <div className="col-span-3 text-center">Solved</div>
+    <div className="col-span-2 text-right">Points</div>
+  </div>
+
+  {/* Rows */}
+  <div className="space-y-2">
+    {contestleaderboard?.leaderboard?.map((player) => (
+      <div
+        key={player.user_id || player.username}
+        className="grid grid-cols-12 items-center p-3 rounded-lg border border-slate-200 hover:shadow-sm transition"
+      >
+        {/* Rank */}
+        <div className="col-span-2 font-bold text-slate-800">
+          #{player.rank}
+        </div>
+
+        {/* Username */}
+        <div className="col-span-5 font-medium text-slate-900 truncate">
+          {player.username}
+        </div>
+
+        {/* Solved */}
+        <div className="col-span-3 text-center text-slate-600">
+          {player.questions_solved?.length}
+        </div>
+
+        {/* Points */}
+        <div className="col-span-2 text-right font-bold text-blue-600">
+          {player.total_points}
+        </div>
+      </div>
+    ))}
+  </div>
+  <div className="flex justify-between items-center mt-6">
+  {/* Back Button */}
+  {leaderboardskip !== 0 ? (
+    <button
+      onClick={handleBack}
+      className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 
+                 text-slate-700 bg-white hover:bg-slate-50 
+                 transition-all shadow-sm hover:shadow"
+    >
+      ← Back
+    </button>
+  ) : (
+    <div />
+  )}
+
+  {/* Page Info (optional but professional) */}
+  <span className="text-xs text-slate-500">
+    Showing {leaderboardskip + 1} –{" "}
+    {Math.min(leaderboardskip + 10, contestleaderboard.total)}
+    {" "}of {contestleaderboard.total}
+  </span>
+
+  {/* Next Button */}
+  {leaderboardskip+10 < contestleaderboard.total ? (
+    <button
+      onClick={handleNext}
+      className="px-4 py-2 text-sm font-medium rounded-lg 
+                 bg-gradient-to-r from-blue-600 to-blue-700 
+                 text-white hover:from-blue-700 hover:to-blue-800
+                 transition-all shadow-sm hover:shadow"
+    >
+      Next →
+    </button>
+  ) : (
+    <div />
+  )}
+</div>
+
+  
+  
+</div>
+  
+</div>
+         }
       </div>
     </div>
   );
