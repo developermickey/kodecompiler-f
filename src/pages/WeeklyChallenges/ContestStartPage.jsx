@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Trophy, Clock, Award, FileText, AlertCircle, CheckCircle, Calendar, Target, Code } from 'lucide-react';
+import { Trophy, Clock, Award, FileText, Loader,AlertCircle, CheckCircle, Calendar, Target, Code } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { useSelector } from "react-redux";
 import { useRef } from "react";
+import NotFound from '../NotFound';
 
 
 export default function ContestStartPage() {
@@ -109,15 +110,23 @@ export default function ContestStartPage() {
 }, [leaderboardskip]);
 
 
-  // ===== LOADING STATE =====
-  if (loading) return <div>Loading contest...</div>;
+   if (loading) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center px-4">
+          <div className="text-center">
+            <Loader className="w-12 h-12 text-indigo-600 animate-spin mx-auto mb-4" />
+            <p className="text-slate-600">Loading contest...</p>
+          </div>
+        </div>
+      );
+    }
 
-  // ===== ERROR STATE =====
-  if (error) return <div>{error}</div>;
+   if (!contestData) return <NotFound></NotFound>;
+  //if (error) return <div>{error}</div>;
 
-  if (!contestData) return null;
+ 
 
-  // ✅ SAFE ACCESS
+ 
   const totalPoints = contestData.questions.reduce(
     (sum, q) => sum + (q.points || 0),
     0
