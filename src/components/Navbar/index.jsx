@@ -15,7 +15,7 @@ import {
 import LOGO from "../../assets/logo.png";
 import { NavLink } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import { logout } from "../../redux/slices/authSlice";
+import { logoutUser } from "../../redux/slices/authSlice";
 
 const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -31,10 +31,11 @@ const Navbar = () => {
     setOpenDropdown(openDropdown === menu ? null : menu);
   };
 
-  const handleLogout = () => {
-    dispatch(logout());
-    window.location.href = "/login";
-  };
+  const handleLogout = async () => {
+  await dispatch(logoutUser());
+  window.location.href = '/login';
+};
+
 
   return (
     <nav className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50">
