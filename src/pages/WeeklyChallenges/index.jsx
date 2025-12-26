@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { Info, Trophy, User, Calendar, Flame, Medal,Eye, CheckCircle, Clock, Target, TrendingUp, Award, Users, Zap, ChevronRight, Star, Play, AlertCircle, Timer, HelpCircle } from 'lucide-react';
+import { Info, Trophy, User, Calendar, Activity,Loader, Flame, Medal,Eye, CheckCircle, Clock, Target, TrendingUp, Award, Users, Zap, ChevronRight, Star, Play, AlertCircle, Timer, HelpCircle } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchnormalchallenges, fetchpastchallenges, fetchweeklychallenges, fetchChallengesCalendar } from "../../redux/slices/challengesSlice"
 import { fetchuserchallengeprogress } from "../../redux/slices/userchallengesprogressSlice"
@@ -49,7 +49,7 @@ const WeeklyChallenges = () => {
     return `${Math.floor(diffHours / 24)}d ${diffHours % 24}h`;
   };
 
-  // Calculate contest status
+
   
 
   // Get status info
@@ -113,216 +113,194 @@ const WeeklyChallenges = () => {
     // dispatch(registerForContest(contestId));
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Loading State */}
-        {(loading || normalContestsLoading) && (
-          <div className="flex items-center justify-center py-20">
+
+
+
+  if (loading) 
+    {
+      return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
             <div className="text-center">
-              <div className="w-16 h-16 border-4 border-[#0652e9] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-gray-600 font-medium">Loading contests...</p>
+              <Loader className="w-10 h-10 text-indigo-600 animate-spin mx-auto mb-3" />
+              <p className="text-slate-600 text-sm">Loading Contests...</p>
             </div>
           </div>
-        )}
+      );
+    }
 
-        {/* Error States */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg flex items-start space-x-3">
-            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm text-red-700">{error.detail || 'Failed to load contests'}</p>
-            </div>
-          </div>
-        )}
 
-        {normalContestsError && (
-          <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg flex items-start space-x-3">
-            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm text-red-700">Failed to load normal contests</p>
-            </div>
-          </div>
-        )}
-
-        {!progressloading && (
-          <>
-            {/* Enhanced Header */}
-            <div className="text-center mb-12">
-              <div className="inline-flex items-center justify-center space-x-3 mb-4 bg-gradient-to-r from-[#0652e9] to-[#0547d1] rounded-full px-6 py-3 shadow-lg">
-                <Trophy className="w-8 h-8 text-yellow-300" />
-                <span className="text-white font-bold text-lg">Compete & Win</span>
-              </div>
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-4">
-                <span className="bg-gradient-to-r from-[#0652e9] via-purple-600 to-[#0652e9] bg-clip-text text-transparent">
-                  Coding Contests
-                </span>
-              </h1>
-              <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto">
-                Challenge yourself, compete with developers worldwide, and climb the leaderboard! 🚀
-              </p>
-            </div>
-
-            {/* Enhanced Stats Cards */}
-            {/* <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
-              <div className="group bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl p-6 border-2 border-orange-200 shadow-sm hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center shadow-md group-hover:rotate-12 transition-transform">
-                    <Flame className="w-7 h-7 text-white" />
-                  </div>
-                  <Star className="w-5 h-5 text-orange-400" />
-                </div>
-                <div className="text-sm font-medium text-orange-600 mb-1">Current Streak</div>
-                <div className="text-4xl font-bold text-orange-900 mb-1">{streak.current_streak}</div>
-                <div className="text-xs text-orange-600 font-medium">🔥 Keep it going!</div>
-              </div>
-
-              <div className="group bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl p-6 border-2 border-yellow-200 shadow-sm hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 bg-yellow-500 rounded-xl flex items-center justify-center shadow-md group-hover:rotate-12 transition-transform">
-                    <Medal className="w-7 h-7 text-white" />
-                  </div>
-                  <Trophy className="w-5 h-5 text-yellow-400" />
-                </div>
-                <div className="text-sm font-medium text-yellow-600 mb-1">Longest Streak</div>
-                <div className="text-4xl font-bold text-yellow-900 mb-1">{streak.longest_streak}</div>
-                <div className="text-xs text-yellow-600 font-medium">🏆 Personal best</div>
-              </div>
-
-              <div className="group bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border-2 border-blue-200 shadow-sm hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center shadow-md group-hover:rotate-12 transition-transform">
-                    <Calendar className="w-7 h-7 text-white" />
-                  </div>
-                  <Zap className="w-5 h-5 text-blue-400" />
-                </div>
-                <div className="text-sm font-medium text-blue-600 mb-1">Weeks Participated</div>
-                <div className="text-4xl font-bold text-blue-900 mb-1">{streak.weeks_participated}</div>
-                <div className="text-xs text-blue-600 font-medium">📅 Total weeks</div>
-              </div>
-
-              <div className="group bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 border-2 border-green-200 shadow-sm hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center shadow-md group-hover:rotate-12 transition-transform">
-                    <CheckCircle className="w-7 h-7 text-white" />
-                  </div>
-                  <Award className="w-5 h-5 text-green-400" />
-                </div>
-                <div className="text-sm font-medium text-green-600 mb-1">Last Participation</div>
-                {streak?.last_participation !== undefined && (
-                  <div className="text-4xl font-bold text-green-900 mb-1">{formatDate(streak.last_participation)}</div>
-                )}
-                <div className="text-xs text-green-600 font-medium">Missing you from this date</div>
-              </div>
-            </div> */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-  {/* Current Streak Card */}
-  <div className="group bg-white rounded-xl border border-orange-200 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer">
-    <div className="p-5">
-      <div className="flex items-center justify-between mb-4">
-        <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg flex items-center justify-center">
-          <Flame className="w-5 h-5 text-white" />
-        </div>
-        <div className="text-orange-400 bg-orange-50 px-2 py-1 rounded-lg">
-          <Star className="w-4 h-4" />
-        </div>
-      </div>
-      <div className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-1">
-        Current Streak
-      </div>
-      <div className="text-2xl font-bold text-gray-900 mb-2">
-        {streak.current_streak} days
-      </div>
-      <div className="text-xs text-orange-600 font-medium flex items-center">
-        <Flame className="w-3 h-3 mr-1" />
-        Keep it going!
-      </div>
-    </div>
-  </div>
-
-  {/* Longest Streak Card */}
-  <div className="group bg-white rounded-xl border border-yellow-200 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer">
-    <div className="p-5">
-      <div className="flex items-center justify-between mb-4">
-        <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-amber-500 rounded-lg flex items-center justify-center">
-          <Medal className="w-5 h-5 text-white" />
-        </div>
-        <div className="text-yellow-400 bg-yellow-50 px-2 py-1 rounded-lg">
-          <Trophy className="w-4 h-4" />
-        </div>
-      </div>
-      <div className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-1">
-        Longest Streak
-      </div>
-      <div className="text-2xl font-bold text-gray-900 mb-2">
-        {streak.longest_streak} days
-      </div>
-      <div className="text-xs text-yellow-600 font-medium flex items-center">
-        <Trophy className="w-3 h-3 mr-1" />
-        Personal best
-      </div>
-    </div>
-  </div>
-
-  {/* Weeks Participated Card */}
-  <div className="group bg-white rounded-xl border border-blue-200 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer">
-    <div className="p-5">
-      <div className="flex items-center justify-between mb-4">
-        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center">
-          <Calendar className="w-5 h-5 text-white" />
-        </div>
-        <div className="text-blue-400 bg-blue-50 px-2 py-1 rounded-lg">
-          <Zap className="w-4 h-4" />
-        </div>
-      </div>
-      <div className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-1">
-        Weeks Participated
-      </div>
-      <div className="text-2xl font-bold text-gray-900 mb-2">
-        {streak.weeks_participated}
-      </div>
-      <div className="text-xs text-blue-600 font-medium flex items-center">
-        <Calendar className="w-3 h-3 mr-1" />
-        Total weeks
-      </div>
-    </div>
-  </div>
-
-  {/* Last Participation Card */}
-  <div className="group bg-white rounded-xl border border-green-200 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer">
-    <div className="p-5">
-      <div className="flex items-center justify-between mb-4">
-        <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
-          <Clock className="w-5 h-5 text-white" />
-        </div>
-        <div className="text-green-400 bg-green-50 px-2 py-1 rounded-lg">
-          <Award className="w-4 h-4" />
-        </div>
-      </div>
-      <div className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-1">
-        Last Participation
-      </div>
-      {streak?.last_participation ? (<>
-        <div className="text-2xl font-bold text-gray-900 mb-2">
-          {new Date(streak.last_participation).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric'
-          })}
-        </div>
-        <div className="text-xs text-green-600 font-medium">
+  return (
         
-        Last Contest Played
+
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-50 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    
+    
+    {/* Error States */}
+    {error && (
+      <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg flex items-start space-x-3">
+        <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+        <div className="flex-1">
+          <p className="text-sm text-red-700">{error.detail || 'Failed to load contests'}</p>
+        </div>
       </div>
-      </>
-        
-      ) : (
-        <div className="text-lg font-bold text-gray-400 mb-2">Not yet</div>
-      )}
-      
+    )}
+
+    {normalContestsError && (
+      <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg flex items-start space-x-3">
+        <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+        <div className="flex-1">
+          <p className="text-sm text-red-700">Failed to load normal contests</p>
+        </div>
+      </div>
+    )}
+
+    {!progressloading && (
+      <>
+       
+      <div className="mb-8">
+  <div
+    className="bg-gradient-to-r from-blue-600 to-blue-700
+    rounded-2xl px-6 py-5 flex flex-col sm:flex-row
+    items-start sm:items-center justify-between gap-4 shadow-lg"
+  >
+    {/* LEFT CONTENT */}
+    <div>
+      <h1 className="text-2xl font-bold text-white leading-tight">
+        Coding Contests
+      </h1>
+      <p className="text-sm text-blue-100 mt-1">
+        Compete globally and solve curated challenges.
+      </p>
+    </div>
+
+    {/* RIGHT LIVE COUNT (SINGLE PILL) */}
+    <div
+      className="bg-white/15 backdrop-blur-sm border border-white/20
+      rounded-xl px-5 py-2.5 flex items-center gap-2"
+    >
+      <Activity className="w-4 h-4 text-green-300 animate-pulse" />
+
+      <span className="text-white text-lg font-bold">
+        {(weeklycontests?.length || 0) + (normalContests?.length || 0)}
+      </span>
+
+      <span className="text-sm text-blue-100 font-medium">
+        Contest Ongoing
+      </span>
     </div>
   </div>
 </div>
 
+
+
+
+        {/* Ultra Attractive Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
+  
+  {/* Current Streak */}
+  <div className="group relative overflow-hidden">
+    <div className="absolute inset-0 bg-gradient-to-r from-orange-500 to-red-500 opacity-0 group-hover:opacity-10 transition-all duration-300"></div>
+    <div className="bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-xl p-5 flex items-center justify-between relative">
+      <div>
+        <div className="text-2xl font-bold text-orange-900">
+          {streak.current_streak}
+        </div>
+        <div className="text-xs font-semibold text-orange-700 tracking-wide uppercase">
+          Current Streak
+        </div>
+        <div className="text-xs text-orange-600 mt-1">days</div>
+      </div>
+      <div className="relative">
+        <div className="text-3xl bg-gradient-to-br from-orange-200 to-red-200 p-3 rounded-full">
+          <Flame className="w-7 h-7 text-orange-600" />
+        </div>
+        
+      </div>
+    </div>
+  </div>
+
+  {/* Longest Streak */}
+  <div className="group relative overflow-hidden">
+    <div className="absolute inset-0 bg-gradient-to-r from-yellow-500 to-amber-500 opacity-0 group-hover:opacity-10 transition-all duration-300"></div>
+    <div className="bg-gradient-to-br from-yellow-50 to-amber-100 border border-yellow-200 rounded-xl p-5 flex items-center justify-between relative">
+      <div>
+        <div className="text-2xl font-bold text-yellow-900">
+          {streak.longest_streak}
+        </div>
+        <div className="text-xs font-semibold text-yellow-700 tracking-wide uppercase">
+          Longest Streak
+        </div>
+        <div className="text-xs text-yellow-600 mt-1">days</div>
+      </div>
+      <div className="relative">
+        <div className="text-3xl bg-gradient-to-br from-yellow-200 to-amber-200 p-3 rounded-full">
+          <Trophy className="w-7 h-7 text-yellow-600" />
+        </div>
+        
+      </div>
+    </div>
+  </div>
+
+  {/* Weeks Active */}
+  <div className="group relative overflow-hidden">
+    <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-indigo-500 opacity-0 group-hover:opacity-10 transition-all duration-300"></div>
+    <div className="bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 rounded-xl p-5 flex items-center justify-between relative">
+      <div>
+        <div className="text-2xl font-bold text-blue-900">
+          {streak.weeks_participated}
+        </div>
+        <div className="text-xs font-semibold text-blue-700 tracking-wide uppercase">
+          Weeks Active
+        </div>
+        <div className="text-xs text-blue-600 mt-1">weeks</div>
+      </div>
+      <div className="relative">
+        <div className="text-3xl bg-gradient-to-br from-blue-200 to-indigo-200 p-3 rounded-full">
+          <Calendar className="w-7 h-7 text-blue-600" />
+        </div>
+      
+      </div>
+    </div>
+  </div>
+
+  {/* Last Played */}
+  <div className="group relative overflow-hidden">
+    <div className="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-500 opacity-0 group-hover:opacity-10 transition-all duration-300"></div>
+    <div className="bg-gradient-to-br from-green-50 to-emerald-100 border border-green-200 rounded-xl p-5 flex items-center justify-between relative">
+      <div>
+        <div className="text-2xl font-bold text-green-900">
+          {streak?.last_participation
+            ? new Date(streak.last_participation).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+              })
+            : "--"}
+        </div>
+        <div className="text-xs font-semibold text-green-700 tracking-wide uppercase">
+          Last Played
+        </div>
+        {streak?.last_participation && (
+          <div className="text-xs text-green-600 mt-1">
+            {new Date(streak.last_participation).getFullYear()}
+          </div>
+        )}
+      </div>
+      <div className="relative">
+        <div className="text-3xl bg-gradient-to-br from-green-200 to-emerald-200 p-3 rounded-full">
+          <Clock className="w-7 h-7 text-green-600" />
+        </div>
+       
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+        
+
+        {/* Continue with the rest of your component... */}
             {/* Enhanced Tabs */}
             <div className="bg-white rounded-2xl shadow-lg border border-gray-200 mb-8 overflow-hidden">
               <div className="flex overflow-x-auto scrollbar-hide">
@@ -356,7 +334,7 @@ const WeeklyChallenges = () => {
               </div>
             </div>
 
-            {/* Weekly Contests Tab */}
+           
            {/* Weekly Contests Tab */}
 {activeTab === 'weekly' && (
   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
