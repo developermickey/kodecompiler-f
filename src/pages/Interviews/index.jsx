@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { Search, Calendar, MapPin, Award, TrendingUp, Clock, ThumbsUp, User, ClipboardList, HelpCircle, MessageCircle, ArrowLeft, UserCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { fetchInterviews } from './mockApi.js';
 
+
+import { Search, Calendar, MapPin, Award, TrendingUp, Clock, ThumbsUp, User, ClipboardList, HelpCircle, MessageCircle, ArrowLeft, UserCircle, Loader } from 'lucide-react';
 const DetailPage = ({ data, onBack }) => {
   return (
     <div className="min-h-screen bg-gray-100">
@@ -83,9 +85,9 @@ const DetailPage = ({ data, onBack }) => {
             Questions Asked
           </h2>
           
-          <p className="text-gray-700 leading-relaxed">
-            will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later
-          </p>
+          <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+  {data.questionsAsked || 'No questions details provided yet.'}
+</p>
         </div>
         
         {/* Overall Experience Section */}
@@ -95,9 +97,9 @@ const DetailPage = ({ data, onBack }) => {
             Overall Experience
           </h2>
           
-          <p className="text-gray-700 leading-relaxed">
-            will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later will explain later
-          </p>
+          <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+  {data.overallExperience || 'No overall experience provided yet.'}
+</p>
         </div>
       </div>
     </div>
@@ -111,94 +113,33 @@ const Interviews = () => {
   const [role, setRole] = useState('all');
   const [sortBy, setSortBy] = useState('recent');
   const [selectedExperience, setSelectedExperience] = useState(null);
+  const [experiences, setExperiences] = useState([]);
+const [loading, setLoading] = useState(true);
+const [error, setError] = useState(null);
 
-  const experiences = [
-    {
-      id: 1,
-      company: 'Druva',
-      role: 'Staff Software Engineer',
-      location: 'Pune',
-      difficulty: 'Easy',
-      experienceLevel: '7 years experience',
-      rounds: 'Coding Question, Technical Round - 1, Technical Round - 2',
-      date: 'October 21',
-      helpful: 8,
-      status: 'Offer Received',
-      views: 2847,
-      author: 'Anonymous'
-    },
-    {
-      id: 2,
-      company: 'Google',
-      role: 'Software Engineer',
-      location: 'Bangalore',
-      difficulty: 'Hard',
-      experienceLevel: '3-5 years',
-      rounds: 'Coding Question, Technical Round - 1, Technical Round - 2, HR Round',
-      date: 'December 10, 2024',
-      helpful: 142,
-      status: 'Selected',
-      views: 2847,
-      author: 'Anonymous'
-    },
-    {
-      id: 3,
-      company: 'Microsoft',
-      role: 'SDE II',
-      location: 'Hyderabad',
-      difficulty: 'Medium',
-      experienceLevel: '2-4 years',
-      rounds: 'Online Assessment, Technical Round - 1, Technical Round - 2, Managerial Round',
-      date: 'December 8, 2024',
-      helpful: 98,
-      status: 'Selected',
-      views: 1923,
-      author: 'Anonymous'
-    },
-    {
-      id: 4,
-      company: 'Amazon',
-      role: 'Software Development Engineer',
-      location: 'Pune',
-      difficulty: 'Medium',
-      experienceLevel: '1-3 years',
-      rounds: 'Coding Round, Technical Round - 1, Technical Round - 2, Bar Raiser Round',
-      date: 'December 5, 2024',
-      helpful: 167,
-      status: 'Offer Received',
-      views: 3124,
-      author: 'Anonymous'
-    },
-    {
-      id: 5,
-      company: 'Meta',
-      role: 'Frontend Engineer',
-      location: 'Gurgaon',
-      difficulty: 'Hard',
-      experienceLevel: '4-6 years',
-      rounds: 'Phone Screen, Coding Round, System Design, Behavioral Round',
-      date: 'December 3, 2024',
-      helpful: 203,
-      status: 'Selected',
-      views: 4156,
-      author: 'Anonymous'
-    },
-    {
-      id: 6,
-      company: 'Adobe',
-      role: 'Software Engineer',
-      location: 'Noida',
-      difficulty: 'Hard',
-      experienceLevel: '2-4 years',
-      rounds: 'Online Test, Technical Round - 1, Technical Round - 2',
-      date: 'November 25, 2024',
-      helpful: 134,
-      status: 'Offer Received',
-      views: 2634,
-      author: 'Anonymous'
+ // Fetch data from API when component loads
+useEffect(() => {
+  const loadInterviews = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      console.log('🚀 Fetching interviews...');
+      const data = await fetchInterviews();
+      console.log('✅ Data loaded:', data.length, 'interviews');
+      
+      setExperiences(data);
+      
+    } catch (err) {
+      console.error('❌ Error:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
+  loadInterviews();
+}, []);
   const filteredExperiences = experiences.filter(exp => {
     const matchesSearch = exp.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          exp.role.toLowerCase().includes(searchTerm.toLowerCase());
@@ -227,6 +168,36 @@ const Interviews = () => {
   if (selectedExperience) {
     return <DetailPage data={selectedExperience} onBack={() => setSelectedExperience(null)} />;
   }
+  // Loading state
+if (loading) {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <Loader className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+        <p className="text-gray-600 text-lg">Loading interview experiences...</p>
+      </div>
+    </div>
+  );
+}
+
+// Error state
+if (error && experiences.length === 0) {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center bg-white p-8 rounded-lg shadow-md max-w-md">
+        <p className="text-red-600 text-lg font-semibold mb-2">Error loading data</p>
+        <p className="text-gray-600 mb-4">{error}</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+        >
+          Retry
+        </button>
+      </div>
+    </div>
+  );
+}
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -383,7 +354,7 @@ const Interviews = () => {
           ))}
         </div>
 
-        {sortedExperiences.length === 0 && (
+        {sortedExperiences.length === 0 && !loading && (
           <div className="text-center py-16 bg-gray-50 rounded-lg border border-gray-200">
             <p className="text-gray-600 text-lg">No interview experiences found matching your criteria.</p>
             <p className="text-gray-500 mt-2">Try adjusting your filters or search terms.</p>
