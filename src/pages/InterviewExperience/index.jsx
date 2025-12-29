@@ -182,7 +182,6 @@ const InterviewExperiences = () => {
           </div>
           
           {/* Decorative bottom curve */}
-          <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-blue-50 to-transparent"></div>
         </div>
 
         {/* Main Content */}
