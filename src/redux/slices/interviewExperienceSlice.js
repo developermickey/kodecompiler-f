@@ -1,7 +1,7 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
 export const fetchinterviewExperience = createAsyncThunk(
-  "interviewExperience/fetch",
+  "interviewExperiences/fetchAll",
   async (
     {
       company,
@@ -45,6 +45,37 @@ export const fetchinterviewExperience = createAsyncThunk(
   }
 );
 
+export const fetchinterviewbyid = createAsyncThunk(
+   "interviewExperiences/fetchById",
+  async(id,{ rejectWithValue })=>
+  {
+    try
+    {
+       const res = await fetch(`http://localhost:5000/api/interview-experiences/${id}`,
+        {
+          method: "GET",
+          credentials: "include", 
+        }
+       );
+
+
+       if(!res.ok)
+       {
+        throw new Error("Unable to fetch Experience");
+
+       }
+
+       return await res.json();
+
+    }
+    catch(error)
+    {
+      return rejectWithValue(error.message);
+    }
+  }
+  
+)
+
 
 const interviewexperienceSlice = createSlice({
     name:"interviewexperience",
@@ -81,5 +112,43 @@ const interviewexperienceSlice = createSlice({
 })
 
 
+const experienceSlice = createSlice({
+  name:"experiencedata",
+  initialState:{
+    experience:null,
+    experienceloading:false,
+    experienceerror:null
+  },
+  reducers:{
+    resetexperience: (state)=>
+    {
+      state.experience = null,
+      state.experienceloading = false,
+      state.experienceerror = null
+    }
+  },
+  extraReducers: (builder)=>{
+    builder.
+    addCase(fetchinterviewbyid.pending, (state)=>{
+      state.experienceloading = true,
+      state.experienceerror = null
+    })
+    .addCase(fetchinterviewbyid.fulfilled ,(state,action)=>{
+      state.experience = action.payload,
+      state.experienceloading = false,
+      state.experienceerror = null
+    })
+    .addCase(fetchinterviewbyid.rejected, (state,action)=>{
+      state.experienceloading = false,
+      state.experienceerror = action.payload
+    })
+  }
+
+})
+
+
 export const { resetinterviewexperience } = interviewexperienceSlice.actions;
 export const interviewexperienceReducer =  interviewexperienceSlice.reducer;
+
+export const {resetexperience} = experienceSlice.actions;
+export const experienceReducer = experienceSlice.reducer;

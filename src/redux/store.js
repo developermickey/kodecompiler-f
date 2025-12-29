@@ -8,7 +8,7 @@ import {userchallengeprogressReducer} from "./slices/userchallengesprogressSlice
 import {globalLeaderboardReducer} from "./slices/challengesGlobalLeaderboardSlice"
 import {challengesCalendarReducer} from "./slices/challengesSlice";
 import codeReducer from './slices/codeSlice'
-import { interviewexperienceReducer } from './slices/interviewExperienceSlice';
+import { interviewexperienceReducer, experienceReducer } from './slices/interviewExperienceSlice';
 
 
 export const store = configureStore({
@@ -23,7 +23,8 @@ export const store = configureStore({
     globalLeaderboard: globalLeaderboardReducer,
     challengesCalendar: challengesCalendarReducer,
     code: codeReducer,
-    interviewExperience: interviewexperienceReducer
+    interviewExperience: interviewexperienceReducer,
+    experience: experienceReducer
     // Add other reducers here
   },
 });
