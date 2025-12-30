@@ -1,23 +1,24 @@
-import React from "react";
-import Navbar from "./components/Navbar";
-import Footer from "./components/Footer";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Home from "./pages/Home";
-import About from "./pages/About";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import GuestEditor from "./pages/GuestEditor";
-import Arena from "./pages/Arena";
-import Problem from "./pages/Problem";
-import Welcome from "./pages/User/Welcome";
-import PrivacyPolicy from "./pages/PrivacyPolicy";
-import NotFound from "./pages/NotFound";
-import TermsOfService from "./pages/TermsOfService";
-import RefundPolicy from "./pages/RefundPolicy";
-import Disclaimer from "./pages/Disclaimer";
-import WeeklyChallenges from "./pages/WeeklyChallenges";
-import MainCompiler from "./pages/MainEditor";
-import LoginGuard from "./pages/Login/LoginGuard";
+import React from 'react'
+import Navbar from './components/Navbar'
+import Footer from './components/Footer'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import Home from './pages/Home'
+import About from './pages/About'
+import Login from './pages/Login'
+import Register from './pages/Register'
+import GuestEditor from './pages/GuestEditor'
+import Arena from './pages/Arena'
+import Problem from './pages/Problem'
+import Welcome from './pages/User/Welcome'
+import PrivacyPolicy from './pages/PrivacyPolicy'
+import NotFound from './pages/NotFound'
+import TermsOfService from './pages/TermsOfService'
+import RefundPolicy from './pages/RefundPolicy'
+import Disclaimer from './pages/Disclaimer'
+import WeeklyChallenges from './pages/WeeklyChallenges'
+import ContestStartPage from './pages/WeeklyChallenges/ContestStartPage'
+import MainCompiler from "./pages/MainEditor"
+import LoginGuard from "./pages/Login/LoginGuard"
 
 const App = () => {
   return (
@@ -44,6 +45,7 @@ const App = () => {
         {/* 1. User Dashboard / Welcome */}
         <Route path="/welcome" element={<Welcome />} />
         <Route path="/weekly-challenges" element={<WeeklyChallenges />} />
+        <Route path="/challenge/:id" element={<ContestStartPage />} />
         {/* 2. Main Compiler */}
         <Route
           path="/compiler"
