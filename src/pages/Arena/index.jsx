@@ -1,243 +1,386 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Search, CheckCircle, BarChart3, X, Loader, Building2, Briefcase, ArrowLeft, TrendingUp, Target, Award, Sparkles, Zap, Trophy } from 'lucide-react';
-import { useSelector } from "react-redux";
+
+import React, { useState, useEffect, useMemo } from "react";
+import {
+  Search,
+  CheckCircle,
+  X,
+  Loader,
+  Building2,
+  Briefcase,
+  ArrowLeft,
+  TrendingUp,
+  Target,
+  Award,
+  Layers,
+} from "lucide-react";
+import { useSelector, useDispatch } from "react-redux";
 import { fetchProblems } from "../../redux/slices/problemSlice";
 import { fetchUserProgress } from "../../redux/slices/userprogressSlice";
-import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
 
 const Arena = () => {
-
   // State Management
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDifficulty, setSelectedDifficulty] = useState('all');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedDifficulty, setSelectedDifficulty] = useState("all");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [showCompanyMode, setShowCompanyMode] = useState(false);
-  const [selectedCompany, setSelectedCompany] = useState('all');
-  const [companySearchQuery, setCompanySearchQuery] = useState('');
+  const [companySearchQuery, setCompanySearchQuery] = useState("");
 
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const user = useSelector((state) => state.auth.user);
-  
+
   useEffect(() => {
     dispatch(fetchProblems());
-    if (user) 
-      dispatch(fetchUserProgress());
+    if (user) dispatch(fetchUserProgress());
   }, [dispatch, user]);
 
-  const { list: problems, stats, loading } = useSelector(
-    (state) => state.problems
-  );
-
   const {
-    solvedProblemIds,
-    solvedCount
-  } = useSelector((state) => state.userProgress);
+    list: problems,
+    stats,
+    loading,
+  } = useSelector((state) => state.problems);
+
+  const { solvedProblemIds, solvedCount } = useSelector(
+    (state) => state.userProgress
+  );
 
   const categories = useMemo(
-    () => [...new Set(problems.map(p => p.category))],
+    () => [...new Set(problems.map((p) => p.category))],
     [problems]
   );
-  
+
   const filteredProblems = useMemo(() => {
-    return problems.filter(problem => {
-      const matchesSearch = problem.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           problem.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesDifficulty = selectedDifficulty === 'all' || problem.difficulty === selectedDifficulty;
-      const matchesCategory = selectedCategory === 'all' || problem.category === selectedCategory;
-      
+    return problems.filter((problem) => {
+      const matchesSearch =
+        problem.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        problem.description.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesDifficulty =
+        selectedDifficulty === "all" ||
+        problem.difficulty === selectedDifficulty;
+      const matchesCategory =
+        selectedCategory === "all" || problem.category === selectedCategory;
+
       return matchesSearch && matchesDifficulty && matchesCategory;
     });
   }, [problems, searchQuery, selectedDifficulty, selectedCategory]);
 
   // Company filtered problems
-  const companyFilteredProblems = useMemo(() =>
-  {
+  const companyFilteredProblems = useMemo(() => {
     const query = companySearchQuery.toLowerCase().trim();
-
     if (!query) return problems;
-
-    return problems.filter(problem =>
-      Array.isArray(problem.companies) &&
-      problem.companies.some(company =>
-        company.toLowerCase().includes(query)
-      )
+    return problems.filter(
+      (problem) =>
+        Array.isArray(problem.companies) &&
+        problem.companies.some((company) =>
+          company.toLowerCase().includes(query)
+        )
     );
   }, [problems, companySearchQuery]);
 
   // Handler Functions
   const handleSolve = (problemId) => {
     if (!user) {
-      window.location.href = "/login";
+      navigate("/login");
       return null;
     }
-    window.location.href = `/problem/${problemId}`;
+    navigate(`/problem/${problemId}`);
   };
 
-  const handleSearch = (e) => {
-    setSearchQuery(e.target.value);
-  };
-
-  const handleDifficultyChange = (e) => {
-    setSelectedDifficulty(e.target.value);
-  };
-
-  const handleCategoryChange = (e) => {
-    setSelectedCategory(e.target.value);
-  };
-
+  const handleSearch = (e) => setSearchQuery(e.target.value);
+  const handleDifficultyChange = (e) => setSelectedDifficulty(e.target.value);
+  const handleCategoryChange = (e) => setSelectedCategory(e.target.value);
+  
   const resetFilters = () => {
-    setSearchQuery('');
-    setSelectedDifficulty('all');
-    setSelectedCategory('all');
+    setSearchQuery("");
+    setSelectedDifficulty("all");
+    setSelectedCategory("all");
   };
 
-  const handleCompanySearch = (e) => {
-    setCompanySearchQuery(e.target.value);
-  };
-
-  const handleCompanySelect = (company) => {
-    setSelectedCompany(company);
-  };
-
+  const handleCompanySearch = (e) => setCompanySearchQuery(e.target.value);
   const resetCompanyFilters = () => {
-    setCompanySearchQuery('');
-    setSelectedCompany('all');
+    setCompanySearchQuery("");
   };
 
-  const getDifficultyColor = (difficulty) => {
-    switch(difficulty) {
-      case 'Easy': return 'text-emerald-600 bg-emerald-50';
-      case 'Medium': return 'text-amber-600 bg-amber-50';
-      case 'Hard': return 'text-rose-600 bg-rose-50';
-      default: return 'text-gray-600 bg-gray-50';
-    }
-  };
-
-  const solvedCompanyProblems = companyFilteredProblems.filter(problem =>
+  const solvedCompanyProblems = companyFilteredProblems.filter((problem) =>
     solvedProblemIds.includes(problem.problem_id)
   );
 
   const companySolvedPercentage =
     companyFilteredProblems.length === 0
       ? 0
-      : ((solvedCompanyProblems.length / companyFilteredProblems.length) * 100).toFixed(2);
+      : ((solvedCompanyProblems.length / companyFilteredProblems.length) * 100).toFixed(0);
 
-  // Loading State
+  // --- REUSABLE COMPONENT: Difficulty Signal Badge ---
+  // This replaces the plain text with the bar visualization
+  const DifficultyBadge = ({ difficulty }) => {
+    const styles = {
+        Easy: { 
+            text: "text-emerald-700", 
+            bg: "bg-emerald-50 border-emerald-100", 
+            barActive: "bg-emerald-500", 
+            barInactive: "bg-emerald-200/50" 
+        },
+        Medium: { 
+            text: "text-amber-700", 
+            bg: "bg-amber-50 border-amber-100", 
+            barActive: "bg-amber-500", 
+            barInactive: "bg-amber-200/50" 
+        },
+        Hard: { 
+            text: "text-rose-700", 
+            bg: "bg-rose-50 border-rose-100", 
+            barActive: "bg-rose-500", 
+            barInactive: "bg-rose-200/50" 
+        }
+    };
+
+    const style = styles[difficulty] || styles.Easy;
+    const level = difficulty === "Easy" ? 1 : difficulty === "Medium" ? 2 : 3;
+
+    return (
+        <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border ${style.bg}`}>
+            {/* The Signal Bars */}
+            <div className="flex gap-[1.5px] items-end h-3">
+                <div className={`w-1 rounded-[1px] h-1.5 ${style.barActive}`}></div>
+                <div className={`w-1 rounded-[1px] h-2 ${level >= 2 ? style.barActive : style.barInactive}`}></div>
+                <div className={`w-1 rounded-[1px] h-3 ${level >= 3 ? style.barActive : style.barInactive}`}></div>
+            </div>
+            {/* The Text Label */}
+            <span className={`text-[10px] font-bold uppercase tracking-wide ${style.text}`}>
+                {difficulty}
+            </span>
+        </div>
+    );
+  };
+
+  // --- REUSABLE COMPONENT: The Problem List ---
+  const ProblemList = ({ data }) => {
+    if (data.length === 0) {
+      return (
+        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-500 shadow-sm">
+          <Search className="w-10 h-10 mx-auto mb-3 opacity-20" />
+          <p>No problems found.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        {/* Desktop Header - Hidden on Mobile */}
+        <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-4 bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-widest">
+          <div className="col-span-1 text-center">Status</div>
+          <div className="col-span-8">Problem</div>
+          <div className="col-span-2">Difficulty</div>
+          <div className="col-span-1 text-right">Acc.</div>
+        </div>
+
+        {/* List Body */}
+        <div className="divide-y divide-slate-100">
+          {data.map((problem) => {
+            const isSolved = solvedProblemIds.includes(problem.problem_id);
+            return (
+              <div
+                key={problem.problem_id}
+                onClick={() => handleSolve(problem.problem_id)}
+                className={`
+                    group cursor-pointer transition-all duration-200 
+                    p-4 md:px-6 md:py-4
+                    flex flex-col gap-3 md:grid md:grid-cols-12 md:gap-4 md:items-center
+                    ${isSolved ? "bg-slate-50/50" : "hover:bg-slate-50"}
+                `}
+              >
+                {/* Mobile Top Row: ID & Difficulty Badge */}
+                <div className="flex items-center justify-between md:hidden">
+                  <span className="text-xs font-mono text-slate-400">
+                    #{String(problem.problem_id).padStart(3, "0")}
+                  </span>
+                  
+                  {/* Replaced Text with Badge Component */}
+                  <DifficultyBadge difficulty={problem.difficulty} />
+                </div>
+
+                {/* Desktop: Status Column */}
+                <div className="hidden md:flex col-span-1 justify-center">
+                  {isSolved ? (
+                    <div className="bg-emerald-100 rounded-full p-1">
+                      <CheckCircle className="w-4 h-4 text-emerald-600" />
+                    </div>
+                  ) : (
+                    <div className="w-4 h-4 border-2 border-slate-300 rounded-full group-hover:border-blue-500 transition-colors" />
+                  )}
+                </div>
+
+                {/* Main Content: Title & Tags */}
+                <div className="md:col-span-8">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3
+                      className={`text-sm sm:text-base font-bold ${
+                        isSolved
+                          ? "text-slate-600"
+                          : "text-slate-900 group-hover:text-[#0652e9]"
+                      }`}
+                    >
+                      {problem.title}
+                    </h3>
+                    {/* Mobile Status Icon (Top Right next to title) */}
+                    {isSolved && (
+                      <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0 md:hidden mt-1" />
+                    )}
+                  </div>
+
+                  {/* Tags */}
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {problem.tags &&
+                      problem.tags.slice(0, 3).map((tag) => (
+                        <span
+                          key={tag}
+                          className="px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded text-[10px] font-medium border border-slate-200 whitespace-nowrap"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                  </div>
+                </div>
+
+                {/* Desktop: Difficulty Column */}
+                <div className="hidden md:block col-span-2">
+                   {/* Replaced Text with Badge Component */}
+                   <DifficultyBadge difficulty={problem.difficulty} />
+                </div>
+
+                {/* Acceptance Rate (Desktop & Mobile) */}
+                <div className="md:col-span-1 md:text-right flex items-center gap-1 md:block">
+                  <span className="text-[10px] uppercase text-slate-400 font-bold md:hidden">
+                    Acceptance:
+                  </span>
+                  <span className="font-mono text-slate-500 text-xs font-medium">
+                    {problem.total_submissions > 0
+                      ? `${(
+                          (problem.accepted_submissions /
+                            problem.total_submissions) *
+                          100
+                        ).toFixed(0)}%`
+                      : "-"}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  // --- REUSABLE COMPONENT: Stat Card ---
+  const StatCard = ({ title, count, colorClass, barColor, bars = 0, icon: Icon }) => (
+    <div className={`bg-gradient-to-br from-white ${colorClass} rounded-xl p-3 sm:p-4 shadow-sm border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between group transition-all`}>
+      <div className="mb-2 sm:mb-0">
+        <div className="text-xl sm:text-2xl font-bold text-slate-800 mb-0.5 leading-none">
+          {count}
+        </div>
+        <div className="text-slate-500/80 text-[10px] sm:text-xs font-bold uppercase tracking-wider">
+          {title}
+        </div>
+      </div>
+      
+      <div className="self-end sm:self-center">
+        {Icon ? (
+          <div className="w-8 h-8 rounded-full bg-white/50 flex items-center justify-center">
+            <Icon className="w-4 h-4 text-slate-600" />
+          </div>
+        ) : (
+          <div className="flex gap-1 items-end h-6 sm:h-8">
+            <div className={`w-1.5 sm:w-2 h-3 sm:h-4 rounded-[2px] ${bars >= 1 ? barColor : 'bg-slate-200/50'}`}></div>
+            <div className={`w-1.5 sm:w-2 h-4 sm:h-6 rounded-[2px] ${bars >= 2 ? barColor : 'bg-slate-200/50'}`}></div>
+            <div className={`w-1.5 sm:w-2 h-5 sm:h-8 rounded-[2px] ${bars >= 3 ? barColor : 'bg-slate-200/50'}`}></div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
         <div className="text-center">
-          <Loader className="w-12 h-12 text-indigo-600 animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">Loading problems...</p>
+          <Loader className="w-10 h-10 text-indigo-600 animate-spin mx-auto mb-3" />
+          <p className="text-slate-600 text-sm">Loading problems...</p>
         </div>
       </div>
     );
   }
 
-  // Company Mode View
+  // --- MODE: Company View ---
   if (showCompanyMode) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-slate-100">
-        {/* Professional Header with Gradient */}
-        <div className="bg-gradient-to-r from-[#0652e9] via-indigo-600 to-purple-600 shadow-2xl">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-            {/* Back Button */}
+      <div className="min-h-screen bg-slate-50">
+        {/* Header */}
+        <div className="bg-[#0652e9] shadow-xl pb-6 pt-4 sm:py-8 px-4">
+          <div className="max-w-6xl mx-auto">
             <button
               onClick={() => setShowCompanyMode(false)}
-              className="mb-6 sm:mb-8 flex items-center gap-2 text-white/90 hover:text-white transition-colors group text-sm sm:text-base"
+              className="mb-6 flex items-center gap-2 text-white/90 hover:text-white transition-colors group text-sm"
             >
-              <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 group-hover:-translate-x-1 transition-transform" />
-              <span className="font-medium">Back to All Problems</span>
+              <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+              <span className="font-medium">Back</span>
             </button>
 
-            {/* Main Header Content */}
-            <div className="text-center mb-6 sm:mb-8">
-              <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-white/10 backdrop-blur-lg rounded-3xl mb-4 sm:mb-6 shadow-xl">
-                <Briefcase className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-6 mb-8 text-center md:text-left">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-white/10 backdrop-blur-lg rounded-2xl shadow-lg shrink-0">
+                <Briefcase className="w-8 h-8 text-white" />
               </div>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-3 sm:mb-4 tracking-tight px-2">
-                Company Interview Problems
-              </h1>
-              <p className="text-base sm:text-xl text-indigo-100 max-w-2xl mx-auto leading-relaxed px-4">
-                Your ultimate companion for interview preparation.
-              </p>
-            </div>
-
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-4xl mx-auto px-2">
-              <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-4 sm:p-6 hover:bg-white/15 transition-all">
-                <div className="flex items-center gap-3 sm:gap-4">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center">
-                    <Target className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-300" />
-                  </div>
-                  <div>
-                    <div className="text-2xl sm:text-3xl font-bold text-white">{companyFilteredProblems.length}</div>
-                    <div className="text-indigo-100 text-xs sm:text-sm font-medium">Total Problems</div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-4 sm:p-6 hover:bg-white/15 transition-all">
-                <div className="flex items-center gap-3 sm:gap-4">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-amber-500/20 rounded-xl flex items-center justify-center">
-                    <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-amber-300" />
-                  </div>
-                  <div>
-                    <div className="text-2xl sm:text-3xl font-bold text-white">
-                      {companySolvedPercentage}%
-                    </div>
-                    <div className="text-indigo-100 text-xs sm:text-sm font-medium">
-                      Preparation Done
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-4 sm:p-6 hover:bg-white/15 transition-all">
-                <div className="flex items-center gap-3 sm:gap-4">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-500/20 rounded-xl flex items-center justify-center">
-                    <Award className="w-5 h-5 sm:w-6 sm:h-6 text-purple-300" />
-                  </div>
-                  <div>
-                    <div className="text-2xl sm:text-3xl font-bold text-white">
-                      {solvedCompanyProblems.length}
-                    </div>
-                    <div className="text-indigo-100 text-xs sm:text-sm font-medium">
-                      Problems Solved
-                    </div>
-                  </div>
-                </div>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+                  Company Interview Problems
+                </h1>
+                <p className="text-sm text-indigo-100 max-w-xl">
+                  Curated list of problems asked by top tech companies.
+                </p>
               </div>
             </div>
-          </div>
-          
-          {/* Wave Separator */}
-          <div className="relative h-8 sm:h-12">
-            <svg className="absolute bottom-0 w-full h-8 sm:h-12" viewBox="0 0 1440 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M0 48h1440V0c-180 48-360 48-540 24S540 0 360 24 0 48 0 48z" fill="rgb(248, 250, 252)"/>
-            </svg>
+
+            {/* Stats Grid */}
+            <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-3xl">
+              {[
+                { label: "Total", val: companyFilteredProblems.length, icon: Target, color: "text-emerald-300", bg: "bg-emerald-500/20" },
+                { label: "Done", val: `${companySolvedPercentage}%`, icon: TrendingUp, color: "text-amber-300", bg: "bg-amber-500/20" },
+                { label: "Solved", val: solvedCompanyProblems.length, icon: Award, color: "text-purple-300", bg: "bg-purple-500/20" }
+              ].map((stat, i) => (
+                <div key={i} className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-3 flex flex-col items-center sm:items-start sm:flex-row gap-2 sm:gap-3">
+                  <div className={`w-8 h-8 ${stat.bg} rounded-lg flex items-center justify-center shrink-0`}>
+                    <stat.icon className={`w-4 h-4 ${stat.color}`} />
+                  </div>
+                  <div className="text-center sm:text-left">
+                    <div className="text-base sm:text-xl font-bold text-white leading-tight">
+                      {stat.val}
+                    </div>
+                    <div className="text-indigo-100 text-[10px] sm:text-xs font-medium uppercase">
+                      {stat.label}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Content Section */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-          {/* Featured Companies Banner */}
-          <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-lg mb-4 sm:mb-6 border border-slate-100">
-            <div className="flex items-center justify-between mb-3 sm:mb-4">
-              <div>
-                <h2 className="text-lg sm:text-xl font-bold text-slate-800 mb-1">Featured Companies</h2>
-                <p className="text-slate-600 text-xs sm:text-sm">Search problems by leading companies</p>
-              </div>
-              <Building2 className="w-6 h-6 sm:w-8 sm:h-8 text-[#0652e9]" />
+        {/* Content */}
+        <div className="max-w-6xl mx-auto px-3 sm:px-4 py-6">
+          {/* Featured Companies */}
+          <div className="bg-white rounded-xl p-4 shadow-sm mb-4 border border-slate-100">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-[#0652e9]" />
+                Featured
+              </h2>
             </div>
-            
-            {/* Company Tags */}
-            <div className="flex flex-wrap gap-2 sm:gap-3">
-              {['Google', 'Amazon', 'Microsoft', 'Meta', 'Apple', 'Netflix', 'Tesla', 'Uber'].map((company) => (
+            <div className="flex overflow-x-auto pb-2 sm:pb-0 gap-2 scrollbar-hide">
+              {["Google", "Amazon", "Microsoft", "Meta", "Apple", "Netflix", "Uber"].map((company) => (
                 <button
                   key={company}
                   onClick={() => setCompanySearchQuery(company)}
-                  className="px-3 py-1.5 sm:px-5 sm:py-2.5 bg-gradient-to-r from-slate-50 to-slate-100 hover:from-[#0652e9] hover:to-indigo-600 text-slate-700 hover:text-white rounded-lg sm:rounded-xl font-medium transition-all duration-200 border border-slate-200 hover:border-transparent hover:shadow-lg hover:scale-105 transform text-sm sm:text-base"
+                  className="px-3 py-1.5 bg-slate-50 whitespace-nowrap hover:bg-[#0652e9] hover:text-white text-slate-600 rounded-lg text-xs font-medium transition-all border border-slate-200"
                 >
                   {company}
                 </button>
@@ -245,369 +388,124 @@ const Arena = () => {
             </div>
           </div>
 
-          {/* Search Section */}
-          <div className="bg-white rounded-2xl p-4 shadow-lg mb-4 sm:mb-6 border border-slate-100">
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 sm:w-5 sm:h-5" />
-                <input
-                  type="text"
-                  placeholder="Search company problems..."
-                  value={companySearchQuery}
-                  onChange={handleCompanySearch}
-                  className="w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3 bg-slate-50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0652e9] border border-slate-200 focus:border-transparent transition-all text-sm sm:text-base"
-                />
-              </div>
-            
-              {(companySearchQuery || selectedCompany !== 'all') && (
-                <button 
+          {/* Search */}
+          <div className="bg-white rounded-xl p-3 shadow-sm mb-4 border border-slate-100">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search company problems..."
+                value={companySearchQuery}
+                onChange={handleCompanySearch}
+                className="w-full pl-9 pr-10 py-2.5 bg-slate-50 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0652e9] border border-slate-200 text-sm"
+              />
+              {(companySearchQuery) && (
+                <button
                   onClick={resetCompanyFilters}
-                  className="px-4 py-2.5 sm:px-4 sm:py-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors border border-slate-200 text-sm sm:text-base"
-                  title="Clear filters"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 hover:bg-slate-200 rounded-full"
                 >
-                  <X className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 inline-block" />
-                  <span className="ml-2 sm:hidden">Clear</span>
+                  <X className="w-4 h-4 text-slate-500" />
                 </button>
               )}
             </div>
           </div>
 
-          {/* Results Count */}
-          <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="text-slate-600 text-sm sm:text-base">
-              Showing <span className="font-semibold text-[#0652e9]">{companyFilteredProblems.length}</span> problems
-              {selectedCompany !== 'all' && <span> from <span className="font-semibold text-[#0652e9]">{selectedCompany}</span></span>}
-            </div>
-            {companySearchQuery && (
-              <div className="text-xs sm:text-sm text-slate-500">
-                Search: <span className="font-semibold text-[#0652e9]">"{companySearchQuery}"</span>
-              </div>
-            )}
-          </div>
-
-          {/* Problems List */}
-          {companyFilteredProblems.length === 0 ? (
-            <div className="bg-white rounded-2xl p-6 sm:p-12 shadow-lg text-center border border-slate-100">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
-                <Building2 className="w-8 h-8 sm:w-10 sm:h-10 text-slate-400" />
-              </div>
-              <h3 className="text-xl sm:text-2xl font-semibold text-slate-800 mb-2">No problems found</h3>
-              <p className="text-slate-600 mb-6 max-w-md mx-auto text-sm sm:text-base">Try searching for a different company</p>
-              <button 
-                onClick={resetCompanyFilters}
-                className="px-6 py-3 bg-[#0652e9] text-white rounded-xl hover:bg-[#0547d1] transition-colors shadow-lg hover:shadow-xl text-sm sm:text-base"
-              >
-                Clear Filters
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {companyFilteredProblems != null && companyFilteredProblems.map((problem) => (
-                <div key={problem.problem_id} className="bg-white rounded-2xl p-4 sm:p-6 shadow-lg hover:shadow-xl transition-all border border-slate-100 group">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4" onClick={() => handleSolve(problem.problem_id)}>
-                    <div className="flex-1 w-full">
-                      <div className="flex flex-wrap items-center gap-2 mb-2">
-                        <span className="text-slate-400 font-medium text-sm">#{problem.problem_id}</span>
-                        <h3 className="cursor-pointer text-lg sm:text-xl font-bold text-slate-800 group-hover:text-[#0652e9] transition-colors line-clamp-1">
-                          {problem.title}
-                        </h3>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2 mb-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(problem.difficulty)}`}>
-                          {problem.difficulty}
-                        </span>
-                        {solvedProblemIds.includes(problem.problem_id) && (
-                          <div className="flex items-center gap-1 text-emerald-600 text-sm">
-                            <CheckCircle className="w-4 h-4" />
-                            <span className="font-medium">Solved</span>
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-slate-600 text-sm sm:text-base mb-3 line-clamp-2">{problem.description}</p>
-                      <div className="flex flex-wrap items-center gap-2">
-                        {problem.tags != null && problem.tags.slice(0, 2).map((tag) => (
-                          <span key={tag} className="px-2 py-1 bg-indigo-50 text-[#0652e9] rounded-lg text-xs font-medium">
-                            {tag}
-                          </span>
-                        ))}
-                        {problem.tags && problem.tags.length > 2 && (
-                          <span className="px-2 py-1 bg-indigo-50 text-[#0652e9] rounded-lg text-xs font-medium">
-                            +{problem.tags.length - 2}
-                          </span>
-                        )}
-                        <span className="text-slate-500 text-xs sm:text-sm flex items-center gap-1">
-                          <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4" />
-                          Acceptance: {problem.total_submissions > 0 ? `${Number(((problem.accepted_submissions/problem.total_submissions)*100).toFixed(2))}%` : 'N/A'}
-                        </span>
-                      </div>
-                    </div>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSolve(problem.problem_id);
-                      }}
-                      className="cursor-pointer w-full sm:w-auto px-4 py-2.5 sm:px-6 sm:py-2 bg-[#0652e9] text-white text-sm sm:text-lg font-semibold rounded-xl hover:bg-[#0547d1] transition-all duration-200 shadow-lg hover:shadow-xl hover:shadow-[#0652e9]/30 hover:scale-105 transform mt-2 sm:mt-0"
-                    >
-                      {solvedProblemIds.includes(problem.problem_id) ? 'Resolve' : 'Solve'}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          {/* Reused Problem List Component */}
+          <ProblemList data={companyFilteredProblems} />
         </div>
       </div>
     );
   }
 
-  // Normal Mode View
+  // --- MODE: Standard View ---
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-slate-100 p-3 sm:p-4 md:p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-slate-50 px-3 py-4 sm:p-6">
+      <div className="max-w-6xl mx-auto">
         
-        {/* Welcome Banner */}
-        <div className="bg-gradient-to-r from-[#0652e9] via-indigo-600 to-purple-600 rounded-2xl sm:rounded-3xl p-6 sm:p-8 mb-4 sm:mb-6 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 sm:w-64 sm:h-64 bg-white/5 rounded-full -mr-16 -mt-16 sm:-mr-32 sm:-mt-32"></div>
-          <div className="absolute bottom-0 left-0 w-24 h-24 sm:w-48 sm:h-48 bg-white/5 rounded-full -ml-12 -mb-12 sm:-ml-24 sm:-mb-24"></div>
-          <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-center sm:text-left">
-              <div className="flex flex-col sm:flex-row items-center gap-3 mb-3">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/10 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+        {/* Banner */}
+        <div className="bg-[#0652e9] rounded-2xl p-5 sm:p-6 mb-6 shadow-lg shadow-blue-900/10 relative overflow-hidden text-white">
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 className="text-xl sm:text-2xl font-bold mb-1">Master Your Skills</h2>
+                    <p className="text-blue-100 text-xs sm:text-sm font-medium">
+                        {stats.total} curated problems waiting for you.
+                    </p>
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-white">Master Your Skills</h2>
-              </div>
-              <p className="text-indigo-100 text-sm sm:text-lg max-w-2xl">
-                Challenge yourself with {stats.total} curated problems.
-              </p>
+                <div className="flex gap-2">
+                     <div className="bg-white/10 backdrop-blur rounded-lg px-3 py-2 border border-white/20">
+                        <div className="text-xs text-blue-100 uppercase font-bold tracking-wider">Solved</div>
+                        <div className="text-xl font-bold leading-none mt-0.5">{solvedCount}</div>
+                     </div>
+                     <div className="bg-white/10 backdrop-blur rounded-lg px-3 py-2 border border-white/20">
+                        <div className="text-xs text-blue-100 uppercase font-bold tracking-wider">Progress</div>
+                        <div className="text-xl font-bold leading-none mt-0.5">
+                            {Math.round((solvedCount / stats.total) * 100) || 0}%
+                        </div>
+                     </div>
+                </div>
             </div>
-            <div className="flex items-center gap-2 sm:gap-4">
-              <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl sm:rounded-2xl px-4 py-3 sm:px-6 sm:py-4">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <Trophy className="w-5 h-5 sm:w-8 sm:h-8 text-amber-300" />
-                  <div>
-                    <div className="text-xl sm:text-2xl font-bold text-white">{solvedCount||0}</div>
-                    <div className="text-indigo-100 text-xs sm:text-sm">Solved</div>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl sm:rounded-2xl px-4 py-3 sm:px-6 sm:py-4">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <Zap className="w-5 h-5 sm:w-8 sm:h-8 text-emerald-300" />
-                  <div>
-                    <div className="text-xl sm:text-2xl font-bold text-white">{Math.round((solvedCount / stats.total) * 100) || 0}%</div>
-                    <div className="text-indigo-100 text-xs sm:text-sm">Progress</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-4 sm:mb-6">
-          <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg hover:shadow-xl transition-all border border-slate-200 group cursor-pointer col-span-2 lg:col-span-1">
-            <div className="flex items-center justify-between mb-2 sm:mb-3">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-50 rounded-lg sm:rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 text-[#0652e9]" />
-              </div>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+            <div className="col-span-2 md:col-span-1">
+                <StatCard title="Total" count={stats.total} colorClass="to-slate-50" icon={Layers} />
             </div>
-            <div className="text-2xl sm:text-4xl font-bold text-[#0652e9] mb-1 sm:mb-2">{stats.total}</div>
-            <div className="text-slate-600 text-xs sm:text-sm font-medium">Total Problems</div>
-          </div>
-          
-          <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg hover:shadow-xl transition-all group cursor-pointer">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl sm:text-4xl font-bold text-white mb-1 sm:mb-2">{stats.easy}</div>
-                <div className="text-emerald-50 text-xs sm:text-sm font-medium">Easy</div>
-              </div>
-              <div className="text-3xl sm:text-5xl text-emerald-100 transition-transform duration-300 group-hover:scale-110">
-                🧩
-              </div>
+            <StatCard title="Easy" count={stats.easy} colorClass="to-emerald-50" barColor="bg-emerald-500" bars={1} />
+            <StatCard title="Medium" count={stats.medium} colorClass="to-amber-50" barColor="bg-amber-500" bars={2} />
+            <StatCard title="Hard" count={stats.hard} colorClass="to-rose-50" barColor="bg-rose-500" bars={3} />
+            <div className="col-span-2 md:col-span-1">
+                 <StatCard title="Solved" count={solvedCount} colorClass="to-indigo-50" icon={CheckCircle} />
             </div>
-          </div>
-          
-          <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg hover:shadow-xl transition-all group cursor-pointer">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl sm:text-4xl font-bold text-white mb-1 sm:mb-2">{stats.medium}</div>
-                <div className="text-amber-50 text-xs sm:text-sm font-medium">Medium</div>
-              </div>
-              <div className="text-3xl sm:text-5xl text-amber-100 transition-transform duration-300 group-hover:scale-110">
-                🛠️
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-gradient-to-br from-rose-500 to-rose-600 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg hover:shadow-xl transition-all group cursor-pointer">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl sm:text-4xl font-bold text-white mb-1 sm:mb-2">{stats.hard}</div>
-                <div className="text-rose-50 text-xs sm:text-sm font-medium">Hard</div>
-              </div>
-              <div className="text-3xl sm:text-5xl text-rose-100 transition-transform duration-300 group-hover:scale-110">
-                🧠
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-gradient-to-br from-[#0652e9] to-indigo-600 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg hover:shadow-xl transition-all group cursor-pointer">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl sm:text-4xl font-bold text-white mb-1 sm:mb-2">{solvedCount||0}</div>
-                <div className="text-indigo-50 text-xs sm:text-sm font-medium">Solved</div>
-              </div>
-              <CheckCircle className="w-6 h-6 sm:w-10 sm:h-10 text-indigo-100 group-hover:scale-110 transition-transform" />
-            </div>
-          </div>
         </div>
 
-        {/* Search and Filters */}
-        <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-lg mb-4 sm:mb-6 border border-slate-200">
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+        {/* Filters */}
+        <div className="bg-white rounded-xl p-3 shadow-sm mb-4 border border-slate-200">
+          <div className="flex flex-col md:flex-row gap-3">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 sm:w-5 sm:h-5" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
               <input
                 type="text"
                 placeholder="Search problems..."
                 value={searchQuery}
                 onChange={handleSearch}
-                className="w-full pl-9 sm:pl-12 pr-4 py-2.5 sm:py-3 bg-slate-50 rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0652e9] border border-slate-200 focus:border-transparent transition-all text-sm sm:text-base"
+                className="w-full pl-9 pr-4 py-2 bg-slate-50 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0652e9] border border-slate-200 text-sm"
               />
             </div>
-            <div className="grid grid-cols-2 sm:flex gap-2 sm:gap-4">
-              <select 
+            <div className="grid grid-cols-2 gap-2 md:flex">
+              <select
                 value={selectedDifficulty}
                 onChange={handleDifficultyChange}
-                className="px-3 sm:px-6 py-2.5 sm:py-3 bg-slate-50 rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0652e9] border border-slate-200 font-medium text-slate-700 text-sm sm:text-base"
+                className="px-3 py-2 bg-slate-50 rounded-lg border border-slate-200 text-slate-700 text-sm font-medium w-full md:w-auto"
               >
-                <option value="all">All Difficulties</option>
+                <option value="all">Diff: All</option>
                 <option value="Easy">Easy</option>
                 <option value="Medium">Medium</option>
                 <option value="Hard">Hard</option>
               </select>
-              <select 
+              <select
                 value={selectedCategory}
                 onChange={handleCategoryChange}
-                className="px-3 sm:px-6 py-2.5 sm:py-3 bg-slate-50 rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0652e9] border border-slate-200 font-medium text-slate-700 text-sm sm:text-base"
+                className="px-3 py-2 bg-slate-50 rounded-lg border border-slate-200 text-slate-700 text-sm font-medium w-full md:w-auto"
               >
-                <option value="all">All Categories</option>
-                {categories.map(cat => (
+                <option value="all">Cat: All</option>
+                {categories.map((cat) => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>
-              <button
+            </div>
+            <button
                 onClick={() => setShowCompanyMode(true)}
-                className="cursor-pointer px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-[#0652e9] to-indigo-600 text-white rounded-lg sm:rounded-xl hover:from-[#0547d1] hover:to-indigo-700 transition-all flex items-center gap-2 font-medium shadow-lg hover:shadow-xl hover:scale-105 transform text-sm sm:text-base col-span-2 sm:col-span-1"
+                className="col-span-2 px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium text-sm flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform"
               >
-                <Building2 className="w-4 h-4 sm:w-5 sm:h-5" />
-                Companies
+                <Building2 className="w-4 h-4" />
+                <span className="md:hidden">Switch to </span>Companies
               </button>
-              {(searchQuery || selectedDifficulty !== 'all' || selectedCategory !== 'all') && (
-                <button 
-                  onClick={resetFilters}
-                  className="px-4 py-2.5 sm:py-3 bg-slate-50 rounded-lg sm:rounded-xl hover:bg-slate-100 transition-colors border border-slate-200 text-sm sm:text-base"
-                  title="Clear filters"
-                >
-                  <X className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 inline-block" />
-                  <span className="ml-2 sm:hidden">Clear</span>
-                </button>
-              )}
-            </div>
           </div>
         </div>
 
-        {/* Results Count with Active Filters */}
-        <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="text-slate-600 text-sm sm:text-base">
-            Showing <span className="font-semibold text-[#0652e9]">{filteredProblems.length}</span> of {problems.length} problems
-          </div>
-          {(selectedDifficulty !== 'all' || selectedCategory !== 'all') && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs sm:text-sm text-slate-500">Active filters:</span>
-              {selectedDifficulty !== 'all' && (
-                <span className="px-2 py-1 bg-indigo-50 text-[#0652e9] rounded-lg text-xs font-medium">
-                  {selectedDifficulty}
-                </span>
-              )}
-              {selectedCategory !== 'all' && (
-                <span className="px-2 py-1 bg-indigo-50 text-[#0652e9] rounded-lg text-xs font-medium">
-                  {selectedCategory}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Problems List */}
-        {filteredProblems.length === 0 ? (
-          <div className="bg-white rounded-xl sm:rounded-2xl p-6 sm:p-12 shadow-lg text-center border border-slate-200">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
-              <Search className="w-8 h-8 sm:w-10 sm:h-10 text-slate-400" />
-            </div>
-            <h3 className="text-xl sm:text-2xl font-semibold text-slate-800 mb-2">No problems found</h3>
-            <p className="text-slate-600 mb-6 max-w-md mx-auto text-sm sm:text-base">Try adjusting your search</p>
-            <button 
-              onClick={resetFilters}
-              className="px-6 py-3 bg-[#0652e9] text-white rounded-xl hover:bg-[#0547d1] transition-colors shadow-lg hover:shadow-xl text-sm sm:text-base"
-            >
-              Clear Filters
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-3 sm:space-y-4">
-            {filteredProblems.map((problem) => (
-              <div key={problem.problem_id} className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg hover:shadow-xl transition-all border border-slate-200 hover:border-[#0652e9]/30 group">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex-1 w-full">
-                    <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <span className="text-slate-400 font-medium text-sm">#{problem.problem_id}</span>
-                      <h3 className="cursor-pointer text-lg sm:text-xl font-bold text-slate-800 group-hover:text-[#0652e9] transition-colors line-clamp-1">
-                        {problem.title}
-                      </h3>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 mb-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(problem.difficulty)}`}>
-                        {problem.difficulty}
-                      </span>
-                      {solvedProblemIds.includes(problem.problem_id) && (
-                        <div className="flex items-center gap-1 text-emerald-600 text-sm">
-                          <CheckCircle className="w-4 h-4" />
-                          <span className="font-medium">Solved</span>
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-slate-600 text-sm sm:text-base mb-3 line-clamp-2">{problem.description}</p>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {problem.tags && problem.tags.slice(0, 2).map((tag) => (
-                        <span key={tag} className="px-2 py-1 bg-indigo-50 text-[#0652e9] rounded-lg text-xs font-medium hover:bg-indigo-100 transition-colors">
-                          {tag}
-                        </span>
-                      ))}
-                      {problem.tags && problem.tags.length > 2 && (
-                        <span className="px-2 py-1 bg-indigo-50 text-[#0652e9] rounded-lg text-xs font-medium hover:bg-indigo-100 transition-colors">
-                          +{problem.tags.length - 2}
-                        </span>
-                      )}
-                      <span className="text-slate-500 text-xs sm:text-sm flex items-center gap-1">
-                        <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4" />
-                        Acceptance: {problem.total_submissions > 0 ? `${ Number(((problem.accepted_submissions/problem.total_submissions)*100).toFixed(2))}%` : 'N/A'}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <button 
-                    onClick={() => handleSolve(problem.problem_id)}
-                    className="cursor-pointer w-full sm:w-auto px-4 py-2.5 sm:px-8 sm:py-3 bg-gradient-to-r from-[#0652e9] to-indigo-600 text-white text-sm sm:text-lg font-semibold rounded-lg sm:rounded-xl hover:from-[#0547d1] hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl hover:shadow-[#0652e9]/30 hover:scale-105 transform mt-2 sm:mt-0"
-                  >
-                    {solvedProblemIds.includes(problem.problem_id) ? 'Resolve' : 'Solve'}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Reused Problem List Component */}
+        <ProblemList data={filteredProblems} />
       </div>
     </div>
   );

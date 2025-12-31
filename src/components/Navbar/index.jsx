@@ -316,12 +316,21 @@ const Navbar = () => {
                 openDropdown === "products" ? "max-h-32" : "max-h-0"
               }`}
             >
-              <NavLink
-                to="/guest-editor"
-                className="block px-6 py-2 text-sm text-green-600 hover:bg-green-50 rounded-md ml-3 my-1 font-medium"
-              >
-                Guest-Compiler
-              </NavLink>
+              {user ? (
+                <NavLink
+                  to="/compiler"
+                  className="block px-6 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md ml-3 my-1 font-medium"
+                >
+                  Compiler
+                </NavLink>
+              ) : (
+                <NavLink
+                  to="/guest-editor"
+                  className="block px-6 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md ml-3 my-1 font-medium"
+                >
+                  Guest-Compiler
+                </NavLink>
+              )}
               <NavLink
                 to="/problems"
                 className="block px-6 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md ml-3 my-1 font-medium"
