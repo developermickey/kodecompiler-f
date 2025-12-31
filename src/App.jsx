@@ -21,6 +21,9 @@ import MainCompiler from "./pages/MainEditor";
 import LoginGuard from "./pages/Login/LoginGuard";
 import ContestQuestion from "./pages/WeeklyChallenges/ContestQuestions";
 
+import InterviewExperiences from "./pages/InterviewExperience";
+import SelectedExperience from "./pages/InterviewExperience/selectedExperience";
+
 const App = () => {
   return (
     <BrowserRouter>
@@ -28,7 +31,15 @@ const App = () => {
       <Routes>
         {/* --- PUBLIC ROUTES --- */}
         <Route path="/" element={<Home />} />
-        {/* <Route path="/problems" element={<Arena />} /> */}
+        <Route path="/problems" element={<Arena />} />
+        <Route
+          path="/interview-experiences"
+          element={<InterviewExperiences />}
+        />
+        <Route
+          path="/interview-experiences/:experienceId"
+          element={<SelectedExperience />}
+        />
         <Route path="/problem/:problemId" element={<Problem />} />
         <Route path="/about-us" element={<About />} />
         <Route path="/guest-editor" element={<GuestEditor />} />{" "}
