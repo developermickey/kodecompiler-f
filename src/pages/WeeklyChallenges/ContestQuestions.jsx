@@ -165,7 +165,7 @@ const ContestQuestion = () => {
       if (existingStyle) existingStyle.remove();
     };
   }, [darkMode]);
-  const [question_number, setQuestionNumber] = useState(1); // For now, we use question number 1
+  const [question_number, setQuestionNumber] = useState(0); // For now, we use question number 1
   // Fetch Contest Details
   useEffect(() => {
     console.log("Fetching contest details for ID:", id);
