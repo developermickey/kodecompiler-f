@@ -1,26 +1,28 @@
-import React from 'react'
-import Navbar from './components/Navbar'
-import Footer from './components/Footer'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import Home from './pages/Home'
-import About from './pages/About'
-import Login from './pages/Login'
-import Register from './pages/Register'
-import GuestEditor from './pages/GuestEditor'
-import Arena from './pages/Arena'
-import Problem from './pages/Problem'
-import Welcome from './pages/User/Welcome'
-import PrivacyPolicy from './pages/PrivacyPolicy'
-import NotFound from './pages/NotFound'
-import TermsOfService from './pages/TermsOfService'
-import RefundPolicy from './pages/RefundPolicy'
-import Disclaimer from './pages/Disclaimer'
-import WeeklyChallenges from './pages/WeeklyChallenges'
-import ContestStartPage from './pages/WeeklyChallenges/ContestStartPage'
-import MainCompiler from "./pages/MainEditor"
-import LoginGuard from "./pages/Login/LoginGuard"
-import InterviewExperiences from "./pages/InterviewExperience"
-import SelectedExperience from './pages/InterviewExperience/selectedExperience'
+import React from "react";
+import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Home from "./pages/Home";
+import About from "./pages/About";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import GuestEditor from "./pages/GuestEditor";
+import Arena from "./pages/Arena";
+import Problem from "./pages/Problem";
+import Welcome from "./pages/User/Welcome";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import NotFound from "./pages/NotFound";
+import TermsOfService from "./pages/TermsOfService";
+import RefundPolicy from "./pages/RefundPolicy";
+import Disclaimer from "./pages/Disclaimer";
+import WeeklyChallenges from "./pages/WeeklyChallenges";
+import ContestStartPage from "./pages/WeeklyChallenges/ContestStartPage";
+import MainCompiler from "./pages/MainEditor";
+import LoginGuard from "./pages/Login/LoginGuard";
+import ContestQuestion from "./pages/WeeklyChallenges/ContestQuestions";
+
+import InterviewExperiences from "./pages/InterviewExperience";
+import SelectedExperience from "./pages/InterviewExperience/selectedExperience";
 
 const App = () => {
   return (
@@ -30,8 +32,14 @@ const App = () => {
         {/* --- PUBLIC ROUTES --- */}
         <Route path="/" element={<Home />} />
         <Route path="/problems" element={<Arena />} />
-         <Route path="/interview-experiences" element={<InterviewExperiences/>} />
-          <Route path="/interview-experiences/:experienceId" element={<SelectedExperience/>} />
+        <Route
+          path="/interview-experiences"
+          element={<InterviewExperiences />}
+        />
+        <Route
+          path="/interview-experiences/:experienceId"
+          element={<SelectedExperience />}
+        />
         <Route path="/problem/:problemId" element={<Problem />} />
         <Route path="/about-us" element={<About />} />
         <Route path="/guest-editor" element={<GuestEditor />} />{" "}
@@ -49,6 +57,7 @@ const App = () => {
         {/* 1. User Dashboard / Welcome */}
         <Route path="/welcome" element={<Welcome />} />
         <Route path="/weekly-challenges" element={<WeeklyChallenges />} />
+        <Route path="/challenge/:id/start" element={<ContestQuestion />} />
         <Route path="/challenge/:id" element={<ContestStartPage />} />
         {/* 2. Main Compiler */}
         <Route

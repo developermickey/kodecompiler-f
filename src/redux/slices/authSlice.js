@@ -1,23 +1,23 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import axios from "axios";
 
-const API_URL = 'http://localhost:5000/api/auth';
+const API_URL = "http://localhost:5000/api/auth";
 
 /* ========================= LOGIN ========================= */
 export const loginUser = createAsyncThunk(
-  'auth/login',
+  "auth/login",
   async (credentials, { rejectWithValue }) => {
     try {
       const response = await axios.post(`${API_URL}/login`, credentials, {
         headers: {
-          accept: 'application/json',
-          'Content-Type': 'application/json',
+          accept: "application/json",
+          "Content-Type": "application/json",
         },
         withCredentials: true, // 🔑 httpOnly cookie
       });
 
       localStorage.setItem(
-        'user',
+        "user",
         JSON.stringify({
           _id: response.data._id,
           username: response.data.username,
@@ -30,25 +30,26 @@ export const loginUser = createAsyncThunk(
       if (error.response?.data) {
         return rejectWithValue(error.response.data);
       }
-      return rejectWithValue({ detail: 'Network error. Please try again.' });
+      return rejectWithValue({ detail: "Network error. Please try again." });
     }
   }
 );
 
 /* ========================= REGISTER ========================= */
 export const registerUser = createAsyncThunk(
-  'auth/register',
+  "auth/register",
   async (userData, { rejectWithValue }) => {
     try {
       const response = await axios.post(`${API_URL}/register`, userData, {
         headers: {
-          accept: 'application/json',
-          'Content-Type': 'application/json',
+          accept: "application/json",
+          "Content-Type": "application/json",
         },
+        withCredentials: true,
       });
 
       localStorage.setItem(
-        'user',
+        "user",
         JSON.stringify({
           _id: response.data._id,
           username: response.data.username,
@@ -61,27 +62,23 @@ export const registerUser = createAsyncThunk(
       if (error.response?.data) {
         return rejectWithValue(error.response.data);
       }
-      return rejectWithValue({ detail: 'Network error. Please try again.' });
+      return rejectWithValue({ detail: "Network error. Please try again." });
     }
   }
 );
 
 /* ========================= OTP ========================= */
 export const getOTP = createAsyncThunk(
-  'auth/getOTP',
+  "auth/getOTP",
   async (payload, { rejectWithValue }) => {
     try {
-      const res = await axios.post(
-        `${API_URL}/login/otp/request`,
-        payload,
-        {
-          headers: {
-            accept: 'application/json',
-            'Content-Type': 'application/json',
-          },
-          withCredentials: true,
-        }
-      );
+      const res = await axios.post(`${API_URL}/login/otp/request`, payload, {
+        headers: {
+          accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        withCredentials: true,
+      });
       return res.data;
     } catch (error) {
       return rejectWithValue(
@@ -92,23 +89,19 @@ export const getOTP = createAsyncThunk(
 );
 
 export const verifyOTP = createAsyncThunk(
-  'auth/verifyOTP',
+  "auth/verifyOTP",
   async (payload, { rejectWithValue }) => {
     try {
-      const res = await axios.post(
-        `${API_URL}/login/otp/verify`,
-        payload,
-        {
-          headers: {
-            accept: 'application/json',
-            'Content-Type': 'application/json',
-          },
-          withCredentials: true,
-        }
-      );
+      const res = await axios.post(`${API_URL}/login/otp/verify`, payload, {
+        headers: {
+          accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        withCredentials: true,
+      });
 
       localStorage.setItem(
-        'user',
+        "user",
         JSON.stringify({
           _id: res.data._id,
           username: res.data.username,
@@ -119,7 +112,7 @@ export const verifyOTP = createAsyncThunk(
       return res.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || { detail: 'OTP verification failed' }
+        error.response?.data || { detail: "OTP verification failed" }
       );
     }
   }
@@ -127,7 +120,7 @@ export const verifyOTP = createAsyncThunk(
 
 /* ========================= GOOGLE LOGIN ========================= */
 export const googleLogin = createAsyncThunk(
-  'auth/googleLogin',
+  "auth/googleLogin",
   async (_, { rejectWithValue }) => {
     try {
       const response = await axios.get(`${API_URL}/google/login`, {
@@ -142,7 +135,7 @@ export const googleLogin = createAsyncThunk(
 
 /* ========================= LOGOUT (COOKIE CLEAR) ========================= */
 export const logoutUser = createAsyncThunk(
-  'auth/logoutUser',
+  "auth/logoutUser",
   async (_, { rejectWithValue }) => {
     try {
       await axios.post(
@@ -152,16 +145,16 @@ export const logoutUser = createAsyncThunk(
       );
       return true;
     } catch (error) {
-      return rejectWithValue('Logout failed');
+      return rejectWithValue("Logout failed");
     }
   }
 );
 
 /* ========================= SLICE ========================= */
 const authSlice = createSlice({
-  name: 'auth',
+  name: "auth",
   initialState: {
-    user: JSON.parse(localStorage.getItem('user')) || null,
+    user: JSON.parse(localStorage.getItem("user")) || null,
 
     isLoading: false,
     error: null,
@@ -238,7 +231,7 @@ const authSlice = createSlice({
         state.user = null;
         state.error = null;
         state.success = false;
-        localStorage.removeItem('user');
+        localStorage.removeItem("user");
       });
   },
 });

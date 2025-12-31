@@ -1,15 +1,24 @@
 // src/redux/store.js
-import { configureStore } from '@reduxjs/toolkit';
-import authReducer from './slices/authSlice';
+import { configureStore } from "@reduxjs/toolkit";
+import authReducer from "./slices/authSlice";
 import problemsReducer from "./slices/problemSlice";
 import userProgressReducer from "./slices/userprogressSlice";
-import { pastChallengesReducer, weeklyChallengesReducer, normalChallengesReducer } from './slices/challengesSlice';
-import {userchallengeprogressReducer} from "./slices/userchallengesprogressSlice";
-import {globalLeaderboardReducer} from "./slices/challengesGlobalLeaderboardSlice"
-import {challengesCalendarReducer} from "./slices/challengesSlice";
-import codeReducer from './slices/codeSlice'
-import { interviewexperienceReducer, experienceReducer } from './slices/interviewExperienceSlice';
+import {
+  pastChallengesReducer,
+  weeklyChallengesReducer,
+  normalChallengesReducer,
+} from "./slices/challengesSlice";
+import { userchallengeprogressReducer } from "./slices/userchallengesprogressSlice";
+import { globalLeaderboardReducer } from "./slices/challengesGlobalLeaderboardSlice";
+import { challengesCalendarReducer } from "./slices/challengesSlice";
+import codeReducer from "./slices/codeSlice";
 
+import contestReducer from "./slices/contestSlice";
+
+import {
+  interviewexperienceReducer,
+  experienceReducer,
+} from "./slices/interviewExperienceSlice";
 
 export const store = configureStore({
   reducer: {
@@ -23,8 +32,11 @@ export const store = configureStore({
     globalLeaderboard: globalLeaderboardReducer,
     challengesCalendar: challengesCalendarReducer,
     code: codeReducer,
+
+    contest: contestReducer,
+
     interviewExperience: interviewexperienceReducer,
-    experience: experienceReducer
+    experience: experienceReducer,
     // Add other reducers here
   },
 });
