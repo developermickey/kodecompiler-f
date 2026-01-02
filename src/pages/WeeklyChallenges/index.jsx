@@ -298,7 +298,7 @@ const WeeklyChallenges = () => {
 </div>
 
 
-        
+
 
         {/* Continue with the rest of your component... */}
             {/* Enhanced Tabs */}
