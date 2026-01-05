@@ -23,6 +23,8 @@ import ContestQuestion from "./pages/WeeklyChallenges/ContestQuestions";
 
 import InterviewExperiences from "./pages/InterviewExperience";
 import SelectedExperience from "./pages/InterviewExperience/selectedExperience";
+import Profile from "./pages/Account/Index";
+import ProfileComponent from "./pages/Account/Index";
 
 const App = () => {
   return (
@@ -56,6 +58,7 @@ const App = () => {
         <Route path="/disclaimer" element={<Disclaimer />} />
         {/* 1. User Dashboard / Welcome */}
         <Route path="/welcome" element={<Welcome />} />
+        <Route path="/account" element={<ProfileComponent />} />
         <Route path="/weekly-challenges" element={<WeeklyChallenges />} />
         <Route path="/challenge/:id/start" element={<ContestQuestion />} />
         <Route path="/challenge/:id" element={<ContestStartPage />} />
