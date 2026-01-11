@@ -497,6 +497,11 @@ const Problem = () => {
     }, 2000);
   };
 
+  const resetcode = ()=>
+  {
+    setCode(problem.starter_code[selectedLanguage])
+  }
+
   if (!problem) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-zinc-950 to-zinc-900 flex items-center justify-center">
@@ -869,6 +874,7 @@ const Problem = () => {
           {/* Action Buttons */}
           <button
             className={`cursor-pointer p-2 rounded-lg ${hoverBg} transition-colors`}
+            onClick={resetcode}
           >
             <History className={`w-4 h-4 ${textTertiary}`} />
           </button>
