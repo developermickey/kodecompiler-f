@@ -1,1167 +1,1024 @@
-import { useEffect, useState } from 'react';
-import { formatDistanceToNow } from 'date-fns';
-import { Info, Trophy, User, Calendar, Activity,Loader, Flame, Medal,Eye, CheckCircle, Clock, Target, TrendingUp, Award, Users, Zap, ChevronRight, Star, Play, AlertCircle, Timer, HelpCircle } from 'lucide-react';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchnormalchallenges, fetchpastchallenges, fetchweeklychallenges, fetchChallengesCalendar } from "../../redux/slices/challengesSlice"
-import { fetchuserchallengeprogress } from "../../redux/slices/userchallengesprogressSlice"
-import { fetchGlobalLeaderboard } from '../../redux/slices/challengesGlobalLeaderboardSlice';
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  fetchnormalchallenges,
+  fetchpastchallenges,
+  fetchweeklychallenges,
+  fetchChallengesCalendar,
+} from "../../redux/slices/challengesSlice";
+import { fetchuserchallengeprogress } from "../../redux/slices/userchallengesprogressSlice";
+import { fetchGlobalLeaderboard } from "../../redux/slices/challengesGlobalLeaderboardSlice";
+import { Loader } from "lucide-react";
+import React from "react";
+import {
+  Flame,
+  ChevronLeft,
+  ChevronRight,
+  Calendar as CalendarIcon,
+  Trophy,
+  Award,
+  CheckCircle,
+  Users,
+  User,
+  Crown,
+  Medal,
+  Calendar,
+  Clock,
+  TrendingUp,
+  Timer,
+  ArrowRight,
+  Sparkles,
+  Zap,
+  Target,
+} from "lucide-react";
+import {
+  formatDistanceToNow,
+  isPast,
+  isFuture,
+  format,
+  addMonths,
+  subMonths,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  eachDayOfInterval,
+  isSameMonth,
+  isSameDay,
+  isToday,
+} from "date-fns"; // ==========================================
+// 1. DECOY COMPONENTS (Placeholders)
+// ==========================================
 
-const WeeklyChallenges = () => {
-  const [activeTab, setActiveTab] = useState('weekly');
+const ContestHero = ({ active, upcoming }) => {
+  // 1. Determine which contest to feature (Priority: Active > Upcoming > None)
+  const activeContest = active && active.length > 0 ? active[0] : null;
+  const upcomingContest =
+    !activeContest && upcoming && upcoming.length > 0 ? upcoming[0] : null;
+  const contest = activeContest || upcomingContest;
 
-  const dispatch = useDispatch();
-  const user = useSelector((state) => state.auth.user);
-
-  useEffect(() => {
-    dispatch(fetchweeklychallenges());
-    dispatch(fetchpastchallenges({ skip: 0, limit: 10 }));
-    dispatch(fetchnormalchallenges());
-    dispatch(fetchGlobalLeaderboard())
-    dispatch(fetchChallengesCalendar())
-    if (user)
-      dispatch(fetchuserchallengeprogress());
-  }, [dispatch, user]);
-
-  const { weeklycontests, loading, error } = useSelector((state) => state.weeklyChallenges);
-  const { streak, progress, progressloading } = useSelector((state) => state.userChallengesprogress);
-  const { pastchallenges, total, skip, limit } = useSelector((state) => state.pastChallenges);
-  const { normalContests, normalContestsLoading, normalContestsError } = useSelector((state) => state.normalChallenges);
-  const {leaderboard , myRank, totalUsers,leaderboardLoading, leaderboardError} = useSelector((state)=> state.globalLeaderboard);
-  const {calender_current,calender_upcoming,calender_past,calender_loading,calender_error} = useSelector((state) => state.challengesCalendar);
-
-  // Format date function
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const formatDuration = (startDate, endDate) => {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const diffHours = Math.floor((end - start) / (1000 * 60 * 60));
-    if (diffHours < 24) return `${diffHours}h`;
-    return `${Math.floor(diffHours / 24)}d ${diffHours % 24}h`;
-  };
-
-
-  
-
-  // Get status info
-  const getStatusInfo = (status) => {
-    //const status = getContestStatus(startDate, endDate);
-    switch (status) {
-      case 'upcoming':
-        return { 
-          text: 'UPCOMING', 
-          color: 'bg-purple-100 text-purple-800',
-          badgeColor: 'bg-purple-500'
-        };
-      case 'active':
-        return { 
-          text: 'LIVE NOW', 
-          color: 'bg-red-100 text-red-800',
-          badgeColor: 'bg-red-500 animate-pulse'
-        };
-      case 'completed':
-        return { 
-          text: 'COMPLETED', 
-          color: 'bg-green-100 text-green-800',
-          badgeColor: 'bg-green-500'
-        };
-      default:
-        return { 
-          text: 'UPCOMING', 
-          color: 'bg-gray-100 text-gray-800',
-          badgeColor: 'bg-gray-500'
-        };
+  // 2. Helper to handle navigation
+  const handleAction = (id) => {
+    if (activeContest) {
+      window.location.href = `/challenge/${id}`;
+    } else {
+      console.log("Registering for contest:", id);
+      // Add dispatch(registerForContest(id)) here
     }
   };
 
-  // Calculate total points
-  const calculateTotalPoints = (questions) => {
-    if (!questions || !Array.isArray(questions)) return 0;
-    return questions.reduce((acc, cur) => acc + (cur.points || 0), 0);
-  };
-
-  const tabs = [
-    { id: 'weekly', icon: Trophy, label: 'Weekly Contests', badge: weeklycontests?.length > 0 ? 'LIVE' : null, color: 'red' },
-    { id: 'normal', icon: Target, label: 'Contests', badge: normalContests?.length > 0 ? `LIVE` : null, color: 'blue' },
-    { id: 'calendar', icon: Calendar, label: 'Upcoming', badge: calender_upcoming?.length > 0 ? calender_upcoming?.length : null, color: 'purple' },
-    { id: 'past', icon: Clock, label: 'Past Contests', badge:"COMPLETED" , color: 'green' },
-    { id: 'leaderboard', icon: Award, label: 'Global Leaderboard', badge: null, color: 'yellow' },
-  ];
-
-  const fetchcontestdetails = (id) => { 
-  if (user) {
-    window.location.href = `/challenge/${id}`; 
-  } else {
-    window.location.href = `/login`;
-  }
-};
-
-
-  // Function to handle registration
-  const handleRegister = (contestId) => {
-    console.log('Registering for contest:', contestId);
-    // Add your registration logic here
-    // dispatch(registerForContest(contestId));
-  }
-
-
-
-
-  if (loading) 
-    {
-      return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
-            <div className="text-center">
-              <Loader className="w-10 h-10 text-indigo-600 animate-spin mx-auto mb-3" />
-              <p className="text-slate-600 text-sm">Loading Contests...</p>
-            </div>
-          </div>
-      );
-    }
-
-
-  return (
-        
-
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-50 py-8">
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    
-    
-    {/* Error States */}
-    {error && (
-      <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg flex items-start space-x-3">
-        <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-        <div className="flex-1">
-          <p className="text-sm text-red-700">{error.detail || 'Failed to load contests'}</p>
-        </div>
-      </div>
-    )}
-
-    {normalContestsError && (
-      <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg flex items-start space-x-3">
-        <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-        <div className="flex-1">
-          <p className="text-sm text-red-700">Failed to load normal contests</p>
-        </div>
-      </div>
-    )}
-
-    {!progressloading && (
-      <>
-       
-      <div className="mb-8">
-  <div
-    className="bg-gradient-to-r from-blue-600 to-blue-700
-    rounded-2xl px-6 py-5 flex flex-col sm:flex-row
-    items-start sm:items-center justify-between gap-4 shadow-lg"
-  >
-    {/* LEFT CONTENT */}
-    <div>
-      <h1 className="text-2xl font-bold text-white leading-tight">
-        Coding Contests
-      </h1>
-      <p className="text-sm text-blue-100 mt-1">
-        Compete globally and solve curated challenges.
-      </p>
-    </div>
-
-    {/* RIGHT LIVE COUNT (SINGLE PILL) */}
-    <div
-      className="bg-white/15 backdrop-blur-sm border border-white/20
-      rounded-xl px-5 py-2.5 flex items-center gap-2"
-    >
-      <Activity className="w-4 h-4 text-green-300 animate-pulse" />
-
-      <span className="text-white text-lg font-bold">
-        {(weeklycontests?.length || 0) + (normalContests?.length || 0)}
-      </span>
-
-      <span className="text-sm text-blue-100 font-medium">
-        Contest Ongoing
-      </span>
-    </div>
-  </div>
-</div>
-
-
-
-
-        {/* Ultra Attractive Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
-  
-  {/* Current Streak */}
-  <div className="group relative overflow-hidden">
-    <div className="absolute inset-0 bg-gradient-to-r from-orange-500 to-red-500 opacity-0 group-hover:opacity-10 transition-all duration-300"></div>
-    <div className="bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-xl p-5 flex items-center justify-between relative">
-      <div>
-        <div className="text-2xl font-bold text-orange-900">
-          {streak.current_streak}
-        </div>
-        <div className="text-xs font-semibold text-orange-700 tracking-wide uppercase">
-          Current Streak
-        </div>
-        <div className="text-xs text-orange-600 mt-1">days</div>
-      </div>
-      <div className="relative">
-        <div className="text-3xl bg-gradient-to-br from-orange-200 to-red-200 p-3 rounded-full">
-          <Flame className="w-7 h-7 text-orange-600" />
-        </div>
-        
-      </div>
-    </div>
-  </div>
-
-  {/* Longest Streak */}
-  <div className="group relative overflow-hidden">
-    <div className="absolute inset-0 bg-gradient-to-r from-yellow-500 to-amber-500 opacity-0 group-hover:opacity-10 transition-all duration-300"></div>
-    <div className="bg-gradient-to-br from-yellow-50 to-amber-100 border border-yellow-200 rounded-xl p-5 flex items-center justify-between relative">
-      <div>
-        <div className="text-2xl font-bold text-yellow-900">
-          {streak.longest_streak}
-        </div>
-        <div className="text-xs font-semibold text-yellow-700 tracking-wide uppercase">
-          Longest Streak
-        </div>
-        <div className="text-xs text-yellow-600 mt-1">days</div>
-      </div>
-      <div className="relative">
-        <div className="text-3xl bg-gradient-to-br from-yellow-200 to-amber-200 p-3 rounded-full">
-          <Trophy className="w-7 h-7 text-yellow-600" />
-        </div>
-        
-      </div>
-    </div>
-  </div>
-
-  {/* Weeks Active */}
-  <div className="group relative overflow-hidden">
-    <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-indigo-500 opacity-0 group-hover:opacity-10 transition-all duration-300"></div>
-    <div className="bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 rounded-xl p-5 flex items-center justify-between relative">
-      <div>
-        <div className="text-2xl font-bold text-blue-900">
-          {streak.weeks_participated}
-        </div>
-        <div className="text-xs font-semibold text-blue-700 tracking-wide uppercase">
-          Weeks Active
-        </div>
-        <div className="text-xs text-blue-600 mt-1">weeks</div>
-      </div>
-      <div className="relative">
-        <div className="text-3xl bg-gradient-to-br from-blue-200 to-indigo-200 p-3 rounded-full">
-          <Calendar className="w-7 h-7 text-blue-600" />
-        </div>
-      
-      </div>
-    </div>
-  </div>
-
-  {/* Last Played */}
-  <div className="group relative overflow-hidden">
-    <div className="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-500 opacity-0 group-hover:opacity-10 transition-all duration-300"></div>
-    <div className="bg-gradient-to-br from-green-50 to-emerald-100 border border-green-200 rounded-xl p-5 flex items-center justify-between relative">
-      <div>
-        <div className="text-2xl font-bold text-green-900">
-          {streak?.last_participation
-            ? new Date(streak.last_participation).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-              })
-            : "--"}
-        </div>
-        <div className="text-xs font-semibold text-green-700 tracking-wide uppercase">
-          Last Played
-        </div>
-        {streak?.last_participation && (
-          <div className="text-xs text-green-600 mt-1">
-            {new Date(streak.last_participation).getFullYear()}
-          </div>
-        )}
-      </div>
-      <div className="relative">
-        <div className="text-3xl bg-gradient-to-br from-green-200 to-emerald-200 p-3 rounded-full">
-          <Clock className="w-7 h-7 text-green-600" />
-        </div>
-       
-      </div>
-    </div>
-  </div>
-
-</div>
-
-
-
-
-        {/* Continue with the rest of your component... */}
-            {/* Enhanced Tabs */}
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-200 mb-8 overflow-hidden">
-              <div className="flex overflow-x-auto scrollbar-hide">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex-1 min-w-fit px-6 py-4 flex items-center justify-center space-x-2 font-semibold transition-all relative ${
-                      activeTab === tab.id
-                        ? 'text-[#0652e9] bg-blue-50'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                    }`}
-                  >
-                    <tab.icon className="w-5 h-5" />
-                    <span className="text-sm sm:text-base">{tab.label}</span>
-                    {tab.badge && (
-                      <span className={`px-2 py-0.5 text-white text-xs font-bold rounded-full ${
-                        tab.color === 'red' ? 'bg-red-500 animate-pulse' :
-                        tab.color === 'green' ? 'bg-green-500' : 
-                        tab.color === 'blue' ? 'bg-blue-500 animate-pulse' : 
-                        tab.color === 'purple' ? 'bg-purple-500' : 'bg-gray-500'
-                      }`}>
-                        {tab.badge}
-                      </span>
-                    )}
-                    {activeTab === tab.id && (
-                      <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#0652e9]"></div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-           
-           {/* Weekly Contests Tab */}
-{activeTab === 'weekly' && (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    {weeklycontests?.map((contest) => {
-      const totalPoints = calculateTotalPoints(contest.questions);
-      const isCompleted = contest.my_progress?.questions_solved?.length >= contest.questions?.length;
-      
-      return (
-        <div
-          key={contest._id}
-          className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all duration-200 overflow-hidden flex flex-col h-full group"
-        >
-          {/* Card Header with Gradient */}
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-5 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                  <Trophy className="w-4 h-4 text-white" />
-                </div>
-                <div>
-                  <span className="text-xs font-semibold text-blue-100  tracking-wider h-[90px]">Weekly Contest</span>
-                  <h3 className="text-white font-bold text-s leading-tight">{contest.title}</h3>
-                </div>
-              </div>
-              <div className="flex items-center">
-                <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full flex items-center space-x-1">
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                  <span className="text-xs font-bold text-white">LIVE</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Card Body */}
-          <div className="p-5 flex-grow">
-            {/* Time Info */}
-            <div className="mb-4">
-              <div className="flex items-center text-gray-600 text-sm mb-1">
-                <Clock className="w-4 h-4 mr-2 text-gray-400" />
-                <span>Ends: {formatDate(contest.end_date)}</span>
-              </div>
-              {contest.duration && (
-                <div className="flex items-center text-gray-600 text-sm">
-                  <Timer className="w-4 h-4 mr-2 text-gray-400" />
-                  <span>{formatDuration(contest.start_date, contest.end_date)}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Progress Bar - Only show if user has progress */}
-            {(contest.my_progress?.questions_solved?.length >= 0) && (
-              <div className="mb-5">
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="font-medium text-gray-700">Your Progress</span>
-                  <span className="font-bold text-blue-600">
-                    {contest.my_progress?.questions_solved?.length || 0}/{contest.questions?.length || 0}
-                  </span>
-                </div>
-                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
-                    style={{
-                      width: `${contest.questions?.length ?
-                        ((contest.my_progress?.questions_solved?.length || 0) / contest.questions.length) * 100
-                        : 0}%`
-                    }}
-                  ></div>
-                </div>
-              </div>
-            )}
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-3 gap-3 mb-2">
-              <div className="bg-gray-50 rounded-lg p-3 text-center">
-                <div className="flex items-center justify-center mb-1">
-                  <Target className="w-4 h-4 text-gray-600" />
-                </div>
-                <div className="text-lg font-bold text-gray-900">{contest.questions?.length || 0}</div>
-                <div className="text-xs text-gray-500 font-medium mt-1">Problems</div>
-              </div>
-              
-              <div className="bg-gray-50 rounded-lg p-3 text-center">
-                <div className="flex items-center justify-center mb-1">
-                  <Users className="w-4 h-4 text-gray-600" />
-                </div>
-                <div className="text-lg font-bold text-gray-900">{contest.total_participants || 0}</div>
-                <div className="text-xs text-gray-500 font-medium mt-1">Participants</div>
-              </div>
-              
-              <div className="bg-gray-50 rounded-lg p-3 text-center">
-                <div className="flex items-center justify-center mb-1">
-                  <Star className="w-4 h-4 text-gray-600" />
-                </div>
-                <div className="text-lg font-bold text-gray-900">{totalPoints}</div>
-                <div className="text-xs text-gray-500 font-medium mt-1">Points</div>
-              </div>
-            </div>
-
-           
-          </div>
-
-          {/* Action Button */}
-          <div className="px-5 pb-5 pt-2">
-            <button
-              onClick={() => fetchcontestdetails(contest._id)}
-              className={`
-                w-full py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 
-                flex items-center justify-center space-x-2 group-hover:shadow-md
-                ${isCompleted 
-                  ? 'bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700' 
-                  : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700'
-                }
-              `}
-            >
-              {isCompleted ? (
-                <>
-                  <CheckCircle className="w-4 h-4" />
-                  <span>Completed • View Details</span>
-                </>
-              ) : (
-                <>
-                  <Play className="w-4 h-4" />
-                  <span>Join Contest Now</span>
-                </>
-              )}
-            </button>
-            
-            {/* Quick Stats Footer */}
-            <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
-              {contest.my_progress?.questions_solved?.length >= 0 && (
-                <div className="flex items-center">
-                  <CheckCircle className="w-3 h-3 mr-1 text-green-500" />
-                  <span>{contest.my_progress.questions_solved.length} solved</span>
-                </div>
-              )}
-              
-            </div>
-          </div>
-        </div>
-      );
-    })}
-    
-    {/* Empty State */}
-    {(!weeklycontests || weeklycontests.length === 0) && (
-      <div className="col-span-1 md:col-span-2 lg:col-span-3">
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-          <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Trophy className="w-10 h-10 text-blue-400" />
-          </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">No Weekly Contests Available</h3>
-          <p className="text-gray-600 mb-6 max-w-md mx-auto">Weekly contests are updated every Monday. Check back soon for the next challenge!</p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button
-              onClick={() => setActiveTab('normal')}
-              className="px-6 py-2.5 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              Browse Other Contests
-            </button>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Refresh
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
-  </div>
-)}
-
-            {/* Normal Contests Tab - Same layout as Weekly */}
-            {activeTab === 'normal' && (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    {normalContests?.map((contest) => {
-      const statusInfo = getStatusInfo(contest.status);
-      const totalPoints = calculateTotalPoints(contest.questions);
-      const userProgress = contest.my_progress?.questions_solved?.length || 0;
-      const totalQuestions = contest.questions?.length || 0;
-      const isUserCompleted = userProgress >= totalQuestions && totalQuestions > 0;
-      
-      return (
-        <div
-          key={contest._id}
-          className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-teal-300 transition-all duration-200 overflow-hidden flex flex-col h-full group"
-        >
-          {/* Card Header with Gradient */}
-         <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-5 py-4 h-[90px]">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                  <Target className="w-4 h-4 text-white" />
-                </div>
-                <div>
-                  <span className="text-xs font-semibold text-teal-100 tracking-wider">Contest</span>
-                  <h3 className="text-white font-bold text-SM leading-tight">{contest.title}</h3>
-                </div>
-              </div>
-              <div className="flex items-center">
-                <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full flex items-center space-x-1">
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                  <span className="text-xs font-bold text-white">LIVE</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Card Body */}
-          <div className="p-5 flex-grow">
-            {/* Time Info */}
-            <div className="mb-4">
-              <div className="flex items-center text-gray-600 text-sm mb-1">
-                <Clock className="w-4 h-4 mr-2 text-gray-400" />
-                <span>Ends: {formatDate(contest.end_date)}</span>
-              </div>
-            </div>
-
-            {/* Progress Bar - Only show if user has progress */}
-            {userProgress >= 0 && (
-              <div className="mb-5">
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="font-medium text-gray-700">Your Progress</span>
-                  <span className="font-bold text-blue-600">
-                    {userProgress}/{totalQuestions} solved
-                  </span>
-                </div>
-                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-blue-500 to-blue-500 rounded-full transition-all duration-500"
-                    style={{
-                      width: `${totalQuestions ? (userProgress / totalQuestions) * 100 : 0}%`
-                    }}
-                  ></div>
-                </div>
-              </div>
-            )}
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-3 gap-3 mb-2">
-              <div className="bg-gray-50 rounded-lg p-3 text-center">
-                <div className="flex items-center justify-center mb-1">
-                  <Target className="w-4 h-4 text-gray-600" />
-                </div>
-                <div className="text-lg font-bold text-gray-900">{totalQuestions}</div>
-                <div className="text-xs text-gray-500 font-medium mt-1">Problems</div>
-              </div>
-              
-              <div className="bg-gray-50 rounded-lg p-3 text-center">
-                <div className="flex items-center justify-center mb-1">
-                  <Users className="w-4 h-4 text-gray-600" />
-                </div>
-                <div className="text-lg font-bold text-gray-900">{contest.total_participants || 0}</div>
-                <div className="text-xs text-gray-500 font-medium mt-1">Participants</div>
-              </div>
-              
-              <div className="bg-gray-50 rounded-lg p-3 text-center">
-                <div className="flex items-center justify-center mb-1">
-                  <Star className="w-4 h-4 text-gray-600" />
-                </div>
-                <div className="text-lg font-bold text-gray-900">{totalPoints}</div>
-                <div className="text-xs text-gray-500 font-medium mt-1">Points</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Action Button */}
-          <div className="px-5 pb-5 pt-2">
-            <button
-              onClick={() => fetchcontestdetails(contest._id)}
-              className={`
-                w-full py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 
-                flex items-center justify-center space-x-2 group-hover:shadow-md
-                ${isUserCompleted 
-                  ? 'bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700' 
-                  : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-teal-600 hover:to-cyan-700'
-                }
-              `}
-            >
-              {isUserCompleted ? (
-                <>
-                  <CheckCircle className="w-4 h-4" />
-                  <span>Completed • View Details</span>
-                </>
-              ) : (
-                <>
-                  <Play className="w-4 h-4" />
-                  <span>Join Contest Now</span>
-                </>
-              )}
-            </button>
-            
-            {/* Quick Stats Footer */}
-            <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
-              {userProgress >= 0 && (
-                <div className="flex items-center">
-                  <CheckCircle className="w-3 h-3 mr-1 text-green-500" />
-                  <span>{userProgress} solved</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      );
-    })}
-    
-    {/* Empty State for Normal Contests */}
-    {(!normalContests || normalContests.length === 0) && (
-      <div className="col-span-1 md:col-span-2 lg:col-span-3">
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-          <div className="w-20 h-20 bg-teal-50 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Target className="w-10 h-10 text-teal-400" />
-          </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">No Contests Available</h3>
-          <p className="text-gray-600 mb-6 max-w-md mx-auto">Check back soon for new challenges!</p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button
-              onClick={() => setActiveTab('weekly')}
-              className="px-6 py-2.5 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              Browse Weekly Contests
-            </button>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-6 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-600 text-white font-medium rounded-lg hover:from-teal-600 hover:to-cyan-700 transition-colors"
-            >
-              Refresh
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
-  </div>
-)}
-
-            {/* Upcoming Contests Tab (Calendar) */}
-           {activeTab === 'calendar' && (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    {calender_upcoming?.map((contest) => {
-      const totalPoints = calculateTotalPoints(contest.questions);
-      
-      return (
-        <div
-          key={contest._id}
-          className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-purple-300 transition-all duration-200 overflow-hidden flex flex-col h-full group"
-        >
-          {/* Card Header with Purple Gradient */}
-          <div className="bg-gradient-to-r from-purple-700 to-purple-700 px-5 py-4 h-[90px]">
-            <div className="flex items-center justify-between"> 
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                  <Calendar className="w-4 h-4 text-white" />
-                </div>
-                <div>
-                  <span className="text-xs font-semibold text-purple-100  tracking-wider">Upcoming Contest</span>
-                  <h3 className="text-white font-bold text-s leading-tight ">{contest.title}</h3>
-                </div>
-              </div>
-              <div className="flex items-center">
-                <div className="bg-white/20 backdrop-blur-sm px-2 py-1 rounded-full flex items-center space-x-1">
-                  <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
-                  <span className="text-xs font-bold text-white">UPCOMING</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Card Body */}
-          <div className="p-5 flex-grow">
-            {/* Time Information */}
-            <div className="mb-4">
-              <div className="flex items-center text-gray-600 text-sm mb-1">
-                <Calendar className="w-4 h-4 mr-2 text-gray-400" />
-                <span>Starts: {formatDate(contest.start_date)}</span>
-              </div>
-              <div className="flex items-center text-gray-600 text-sm">
-                <Clock className="w-4 h-4 mr-2 text-gray-400" />
-                <span>Ends: {formatDate(contest.end_date)}</span>
-              </div>
-            </div>
-
-        
-           
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 gap-3 mb-2">
-              
-              
-              <div className="bg-blue-50 rounded-lg p-3 text-center">
-                <div className="flex items-center justify-center mb-1">
-                  <Users className="w-4 h-4 text-blue-600" />
-                </div>
-                <div className="text-lg font-bold text-gray-900">{contest.total_participants || 0}</div>
-                <div className="text-xs text-gray-500 font-medium mt-1">Registered</div>
-              </div>
-              
-              <div className="bg-green-50 rounded-lg p-3 text-center">
-                <div className="flex items-center justify-center mb-1">
-                  <Timer className="w-4 h-4 text-green-600" />
-                </div>
-                <div className="text-lg font-bold text-gray-900">{formatDuration(contest.start_date, contest.end_date)}</div>
-                <div className="text-xs text-gray-500 font-medium mt-1">Duration</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Action Button */}
-          <div className="px-5 pb-5 pt-2">
-            <button
-              onClick={() => handleRegister(contest._id)}
-              className="w-full py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 
-                flex items-center justify-center space-x-2 group-hover:shadow-md
-                bg-gradient-to-r from-purple-700 to-purple-800 text-white 
-                from-purple-700 to-purple-800 hover:shadow-md"
-            >
-              <Calendar className="w-4 h-4" />
-              <span>Register Now</span>
-            </button>
-            
-            {/* Countdown Footer */}
-            <div className="mt-3 flex items-center justify-center text-xs text-gray-500">
-              <Clock className="w-3 h-3 mr-1 text-purple-500" />
-              <span>Starts in {formatDistanceToNow(new Date(contest.start_date), { addSuffix: true })}</span>
-            </div>
-          </div>
-        </div>
-      );
-    })}
-    
-    {/* Empty State for Upcoming Contests */}
-    {(!calender_upcoming || calender_upcoming.length === 0) && (
-      <div className="col-span-1 md:col-span-2 lg:col-span-3">
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-          <div className="w-20 h-20 bg-purple-50 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Calendar className="w-10 h-10 text-purple-400" />
-          </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">No Upcoming Contests</h3>
-          <p className="text-gray-600 mb-6 max-w-md mx-auto">New contests will be announced soon. Stay tuned for exciting challenges!</p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button
-              onClick={() => setActiveTab('weekly')}
-              className="px-6 py-2.5 bg-gradient-to-r from-[#0652e9] to-blue-600 text-white font-medium rounded-lg hover:from-[#0652e9] hover:to-blue-700 transition-colors"
-            >
-              <span className="flex items-center justify-center space-x-2">
-                <Trophy className="w-4 h-4" />
-                <span>View Weekly Contests</span>
-              </span>
-            </button>
-            <button
-              onClick={() => setActiveTab('normal')}
-              className="px-6 py-2.5 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors border border-gray-200"
-            >
-              <span className="flex items-center justify-center space-x-2">
-                <Target className="w-4 h-4" />
-                <span>Browse Active Contests</span>
-              </span>
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
-  </div>
-)}
-
-            {/* Past Challenges Tab - Also same layout */}
-            {activeTab === 'past' && (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    {pastchallenges?.map((contest) => {
-      const totalPoints = calculateTotalPoints(contest.questions);
-      const userProgress = contest.my_progress?.questions_solved?.length || 0;
-      const totalQuestions = contest.questions?.length || 0;
-      
-      return (
-        <div
-          key={contest._id}
-          className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-green-300 transition-all duration-200 overflow-hidden flex flex-col h-full group"
-        >
-          {/* Card Header with Green Gradient */}
-          <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-5 py-4 h-[90px]">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                  <Trophy className="w-4 h-4 text-white" />
-                </div>
-                <div>
-                  <span className="text-xs font-semibold text-green-100  tracking-wider">Past Contest</span>
-                  <h3 className="text-white font-bold  text-s leading-tight">{contest.title}</h3>
-                </div>
-              </div>
-              
-              <div className="flex items-center">
-                <div className="bg-white/20 backdrop-blur-sm px-2 py-1 rounded-full flex items-center space-x-1">
-                  <span className="text-xs font-bold text-white">COMPLETED</span>
-                </div>
-                </div>
-              
-            </div>
-          </div>
-
-          {/* Card Body */}
-          <div className="p-5 flex-grow">
-            {/* Time Information */}
-            <div className="mb-4">
-              <div className="flex items-center text-gray-600 text-sm mb-1">
-                <Calendar className="w-4 h-4 mr-2 text-gray-400" />
-                <span>Ended: {formatDate(contest.end_date)}</span>
-              </div>
-            </div>
-
-            {/* Progress Bar - Only show if user has progress */}
-            {userProgress > 0 && (
-              <div className="mb-5">
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="font-medium text-gray-700">Your Progress</span>
-                  <span className="font-bold text-green-600">
-                    {userProgress}/{totalQuestions} solved
-                  </span>
-                </div>
-                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-green-500 to-emerald-500 rounded-full transition-all duration-500"
-                    style={{
-                      width: `${totalQuestions ? (userProgress / totalQuestions) * 100 : 0}%`
-                    }}
-                  ></div>
-                </div>
-              </div>
-            )}
-
-            {/* Stats Grid - Only 3 items as requested */}
-            <div className="grid grid-cols-3 gap-3 mb-2">
-              <div className="bg-gray-50 rounded-lg p-3 text-center">
-                <div className="flex items-center justify-center mb-1">
-                  <Target className="w-4 h-4 text-gray-600" />
-                </div>
-                <div className="text-lg font-bold text-gray-900">{totalQuestions}</div>
-                <div className="text-xs text-gray-500 font-medium mt-1">Problems</div>
-              </div>
-              
-              <div className="bg-gray-50 rounded-lg p-3 text-center">
-                <div className="flex items-center justify-center mb-1">
-                  <Users className="w-4 h-4 text-gray-600" />
-                </div>
-                <div className="text-lg font-bold text-gray-900">{contest.total_participants || 0}</div>
-                <div className="text-xs text-gray-500 font-medium mt-1">Participants</div>
-              </div>
-              
-              <div className="bg-gray-50 rounded-lg p-3 text-center">
-                <div className="flex items-center justify-center mb-1">
-                  <Star className="w-4 h-4 text-gray-600" />
-                </div>
-                <div className="text-lg font-bold text-gray-900">{totalPoints}</div>
-                <div className="text-xs text-gray-500 font-medium mt-1">Points</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Action Button */}
-          <div className="px-5 pb-5 pt-2">
-            <button
-              onClick={() => fetchcontestdetails(contest._id)}
-              className="w-full py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 
-                flex items-center justify-center space-x-2 group-hover:shadow-md
-                bg-gray-600 text-white hover:bg-gray-700 hover:shadow-md"
-            >
-              <Eye className="w-4 h-4" />
-              <span>View Details</span>
-            </button>
-            
-            {/* Performance Info */}
-            {contest.my_progress?.score && (
-              <div className="mt-3 flex items-center justify-center text-xs text-gray-500">
-                <Award className="w-3 h-3 mr-1 text-yellow-500" />
-                <span>Your Score: {contest.my_progress.score} points</span>
-              </div>
-            )}
-          </div>
-        </div>
-      );
-    })}
-    
-    {/* Empty State for Past Contests */}
-    {(!pastchallenges || pastchallenges.length === 0) && (
-      <div className="col-span-1 md:col-span-2 lg:col-span-3">
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-          <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Clock className="w-10 h-10 text-gray-400" />
-          </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">No Past Contests Yet</h3>
-          <p className="text-gray-600 mb-6 max-w-md mx-auto">Participate in current contests to build your competition history!</p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button
-              onClick={() => setActiveTab('weekly')}
-              className="px-6 py-2.5 bg-gradient-to-r from-[#0652e9] to-blue-600 text-white font-medium rounded-lg hover:from-[#0652e9] hover:to-blue-700 transition-colors"
-            >
-              <span className="flex items-center justify-center space-x-2">
-                <Trophy className="w-4 h-4" />
-                <span>View Weekly Contests</span>
-              </span>
-            </button>
-            <button
-              onClick={() => setActiveTab('normal')}
-              className="px-6 py-2.5 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors border border-gray-200"
-            >
-              <span className="flex items-center justify-center space-x-2">
-                <Target className="w-4 h-4" />
-                <span>Browse Active Contests</span>
-              </span>
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
-  </div>
-)}
-
-
-
-            {activeTab === 'leaderboard' && (
-  <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-
-    {/* ===== HEADER ===== */}
-    <div className="px-6 py-6 bg-gradient-to-r from-blue-700 to-blue-800 rounded-t-2xl">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
-            <Trophy className="w-6 h-6 text-white" />
-          </div>
+  // 3. Render Empty State if no data
+  if (!contest) {
+    return (
+      <div className="relative overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-8 mb-8 text-white shadow-lg">
+        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
           <div>
-            <h2 className="text-2xl font-bold text-white tracking-tight">
-              Global Leaderboard
-            </h2>
-            <p className="text-sm text-blue-100/90 mt-1">
-              Top performers across all contests • Updated daily
+            <h2 className="text-2xl font-bold mb-2">Sharpen Your Skills</h2>
+            <p className="text-gray-300 max-w-md">
+              No contests are currently scheduled. Explore our problem archive
+              to keep your streak alive!
             </p>
           </div>
+          <button className="px-6 py-3 bg-white text-gray-900 rounded-xl font-semibold hover:bg-gray-100 transition-colors flex items-center gap-2">
+            <Sparkles className="w-4 h-4" />
+            Browse Problems
+          </button>
         </div>
+      </div>
+    );
+  }
 
-        {/* My Rank */}
-        {myRank && (
-          <div className="flex items-center gap-3 bg-white/15 backdrop-blur-sm px-5 py-3 rounded-xl border border-white/30">
-            <User className="w-4 h-4 text-white" />
-            <div className="text-white">
-              {user? <>
-              <span className="text-sm font-medium text-white/90">Your Rank</span>
-              <div className="text-xl font-bold text-yellow-300">#{myRank}</div></>:<span className="text-sm font-medium text-white/90">Login to Know Your Rank</span>}
-             
-              
+  // 4. Determine display variables based on state
+  const isLive = !!activeContest;
+  const badgeText = isLive ? "LIVE CONTEST" : "UPCOMING CONTEST";
+  const badgeStyle = isLive
+    ? "bg-red-500/10 text-red-600 border-red-500/20"
+    : "bg-blue-500/10 text-blue-600 border-blue-500/20";
+
+  const dateLabel = isLive ? "Ends in" : "Starts in";
+  const targetDate = isLive
+    ? new Date(contest.end_date)
+    : new Date(contest.start_date);
+
+  return (
+    <div className="relative overflow-hidden bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 mb-8 group">
+      {/* Decorative Background Elements */}
+      <div
+        className={`absolute top-0 right-0 w-64 h-64 bg-gradient-to-br ${isLive ? "from-red-50 to-orange-50" : "from-blue-50 to-indigo-50"} rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/4 group-hover:opacity-100 transition-opacity duration-500`}
+      ></div>
+
+      <div className="relative z-10 p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        {/* Left Content */}
+        <div className="flex-1 space-y-4">
+          {/* Badge & Meta */}
+          <div className="flex items-center gap-3">
+            <span
+              className={`px-3 py-1 text-xs font-bold tracking-wider rounded-full border ${badgeStyle} flex items-center gap-1.5`}
+            >
+              {isLive ? (
+                <Zap className="w-3 h-3 fill-current" />
+              ) : (
+                <Calendar className="w-3 h-3" />
+              )}
+              {badgeText}
+            </span>
+            <span className="text-sm text-gray-500 flex items-center gap-1">
+              <Calendar className="w-3 h-3" />
+              {format(new Date(contest.start_date), "MMM d, yyyy")}
+            </span>
+          </div>
+
+          {/* Title */}
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-blue-600 tracking-tight mb-1">
+              {contest.title}
+            </h2>
+            <p className="text-gray-500 text-sm sm:text-base line-clamp-2 max-w-xl">
+              {contest.description ||
+                "Join developers worldwide in this challenge. Solve algorithmic problems and climb the leaderboard."}
+            </p>
+          </div>
+
+          {/* Timer / Status */}
+          <div className="flex items-center gap-2 text-gray-600 font-medium">
+            <div
+              className={`p-2 rounded-lg ${isLive ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600"}`}
+            >
+              <Timer className="w-5 h-5" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs uppercase tracking-wide text-gray-400 font-bold">
+                {dateLabel}
+              </span>
+              <span className="text-sm font-mono font-semibold">
+                {formatDistanceToNow(targetDate, { addSuffix: true })}
+              </span>
             </div>
           </div>
-        )}
-      </div>
-    </div>
-
-    {/* ===== TABLE CONTAINER ===== */}
-    <div className="overflow-x-auto">
-      {/* ===== TABLE HEADER ===== */}
-      <div className="min-w-[800px]">
-        <div className="grid grid-cols-12 px-6 py-4 text-xs font-semibold text-gray-600 border-b bg-gray-50/80">
-          <div className="col-span-1 text-center font-medium uppercase tracking-wide">Rank</div>
-          <div className="col-span-5 font-medium uppercase tracking-wide">User</div>
-          <div className="col-span-2 text-center font-medium uppercase tracking-wide">Current Streak</div>
-          <div className="col-span-2 text-center font-medium uppercase tracking-wide">Solved</div>
-          <div className="col-span-2 text-center font-medium uppercase tracking-wide">Weeks Active</div>
         </div>
 
-        {/* ===== SCROLLABLE LIST ===== */}
-        <div className="max-h-[580px] overflow-y-auto divide-y divide-gray-100">
-          {leaderboard?.slice(0, 100).map((userItem, index) => {
-            const rank = userItem.rank ?? index + 1;
-            const isMe = user && userItem.user_id === user._id;
-            const rankClass = rank <= 3 ? 'font-black' : 'font-bold';
+        {/* Right Action (Desktop) */}
+        <div className="flex-shrink-0 w-full md:w-auto mt-4 md:mt-0">
+          <button
+            onClick={() => handleAction(contest._id)}
+            className={`
+              w-full md:w-auto px-8 py-4 rounded-xl font-bold text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2
+              ${
+                isLive
+                  ? "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-red-600 hover:to-orange-700"
+                  : "bg-gray-900 hover:bg-black shadow-gray-200"
+              }
+            `}
+          >
+            {isLive ? (
+              <>
+                <Zap className="w-5 h-5 fill-white" />
+                Enter Contest
+              </>
+            ) : (
+              <>
+                <Calendar className="w-5 h-5" />
+                Register Now
+              </>
+            )}
+            <ArrowRight className="w-4 h-4 ml-1 opacity-80" />
+          </button>
+
+          {/* Participant Count (Optional aesthetic) */}
+          {contest.total_participants > 0 && (
+            <div className="mt-3 text-center md:text-right text-xs text-gray-400 font-medium">
+              <span className="text-gray-700 font-bold">
+                {contest.total_participants.toLocaleString()}
+              </span>{" "}
+              registered
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Progress Bar (Only visible if Live and user has progress) */}
+      {isLive && contest.my_progress && (
+        <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-100">
+          <div
+            className="h-full bg-blue-500 transition-all duration-1000"
+            style={{
+              width: `${((contest.my_progress.questions_solved?.length || 0) / (contest.questions?.length || 1)) * 100}%`,
+            }}
+          ></div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const UserStatsCard = ({ streak }) => {
+  // 1. Safe access to data with defaults
+  const currentStreak = streak?.current_streak || 0;
+  const longestStreak = streak?.longest_streak || 0;
+  const weeksActive = streak?.weeks_participated?.length || 0;
+  const lastPlayed = streak?.last_participation
+    ? format(new Date(streak.last_participation), "MMM d, yyyy")
+    : "Never";
+
+  // 2. Determine "Heat" level for the flame visual
+  const isActive = currentStreak > 0;
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      {/* Header / Title */}
+      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+        <h3 className="font-bold text-gray-800 flex items-center gap-2">
+          <TrendingUp className="w-5 h-5 text-gray-500" />
+          My Progress
+        </h3>
+      </div>
+
+      <div className="p-5">
+        {/* Primary Stat: Current Streak */}
+        <div className="flex items-center justify-between mb-6 p-4 bg-orange-50 rounded-xl border border-orange-100 relative overflow-hidden group">
+          {/* Animated Background Effect */}
+          <div className="absolute top-0 right-0 w-20 h-20 bg-orange-400 rounded-full blur-2xl opacity-10 -mr-4 -mt-4 group-hover:opacity-20 transition-opacity"></div>
+
+          <div>
+            <div className="text-xs font-bold text-orange-600 uppercase tracking-wider mb-1">
+              Current Streak
+            </div>
+            <div className="text-3xl font-black text-gray-900 leading-none">
+              {currentStreak}{" "}
+              <span className="text-sm font-medium text-gray-500">days</span>
+            </div>
+          </div>
+
+          <div
+            className={`
+            w-12 h-12 rounded-full flex items-center justify-center shadow-sm
+            ${isActive ? "bg-gradient-to-br from-orange-400 to-red-500 text-white" : "bg-gray-200 text-gray-400"}
+          `}
+          >
+            <Flame
+              className={`w-6 h-6 ${isActive ? "animate-pulse" : ""}`}
+              fill={isActive ? "currentColor" : "none"}
+            />
+          </div>
+        </div>
+
+        {/* Secondary Stats Grid */}
+        <div className="grid grid-cols-2 gap-4">
+          {/* Longest Streak */}
+          <div className="p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors border border-transparent hover:border-gray-200">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Trophy className="w-4 h-4 text-yellow-600" />
+              <span className="text-xs font-semibold text-gray-500">
+                Max Streak
+              </span>
+            </div>
+            <div className="text-lg font-bold text-gray-800">
+              {longestStreak}
+            </div>
+          </div>
+
+          {/* Weeks Active */}
+          <div className="p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors border border-transparent hover:border-gray-200">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Calendar className="w-4 h-4 text-blue-600" />
+              <span className="text-xs font-semibold text-gray-500">
+                Active Weeks
+              </span>
+            </div>
+            <div className="text-lg font-bold text-gray-800">{weeksActive}</div>
+          </div>
+
+          {/* Last Played (Full Width) */}
+          <div className="col-span-2 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors border border-transparent hover:border-gray-200 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-green-600" />
+              <span className="text-xs font-semibold text-gray-500">
+                Last Participation
+              </span>
+            </div>
+            <div className="text-sm font-bold text-gray-800">{lastPlayed}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const MiniCalendar = ({ calendarData = [] }) => {
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  // --- 1. Calendar Generation Logic ---
+  const startDate = startOfWeek(startOfMonth(currentMonth));
+  const endDate = endOfWeek(endOfMonth(currentMonth));
+
+  const calendarDays = eachDayOfInterval({
+    start: startDate,
+    end: endDate,
+  });
+
+  const weekDays = ["S", "M", "T", "W", "T", "F", "S"];
+
+  // --- 2. Data Helpers ---
+  // Check if a specific day has a contest
+  const getEventsForDay = (day) => {
+    return calendarData.filter((event) =>
+      isSameDay(new Date(event.start_date), day),
+    );
+  };
+
+  // Get next 3 upcoming events for the list below
+  const upcomingEvents = calendarData
+    .filter((event) => isFuture(new Date(event.start_date)))
+    .sort((a, b) => new Date(a.start_date) - new Date(b.start_date))
+    .slice(0, 3);
+
+  // --- 3. Handlers ---
+  const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
+  const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      {/* Header */}
+      <div className="px-4 py-3 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between">
+        <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+          <CalendarIcon className="w-4 h-4 text-purple-500" />
+          {format(currentMonth, "MMMM yyyy")}
+        </h3>
+        <div className="flex gap-1">
+          <button
+            onClick={prevMonth}
+            className="p-1 hover:bg-gray-200 rounded text-gray-500"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={nextMonth}
+            className="p-1 hover:bg-gray-200 rounded text-gray-500"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      <div className="p-4">
+        {/* Weekday Headers */}
+        <div className="grid grid-cols-7 mb-2">
+          {weekDays.map((day, i) => (
+            <div
+              key={i}
+              className="text-center text-xs font-semibold text-gray-400"
+            >
+              {day}
+            </div>
+          ))}
+        </div>
+
+        {/* Days Grid */}
+        <div className="grid grid-cols-7 gap-y-2">
+          {calendarDays.map((day, idx) => {
+            const dayEvents = getEventsForDay(day);
+            const hasEvent = dayEvents.length > 0;
+            const isCurrentMonth = isSameMonth(day, currentMonth);
+            const isTodayDate = isToday(day);
 
             return (
               <div
-                key={userItem._id}
-                className={`grid grid-cols-12 items-center px-6 py-4 transition-all duration-200 min-w-[800px]
-                  ${isMe
-                    ? 'bg-gradient-to-r from-blue-50/80 to-blue-50/40 border-l-4 border-[#0652e9] shadow-sm'
-                    : 'hover:bg-gray-50/70'}
-                  ${rank <= 3 ? 'bg-gradient-to-r from-gray-50/60 to-transparent' : ''}
-                `}
+                key={idx}
+                className="relative flex flex-col items-center group"
               >
-                {/* Rank */}
-                <div className="col-span-1 text-center">
-                  <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full
-                    ${rank === 1 ? 'bg-gradient-to-br from-yellow-100 to-yellow-200 text-yellow-700' : ''}
-                    ${rank === 2 ? 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600' : ''}
-                    ${rank === 3 ? 'bg-gradient-to-br from-orange-100 to-orange-200 text-orange-700' : ''}
-                    ${rank > 3 ? 'bg-gray-100 text-gray-700' : ''}
-                  `}>
-                    <span className={`${rankClass} ${rank <= 3 ? 'text-lg' : ''}`}>
-                      {rank}
-                    </span>
-                  </div>
+                <div
+                  className={`
+                    w-8 h-8 flex items-center justify-center text-xs rounded-full transition-all cursor-default
+                    ${!isCurrentMonth ? "text-gray-300" : "text-gray-700"}
+                    ${isTodayDate ? "bg-purple-100 text-purple-700 font-bold" : ""}
+                    ${hasEvent && isCurrentMonth && !isTodayDate ? "bg-gray-100 font-semibold text-gray-900" : ""}
+                  `}
+                >
+                  {format(day, "d")}
                 </div>
 
-                {/* User Info */}
-                <div className="col-span-5 flex items-center gap-3">
-                  <div className="flex-shrink-0">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 
-                      flex items-center justify-center font-semibold text-gray-700 border border-gray-200">
-                      {userItem.username.charAt(0).toUpperCase()}
+                {/* Event Dot Marker */}
+                {hasEvent && (
+                  <div className="absolute bottom-0.5 w-1 h-1 rounded-full bg-purple-500"></div>
+                )}
+
+                {/* Tooltip on Hover */}
+                {hasEvent && (
+                  <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 bg-gray-900 text-white text-xs rounded-md py-2 px-3 opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none shadow-xl">
+                    <div className="font-semibold mb-1">
+                      {format(day, "MMM d")}
                     </div>
+                    {dayEvents.map((e) => (
+                      <div key={e._id} className="truncate">
+                        • {e.title}
+                      </div>
+                    ))}
+                    {/* Tiny arrow */}
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
                   </div>
-                  <div className="flex flex-col min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-gray-900 truncate">
-                        {userItem.username}
-                      </span>
-                      {isMe && (
-                        <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-gradient-to-r 
-                          from-green-700 to-green-800 text-white shadow-sm">
-                          You
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
-                      <Clock className="w-3 h-3" />
-                      <span>Active {formatDistanceToNow(new Date(userItem.last_participation), { addSuffix: true })}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Current Streak */}
-                <div className="col-span-2 text-center">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-red-50 to-orange-50 
-                    rounded-full border border-red-100">
-                   
-                    <span className="font-bold text-gray-800">{userItem.current_streak}</span>
-                  </div>
-                </div>
-
-                {/* Solved */}
-                <div className="col-span-2 text-center">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-50 to-emerald-50 
-                    rounded-full border border-green-100">
-                    <CheckCircle className="w-4 h-4 text-green-600" />
-                    <span className="font-bold text-gray-800">{userItem.total_challenges_completed}</span>
-                  </div>
-                </div>
-
-                {/* Weeks Active */}
-                <div className="col-span-2 text-center">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 
-                    rounded-full border border-blue-100">
-                    <Calendar className="w-4 h-4 text-blue-600" />
-                    <span className="font-bold text-gray-800">{userItem.weeks_participated?.length || 0}</span>
-                  </div>
-                </div>
+                )}
               </div>
             );
           })}
         </div>
+
+        {/* Upcoming List Footer */}
+        <div className="mt-6 pt-4 border-t border-gray-100">
+          <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">
+            Upcoming
+          </h4>
+
+          {upcomingEvents.length > 0 ? (
+            <div className="space-y-3">
+              {upcomingEvents.map((event) => (
+                <div
+                  key={event._id}
+                  className="flex gap-3 group cursor-pointer hover:bg-gray-50 p-2 rounded-lg -mx-2 transition-colors"
+                >
+                  <div className="flex-shrink-0 w-10 h-10 bg-purple-50 text-purple-600 rounded-lg flex flex-col items-center justify-center border border-purple-100">
+                    <span className="text-[10px] font-bold uppercase leading-none mb-0.5">
+                      {format(new Date(event.start_date), "MMM")}
+                    </span>
+                    <span className="text-sm font-bold leading-none">
+                      {format(new Date(event.start_date), "d")}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-gray-900 truncate group-hover:text-purple-600 transition-colors">
+                      {event.title}
+                    </div>
+                    <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                      <Clock className="w-3 h-3" />
+                      {format(new Date(event.start_date), "h:mm a")}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center text-xs text-gray-400 py-2">
+              No upcoming events
+            </div>
+          )}
+        </div>
       </div>
     </div>
+  );
+};
 
-    {/* ===== EMPTY STATE ===== */}
-    {(!leaderboard || leaderboard.length === 0) && (
-      <div className="p-16 text-center border-t">
-        <div className="inline-flex p-4 bg-gradient-to-br from-gray-100 to-gray-50 rounded-2xl mb-6 
-          border border-gray-200">
-          <Trophy className="w-12 h-12 text-gray-400" />
-        </div>
-        <h3 className="text-2xl font-bold text-gray-900 mb-3">
-          Leaderboard Coming Soon
+const TopRankersList = ({ leaderboard = [], myRank }) => {
+  // Take only the top 5 for the sidebar widget
+  const topRankers = leaderboard.slice(0, 5);
+
+  // Helper to render rank icons
+  const renderRankIcon = (index) => {
+    switch (index) {
+      case 0:
+        return <Crown className="w-4 h-4 text-yellow-500 fill-yellow-500" />;
+      case 1:
+        return <Medal className="w-4 h-4 text-gray-400 fill-gray-400" />;
+      case 2:
+        return <Medal className="w-4 h-4 text-orange-400 fill-orange-400" />;
+      default:
+        return <span className="text-xs font-bold text-gray-500">#{index + 1}</span>;
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      
+      {/* Header */}
+      <div className="px-5 py-4 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between">
+        <h3 className="font-bold text-gray-800 flex items-center gap-2">
+          <Trophy className="w-4 h-4 text-yellow-600" />
+          Top Rankers
         </h3>
-        <p className="text-gray-600 mb-8 max-w-md mx-auto">
-          Be the first to participate in contests and climb the ranks. Your journey starts here!
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <button
-            onClick={() => setActiveTab('weekly')}
-            className="inline-flex items-center justify-center gap-3 px-8 py-3.5 bg-gradient-to-r 
-              from-purple-600 to-purple-600 text-white font-semibold rounded-xl hover:shadow-lg 
-              transition-all duration-200 hover:scale-[1.02]"
-          >
-            <Trophy className="w-5 h-5" />
-            <span>Explore Active Contests</span>
-          </button>
-          <button
-            onClick={() => {/* Add tutorial/hint action */}}
-            className="inline-flex items-center justify-center gap-3 px-8 py-3.5 bg-gray-100 
-              text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-all duration-200 
-              border border-gray-200"
-          >
-            <HelpCircle className="w-5 h-5" />
-            <span>How It Works</span>
-          </button>
-        </div>
+        {/* Optional: Link to full leaderboard tab */}
+        <button className="text-xs font-medium text-blue-600 hover:text-blue-700 flex items-center">
+          View All
+        </button>
       </div>
-    )}
 
-    {/* ===== FOOTER ===== */}
-    {leaderboard && leaderboard.length > 0 && (
-      <div className="px-6 py-4 border-t bg-gray-50/50 text-xs text-gray-500 flex flex-col 
-        sm:flex-row sm:items-center sm:justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Info className="w-3 h-3" />
-          <span>Showing top 100 performers • Rankings update after each contest</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-green-500"></div>
-            Last 7 days active
-          </span>
-          <span className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-            Consistent participation
-          </span>
-        </div>
-      </div>
-    )}
-  </div>
-)}
-
-            {/* Empty States for Other Tabs */}
-            {activeTab !== 'weekly' && activeTab !== 'past' && activeTab !== 'normal' && activeTab !== 'leaderboard' && activeTab !== 'calendar' && (
-              <div className="bg-white rounded-2xl p-12 text-center border-2 border-gray-200 shadow-lg">
-                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  
+      {/* List */}
+      <div className="divide-y divide-gray-50">
+        {topRankers.length > 0 ? (
+          topRankers.map((user, index) => (
+            <div 
+              key={user._id || index} 
+              className="px-5 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors group"
+            >
+              <div className="flex items-center gap-3">
+                {/* Rank Icon/Number */}
+                <div className="w-6 flex justify-center">
+                  {renderRankIcon(index)}
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Coming Soon!</h3>
-                <p className="text-gray-600">This section is under development</p>
+
+                {/* Avatar & Name */}
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-600 group-hover:scale-105 transition-transform">
+                    {user.username?.charAt(0).toUpperCase() || "U"}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-gray-900 leading-none">
+                      {user.username || "Anonymous"}
+                    </span>
+                    <span className="text-[10px] text-gray-400 font-medium mt-1">
+                      {user.total_challenges_completed || 0} solved
+                    </span>
+                  </div>
+                </div>
               </div>
-            )}
-          </>
+
+              {/* Score Pill */}
+              <div className="bg-gray-50 text-gray-600 px-2 py-1 rounded text-[10px] font-bold group-hover:bg-white group-hover:shadow-sm transition-all">
+                {user.total_points || 0} pts
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="p-8 text-center">
+            <div className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-2">
+              <User className="w-5 h-5 text-gray-300" />
+            </div>
+            <p className="text-xs text-gray-400">No rankings yet</p>
+          </div>
         )}
+      </div>
+
+      {/* My Rank Footer */}
+      {myRank && myRank > 5 && (
+        <div className="bg-blue-50/50 px-5 py-3 border-t border-blue-100 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-blue-600">#{myRank}</span>
+            <span className="text-sm font-medium text-gray-700">You</span>
+          </div>
+          <ArrowRight className="w-3 h-3 text-blue-400" />
+        </div>
+      )}
+    </div>
+  );
+};
+
+const ContestTabs = ({ activeTab, setActiveTab }) => {
+  const tabs = [
+    {
+      id: "weekly",
+      label: "Weekly Contests",
+      icon: Trophy,
+      badge: "NEW",
+    },
+    {
+      id: "normal",
+      label: "All Challenges",
+      icon: Target,
+    },
+    {
+      id: "past",
+      label: "Past Archive",
+      icon: Clock,
+    },
+    {
+      id: "leaderboard",
+      label: "Global Ranking",
+      icon: Award,
+    },
+  ];
+
+  return (
+    <div className="border-b border-gray-200 mb-6 bg-white rounded-t-xl px-4 sm:px-0 sm:bg-transparent">
+      <nav
+        className="-mb-px flex space-x-8 overflow-x-auto scrollbar-hide"
+        aria-label="Tabs"
+      >
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`
+                group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-all duration-200 outline-none
+                ${
+                  isActive
+                    ? "border-blue text-blue"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }
+              `}
+              aria-current={isActive ? "page" : undefined}
+            >
+              <Icon
+                className={`
+                  mr-2 h-4 w-4 transition-colors
+                  ${isActive ? "text-blue" : "text-gray-400 group-hover:text-gray-500"}
+                `}
+              />
+              <span>{tab.label}</span>
+
+              {/* Optional Badge */}
+              {tab.badge && (
+                <span
+                  className={`
+                  ml-2 py-0.5 px-2 rounded-full text-[10px] font-bold
+                  ${
+                    isActive
+                      ? "bg-blue text-white"
+                      : "bg-gray-100 text-gray-600 group-hover:bg-gray-200"
+                  }
+                `}
+                >
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </nav>
+    </div>
+  );
+};
+const ContestCard = ({ contest }) => {
+  // --- Logic Helpers ---
+  const now = new Date();
+  const startDate = new Date(contest.start_date);
+  const endDate = new Date(contest.end_date);
+
+  const isLive = isPast(startDate) && isFuture(endDate);
+  const isUpcoming = isFuture(startDate);
+  const isEnded = isPast(endDate);
+
+  const totalQuestions = contest.questions?.length || 0;
+  const questionsSolved = contest.my_progress?.questions_solved?.length || 0;
+  const progressPercent =
+    totalQuestions > 0 ? (questionsSolved / totalQuestions) * 100 : 0;
+  const isCompleted = questionsSolved === totalQuestions && totalQuestions > 0;
+
+  // --- Handlers ---
+  const handleClick = () => {
+    if (isUpcoming) {
+      console.log("Register logic here");
+    } else {
+      window.location.href = `/challenge/${contest._id}`;
+    }
+  };
+
+  return (
+    <div className="group bg-white border border-blue-200 rounded-xl p-5 hover:border-blue-300 hover:shadow-md transition-all duration-200 flex flex-col sm:flex-row items-start sm:items-center gap-5">
+      {/* Icon Column */}
+      <div
+        className={`flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center ${
+          isLive
+            ? "bg-red-50 text-red-600"
+            : isCompleted
+              ? "bg-green-50 text-green-600"
+              : "bg-blue-100 text-blue-500"
+        }`}
+      >
+        {isLive ? (
+          <Trophy className="w-6 h-6" />
+        ) : isCompleted ? (
+          <CheckCircle className="w-6 h-6" />
+        ) : (
+          <Target className="w-6 h-6" />
+        )}
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <h3 className="text-lg font-bold text-blue-900 truncate group-hover:text-blue-600 transition-colors">
+            {contest.title}
+          </h3>
+          {isLive && (
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-600 uppercase tracking-wide animate-pulse">
+              Live
+            </span>
+          )}
+          {isUpcoming && (
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-100 text-yellow-700 uppercase tracking-wide">
+              Upcoming
+            </span>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-blue-500">
+          <span className="flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5" />
+            {format(startDate, "MMM d, yyyy")}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Timer className="w-3.5 h-3.5" />
+            {isLive ? (
+              <span className="text-red-600 font-medium">
+                Ends in {formatDistanceToNow(endDate)}
+              </span>
+            ) : isUpcoming ? (
+              <span>Starts in {formatDistanceToNow(startDate)}</span>
+            ) : (
+              <span>Ended</span>
+            )}
+          </span>
+          {contest.total_participants > 0 && (
+            <span className="flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5" />
+              {contest.total_participants}
+            </span>
+          )}
+        </div>
+
+        {/* Progress Bar (Only if started and has activity) */}
+        {!isUpcoming && (questionsSolved > 0 || isLive) && (
+          <div className="mt-3 max-w-xs">
+            <div className="flex justify-between text-xs mb-1">
+              <span className="font-medium text-blue-600">Progress</span>
+              <span className="font-medium text-blue-900">
+                {questionsSolved} / {totalQuestions}
+              </span>
+            </div>
+            <div className="h-1.5 w-full bg-blue-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${isCompleted ? "bg-green-500" : "bg-blue-600"}`}
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Action Button */}
+      <div className="flex-shrink-0 w-full sm:w-auto mt-2 sm:mt-0">
+        <button
+          onClick={handleClick}
+          className={`w-full sm:w-auto px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 border ${
+            isLive
+              ? "bg-blue-600 text-white border-transparent hover:bg-blue-700 shadow-sm"
+              : isUpcoming
+                ? "bg-white text-blue-700 border-blue-300 hover:bg-blue-50 hover:border-blue-400"
+                : "bg-blue-50 text-blue-600 border-blue-200 hover:bg-white hover:border-blue-300"
+          }`}
+        >
+          {isLive ? "Enter Contest" : isUpcoming ? "Register" : "Practice"}
+          {isLive && <ArrowRight className="w-4 h-4" />}
+        </button>
+      </div>
+    </div>
+  );
+};
+// ==========================================
+// 2. PARENT COMPONENT: ContestList
+// ==========================================
+const ContestList = ({ data, type }) => {
+  // Empty State Logic
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-white border border-gray-200 rounded-xl p-12 text-center shadow-sm">
+        <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Trophy className="w-8 h-8 text-gray-300" />
+        </div>
+        <h3 className="text-lg font-bold text-gray-900 mb-2">
+          No {type} Contests Found
+        </h3>
+        <p className="text-gray-500 max-w-sm mx-auto">
+          {type === "Upcoming"
+            ? "Stay tuned! New challenges are being scheduled."
+            : "Check back later or try browsing our past archives."}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Section Header (Optional) */}
+      <div className="flex items-center justify-between mb-2 px-1">
+        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
+          {type === "Weekly"
+            ? "Weekly Challenges"
+            : type === "Past"
+              ? "Past Archive"
+              : "All Contests"}
+        </h3>
+        <span className="text-xs font-medium text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
+          {data.length} Total
+        </span>
+      </div>
+
+      {/* List */}
+      {data.map((contest) => (
+        <ContestCard key={contest._id} contest={contest} />
+      ))}
+    </div>
+  );
+};
+
+const GlobalLeaderboardTable = ({ data, currentUser }) => {
+
+  // Helper to render rank icons/styles
+  const renderRankBadge = (rank) => {
+    if (rank === 1) return <Crown className="w-5 h-5 text-yellow-500 fill-yellow-500" />;
+    if (rank === 2) return <Medal className="w-5 h-5 text-gray-400 fill-gray-400" />;
+    if (rank === 3) return <Medal className="w-5 h-5 text-orange-400 fill-orange-400" />;
+    return <span className="font-mono font-bold text-gray-500">#{rank}</span>;
+  };
+
+  // Empty State
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-white border border-gray-200 rounded-xl p-12 text-center shadow-sm">
+        <div className="w-16 h-16 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Trophy className="w-8 h-8 text-yellow-500" />
+        </div>
+        <h3 className="text-lg font-bold text-gray-900 mb-2">Leaderboard Empty</h3>
+        <p className="text-gray-500">Be the first to participate and claim your spot!</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+      
+      {/* Table Header */}
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[700px]">
+          <thead>
+            <tr className="bg-gray-50 border-b border-gray-200 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-4 w-20 text-center">Rank</th>
+              <th className="px-6 py-4">User</th>
+              <th className="px-6 py-4 text-center">Streak</th>
+              <th className="px-6 py-4 text-center">Solved</th>
+              <th className="px-6 py-4 text-center">Score</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {data.slice(0, 100).map((user, index) => {
+              const rank = index + 1;
+              const isMe = currentUser && user.user_id === currentUser._id;
+              
+              return (
+                <tr 
+                  key={user._id || index} 
+                  className={`
+                    group transition-colors hover:bg-gray-50
+                    ${isMe ? "bg-blue-50/50 hover:bg-blue-50" : ""}
+                  `}
+                >
+                  {/* Rank Column */}
+                  <td className="px-6 py-4 text-center">
+                    <div className="flex justify-center">
+                      {renderRankBadge(rank)}
+                    </div>
+                  </td>
+
+                  {/* User Column */}
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-200 flex items-center justify-center text-sm font-bold text-gray-600">
+                        {user.username?.charAt(0).toUpperCase() || "U"}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className={`font-semibold text-gray-900 ${isMe ? "text-blue-700" : ""}`}>
+                            {user.username || "Anonymous"}
+                          </span>
+                          {isMe && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-600 border border-blue-200">
+                              YOU
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                          <Calendar className="w-3 h-3" />
+                          Last active {user.last_participation ? formatDistanceToNow(new Date(user.last_participation), { addSuffix: true }) : "Unknown"}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Streak Column */}
+                  <td className="px-6 py-4 text-center">
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-100 text-xs font-bold">
+                      <Flame className="w-3.5 h-3.5" />
+                      {user.current_streak || 0}
+                    </div>
+                  </td>
+
+                  {/* Solved Column */}
+                  <td className="px-6 py-4 text-center">
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-100 text-xs font-bold">
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      {user.total_challenges_completed || 0}
+                    </div>
+                  </td>
+
+                  {/* Score Column */}
+                  <td className="px-6 py-4 text-center">
+                    <span className="font-mono font-bold text-gray-900 text-sm">
+                      {user.total_points || 0}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Footer Info */}
+      <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 text-xs text-gray-500 flex justify-between items-center">
+        <span>Showing top 100 participants</span>
+        <span>Updated automatically after every contest</span>
+      </div>
+    </div>
+  );
+};
+
+// ==========================================
+// 2. MAIN LAYOUT COMPONENT
+// ==========================================
+
+const WeeklyChallenges = () => {
+  const [activeTab, setActiveTab] = useState("weekly");
+  const dispatch = useDispatch();
+  const user = useSelector((state) => state.auth.user);
+
+  // --- Data Fetching Preserved ---
+  useEffect(() => {
+    dispatch(fetchweeklychallenges());
+    dispatch(fetchpastchallenges({ skip: 0, limit: 10 }));
+    dispatch(fetchnormalchallenges());
+    dispatch(fetchGlobalLeaderboard());
+    dispatch(fetchChallengesCalendar());
+    if (user) dispatch(fetchuserchallengeprogress());
+  }, [dispatch, user]);
+
+  // --- Selectors ---
+  const { weeklycontests, loading } = useSelector(
+    (state) => state.weeklyChallenges,
+  );
+  const { streak } = useSelector((state) => state.userChallengesprogress);
+  const { pastchallenges } = useSelector((state) => state.pastChallenges);
+  const { normalContests } = useSelector((state) => state.normalChallenges);
+  const { leaderboard, myRank } = useSelector(
+    (state) => state.globalLeaderboard,
+  );
+  const { calender_upcoming } = useSelector(
+    (state) => state.challengesCalendar,
+  );
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader className="w-8 h-8 text-gray-600 animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#F7F8FA] py-8 font-sans text-gray-900">
+      <div className="max-w-[1250px] mx-auto px-4 sm:px-6 lg:px-8">
+        {/* 1. HERO SECTION (Full Width) */}
+        {/* Shows the most relevant "Action" right now (Join active contest, or Next contest timer) */}
+        <section className="mb-8">
+          <ContestHero upcoming={calender_upcoming} active={weeklycontests} />
+        </section>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* 2. MAIN CONTENT COLUMN (Left - 8 Columns) */}
+          <div className="lg:col-span-8">
+            {/* Filter/Navigation Tabs */}
+            <ContestTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+
+            {/* Content Area */}
+            <div className="min-h-[500px]">
+              {activeTab === "weekly" && (
+                <ContestList data={weeklycontests} type="Weekly" />
+              )}
+              {activeTab === "normal" && (
+                <ContestList data={normalContests} type="Normal" />
+              )}
+              {activeTab === "past" && (
+                <ContestList data={pastchallenges} type="Past" />
+              )}
+              {activeTab === "leaderboard" && (
+                <GlobalLeaderboardTable data={leaderboard} />
+              )}
+            </div>
+          </div>
+
+          {/* 3. SIDEBAR COLUMN (Right - 4 Columns) */}
+          {/* Sticks to top when scrolling on large screens */}
+          <div className="lg:col-span-4 space-y-6">
+            {/* User Progress / Streak */}
+            <UserStatsCard streak={streak} />
+
+            {/* Mini Calendar / Upcoming Events */}
+            <MiniCalendar calendarData={calender_upcoming} />
+
+            {/* Mini Leaderboard (Top 5 preview) */}
+            <TopRankersList leaderboard={leaderboard} myRank={myRank} />
+          </div>
+        </div>
       </div>
     </div>
   );

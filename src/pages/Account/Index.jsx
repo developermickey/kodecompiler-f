@@ -1,508 +1,696 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
+import React, { useState } from "react";
 import {
-  User,
-  Code,
-  LogOut,
-  Calendar,
-  Terminal,
-  Copy,
-  Check,
-  Edit3,
-  X,
-  Save,
   MapPin,
-  Search,
-  ChevronRight,
-  Play,
-  Maximize2,
-  ExternalLink,
-  Hash,
+  Briefcase,
+  School,
+  Github,
+  Linkedin,
+  Twitter,
+  Link as LinkIcon,
+  Eye,
+  CheckCircle2,
+  MessageSquare,
+  Star,
+  Zap,
+  Edit3,
   FileCode,
+  ChevronRight,
+  Terminal,
+  Clock,
+  Calendar,
+  Bookmark,
+  Code,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useMemo } from "react";
 
-const API_URL = "http://localhost:5000/api/codes/";
+//Components
 
-// --- SUB-COMPONENTS ---
-
-/**
- * 1. PREMIUM EDIT PROFILE DRAWER
- * Replaces the "mid" modal with a high-end Slide-over Panel
- */
-const EditProfileDrawer = ({ user, isOpen, onClose, onSave }) => {
-  const [formData, setFormData] = useState({
-    username: "",
-    bio: "",
-    location: "",
-  });
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (user) {
-      setFormData({
-        username: user.username || "",
-        bio: user.bio || "",
-        location: user.location || "",
-      });
-    }
-  }, [user]);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 800));
-    onSave(formData);
-    setSaving(false);
-    onClose();
-  };
+const UserSidebar = ({ user, onEdit }) => {
+  // Fallback if user data isn't loaded yet
+  if (!user) return null;
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className={`fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-opacity duration-300 ${
-          isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-        }`}
-        onClick={onClose}
-      />
+    <div className="space-y-6 animate-in slide-in-from-left-4 duration-500 fade-in">
+      {/* --- MAIN PROFILE CARD --- */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative group">
+        {/* Decorative Top Gradient Line */}
+        <div className="h-1.5 w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600"></div>
 
-      {/* Drawer Panel */}
-      <div
-        className={`fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-out ${
-          isOpen ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
-        <div className="h-full flex flex-col">
-          {/* Drawer Header with Cover Image Concept */}
-          <div className="relative h-32 bg-gradient-to-r from-blue-600 to-indigo-600">
-            <button
-              onClick={onClose}
-              className="absolute top-4 right-4 p-2 bg-black/20 text-white rounded-full hover:bg-black/40 transition-colors backdrop-blur-md"
-            >
-              <X size={20} />
-            </button>
-            <div className="absolute -bottom-10 left-8">
-              <div className="w-24 h-24 bg-white rounded-2xl p-1 shadow-lg">
-                <div className="w-full h-full bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold text-gray-400">
-                  {formData.username.charAt(0).toUpperCase()}
+        <div className="p-6">
+          {/* Header: Avatar & Names */}
+          <div className="flex items-start gap-5">
+            <div className="relative">
+              {/* Avatar Container with Gradient Ring */}
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 p-[2px] shadow-inner">
+                <div className="w-full h-full bg-white rounded-xl flex items-center justify-center overflow-hidden">
+                  {/* If user has image, put <img> here, else use initials */}
+                  <span className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-br from-blue-600 to-indigo-600">
+                    {user.username?.charAt(0).toUpperCase() || "U"}
+                  </span>
                 </div>
+              </div>
+
+              {/* Online Status Indicator */}
+              <div className="absolute -bottom-1.5 -right-1.5 bg-white p-1 rounded-full">
+                <div className="w-3 h-3 bg-emerald-500 rounded-full border border-white shadow-sm animate-pulse"></div>
+              </div>
+            </div>
+
+            <div className="flex-1 min-w-0 pt-1">
+              <h2 className="text-xl font-bold text-slate-900 truncate">
+                {user.username || "Anonymous"}
+              </h2>
+              <p className="text-sm font-medium text-slate-500 truncate">
+                @{user.username?.toLowerCase() || "user"}
+              </p>
+
+              {/* Rank / Level Badge */}
+              <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-100">
+                <Zap size={12} className="text-blue-600 fill-blue-600" />
+                <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wide">
+                  Level 5
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="flex-1 px-8 pt-14 pb-8 overflow-y-auto">
-            <h2 className="text-2xl font-bold text-gray-900 mb-1">
-              Edit Profile
-            </h2>
-            <p className="text-sm text-gray-500 mb-8">
-              Update your personal details and public info.
-            </p>
+          {/* Edit Button */}
+          <button
+            onClick={onEdit}
+            className="w-full mt-6 py-2.5 flex items-center justify-center gap-2 rounded-xl bg-slate-50 text-slate-700 text-sm font-semibold hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 border border-transparent transition-all duration-200 group/btn"
+          >
+            <Edit3
+              size={14}
+              className="group-hover/btn:scale-110 transition-transform"
+            />
+            Edit Profile
+          </button>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Display Name
-                </label>
-                <input
-                  type="text"
-                  value={formData.username}
-                  onChange={(e) =>
-                    setFormData({ ...formData, username: e.target.value })
-                  }
-                  className="w-full px-0 py-3 bg-transparent border-b-2 border-gray-100 focus:border-blue-600 text-gray-900 font-medium placeholder-gray-300 focus:outline-none transition-colors"
-                  placeholder="john_doe"
-                />
+          {/* User Details List */}
+          <div className="mt-6 space-y-3.5">
+            <div className="flex items-center gap-3 text-sm text-slate-600 group/item hover:text-slate-900 transition-colors">
+              <div className="p-1.5 rounded-md bg-slate-100 text-slate-400 group-hover/item:text-blue-500 group-hover/item:bg-blue-50 transition-colors">
+                <MapPin size={16} />
               </div>
+              <span className="truncate">
+                {user.location || "Remote, Earth"}
+              </span>
+            </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Bio / Tagline
-                </label>
-                <textarea
-                  value={formData.bio}
-                  onChange={(e) =>
-                    setFormData({ ...formData, bio: e.target.value })
-                  }
-                  rows="3"
-                  className="w-full px-4 py-3 bg-gray-50 rounded-xl border-0 focus:ring-2 focus:ring-blue-500/20 text-gray-900 placeholder-gray-400 resize-none transition-all"
-                  placeholder="Tell us about yourself..."
-                />
+            <div className="flex items-center gap-3 text-sm text-slate-600 group/item hover:text-slate-900 transition-colors">
+              <div className="p-1.5 rounded-md bg-slate-100 text-slate-400 group-hover/item:text-blue-500 group-hover/item:bg-blue-50 transition-colors">
+                <School size={16} />
               </div>
+              <span className="truncate">
+                {user.school || "University of Code"}
+              </span>
+            </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Location
-                </label>
-                <div className="relative">
-                  <MapPin
-                    size={18}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                  />
-                  <input
-                    type="text"
-                    value={formData.location}
-                    onChange={(e) =>
-                      setFormData({ ...formData, location: e.target.value })
-                    }
-                    className="w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl border-0 focus:ring-2 focus:ring-blue-500/20 text-gray-900 placeholder-gray-400 transition-all"
-                    placeholder="San Francisco, CA"
-                  />
-                </div>
+            <div className="flex items-center gap-3 text-sm text-slate-600 group/item hover:text-slate-900 transition-colors">
+              <div className="p-1.5 rounded-md bg-slate-100 text-slate-400 group-hover/item:text-blue-500 group-hover/item:bg-blue-50 transition-colors">
+                <Briefcase size={16} />
               </div>
-            </form>
+              <span className="truncate">{user.company || "Open to work"}</span>
+            </div>
+
+            {/* Bio Quote */}
+            {user.bio && (
+              <div className="mt-4 pt-4 border-t border-slate-100">
+                <p className="text-xs text-slate-500 italic leading-relaxed">
+                  "{user.bio}"
+                </p>
+              </div>
+            )}
           </div>
 
-          {/* Drawer Footer */}
-          <div className="p-6 border-t border-gray-100 bg-gray-50">
-            <div className="flex gap-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 px-6 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-white transition-all shadow-sm"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={saving}
-                className="flex-1 px-6 py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/30 flex justify-center items-center gap-2"
-              >
-                {saving ? "Saving..." : "Save Changes"}
-              </button>
+          {/* Social Links Row */}
+          <div className="mt-6 pt-4 border-t border-slate-100 flex gap-3 text-slate-400">
+            <a href="#" className="hover:text-slate-900 transition-colors">
+              <Github size={18} />
+            </a>
+            <a href="#" className="hover:text-blue-600 transition-colors">
+              <Linkedin size={18} />
+            </a>
+            <a href="#" className="hover:text-sky-500 transition-colors">
+              <Twitter size={18} />
+            </a>
+            <a href="#" className="hover:text-emerald-600 transition-colors">
+              <LinkIcon size={18} />
+            </a>
+          </div>
+        </div>
+
+        {/* Footer: Community Stats Grid */}
+        <div className="bg-slate-50/80 border-t border-slate-200 p-4 grid grid-cols-2 gap-4">
+          <div className="flex items-center gap-3">
+            <Eye size={16} className="text-slate-400" />
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold uppercase text-slate-400">
+                Views
+              </span>
+              <span className="text-sm font-bold text-slate-700">12.4K</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <CheckCircle2 size={16} className="text-slate-400" />
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold uppercase text-slate-400">
+                Solved
+              </span>
+              <span className="text-sm font-bold text-slate-700">45</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <MessageSquare size={16} className="text-slate-400" />
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold uppercase text-slate-400">
+                Discuss
+              </span>
+              <span className="text-sm font-bold text-slate-700">12</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Star size={16} className="text-slate-400" />
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold uppercase text-slate-400">
+                Reputation
+              </span>
+              <span className="text-sm font-bold text-slate-700">201</span>
             </div>
           </div>
         </div>
       </div>
-    </>
-  );
-};
 
-/**
- * 2. CODE DETAIL VIEW MODAL
- * The "Tap to see" experience
- */
-
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus, vs } from 'react-syntax-highlighter/dist/esm/styles/prism';
-const CodeDetailModal = ({ code, isOpen, onClose }) => {
-  const navigate = useNavigate();
-  const [copied, setCopied] = useState(false);
-
-  if (!isOpen || !code) return null;
-
-  const handleOpenCompiler = () => {
-    navigate(`/compiler?codeId=${code._id}`);
-  };
-
-  const handleCopy = () => {
-    const textToCopy = code.sourceCode || code.snippet || code.code || "";
-    navigator.clipboard.writeText(textToCopy);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Simple Backdrop - slightly darker for focus */}
-      <div 
-        className="absolute inset-0 bg-black/20 backdrop-blur-[2px] transition-opacity"
-        onClick={onClose}
-      />
-
-      {/* Modal Container - Clean White Professional Look */}
-      <div className="relative w-full max-w-4xl bg-white dark:bg-[#0d1117] rounded-lg shadow-xl border border-gray-200 dark:border-gray-800 flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-200">
-        
-        {/* Header - Minimalist */}
-        <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-[#0d1117] rounded-t-lg">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-md">
-              <FileCode size={18} className="text-gray-700 dark:text-gray-300" />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                {code.title || "Untitled Snippet"}
-              </h3>
-              <p className="text-xs text-gray-500 font-mono mt-0.5">
-                {code.language?.toUpperCase() || "TEXT"} • {new Date(code.createdAt).toLocaleDateString()}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleCopy}
-              className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md transition-all"
+      {/* --- SKILLS CARD --- */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+          Skills & Languages
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          {[
+            "JavaScript",
+            "React",
+            "Python",
+            "Node.js",
+            "SQL",
+            "Tailwind",
+            "System Design",
+            "AWS",
+          ].map((skill) => (
+            <span
+              key={skill}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-100 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 cursor-default transition-all duration-200"
             >
-              {copied ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
-              <span>{copied ? "Copied" : "Copy Code"}</span>
-            </button>
-
-            <button
-              onClick={handleOpenCompiler}
-              className="flex items-center gap-2 px-4 py-2 bg-black dark:bg-white text-white dark:text-black hover:opacity-80 text-xs font-semibold rounded-md transition-all"
-            >
-              <Terminal size={14} />
-              <span>Open Compiler</span>
-            </button>
-            
-            <button 
-              onClick={onClose}
-              className="ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1"
-            >
-              <X size={20} />
-            </button>
-          </div>
+              {skill}
+            </span>
+          ))}
         </div>
-
-        {/* Code Content - High Contrast */}
-        <div className="flex-1 overflow-auto bg-gray-50 dark:bg-[#0d1117] p-0">
-          <div className="p-6">
-           
-             <SyntaxHighlighter
-              language={code.language || "javascript"}
-              style={vscDarkPlus} // Toggle based on your theme state
-              showLineNumbers={true}
-              customStyle={{
-                margin: 0,
-                padding: "1.5rem",
-                background: "transparent",
-                border: 0,
-              }}
-            >
-              {code.code ||
-                code.sourceCode ||
-                code.snippet ||
-                "// No code available."}
-            </SyntaxHighlighter>
-          </div>
-        </div>
-
-        {/* Footer - Metadata */}
-        <div className="px-6 py-3 bg-white dark:bg-[#0d1117] border-t border-gray-100 dark:border-gray-800 text-xs text-gray-500 flex justify-between rounded-b-lg">
-           <span>Read-only view</span>
-           <span className="font-mono">ID: {code._id?.slice(-6)}</span>
-        </div>
-
       </div>
     </div>
   );
 };
 
-/**
- * 3. CODE LIST ITEM (Row Style)
- * Replaces grids with a clean list
- */
-const CodeListItem = ({ code, onClick }) => {
+const SolvedProblemsCard = ({ codes = [] }) => {
+  // --- MOCK CALCULATION LOGIC ---
+  // In a real app, you might get these stats directly from the backend.
+  // Here we derive them or use defaults to look good even with empty data.
+
+  const stats = useMemo(() => {
+    const total = codes.length || 0;
+    // Mocking distribution for demo (replace with real logic if codes have difficulty field)
+    const easy = Math.ceil(total * 0.5);
+    const medium = Math.floor(total * 0.35);
+    const hard = Math.max(0, total - easy - medium);
+
+    return {
+      total,
+      easy,
+      medium,
+      hard,
+      // Totals available on the platform (mock data)
+      totalEasy: 640,
+      totalMedium: 1250,
+      totalHard: 480,
+    };
+  }, [codes]);
+
+  // --- SVG MATH ---
+  const radius = 50;
+  const circumference = 2 * Math.PI * radius;
+  // Calculate percentage for the circle stroke
+  // If 0 solved, show a tiny sliver so it doesn't look broken
+  const percentage = stats.total > 0 ? (stats.total / 500) * 100 : 2;
+  const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
   return (
-    <div
-      onClick={() => onClick(code)}
-      className="group flex items-center justify-between p-4 bg-white border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-all first:rounded-t-xl last:rounded-b-xl last:border-0"
-    >
-      <div className="flex items-center gap-4">
-        <div
-          className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold ${
-            code.language === "Python"
-              ? "bg-blue-100 text-blue-600"
-              : code.language === "JavaScript"
-              ? "bg-yellow-100 text-yellow-600"
-              : "bg-gray-100 text-gray-600"
-          }`}
-        >
-          {code.language ? (
-            code.language.charAt(0).toUpperCase()
-          ) : (
-            <Hash size={18} />
-          )}
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">
+        Solved Problems
+      </h3>
+
+      <div className="flex flex-col md:flex-row items-center gap-8">
+        {/* --- LEFT: DONUT CHART --- */}
+        <div className="relative group cursor-default">
+          {/* The Chart SVG */}
+          <div className="w-32 h-32 transform -rotate-90">
+            <svg className="w-full h-full" viewBox="0 0 120 120">
+              {/* Background Circle (Track) */}
+              <circle
+                cx="60"
+                cy="60"
+                r={radius}
+                fill="none"
+                stroke="#F1F5F9" // slate-100
+                strokeWidth="6"
+              />
+              {/* Foreground Circle (Progress) */}
+              <circle
+                cx="60"
+                cy="60"
+                r={radius}
+                fill="none"
+                stroke="#ffa116" // LeetCode Orange (Brand Color)
+                strokeWidth="6"
+                strokeLinecap="round"
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+                className="transition-all duration-1000 ease-out"
+              />
+            </svg>
+          </div>
+
+          {/* Center Text */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-3xl font-extrabold text-slate-800 group-hover:scale-110 transition-transform duration-300">
+              {stats.total}
+            </span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+              Solved
+            </span>
+          </div>
         </div>
+
+        {/* --- RIGHT: STATS LEGEND --- */}
+        <div className="flex-1 w-full space-y-5">
+          {/* EASY ROW */}
+          <div className="group">
+            <div className="flex justify-between items-end mb-1.5">
+              <span className="text-sm font-medium text-slate-600 group-hover:text-emerald-500 transition-colors">
+                Easy
+              </span>
+              <div className="text-sm font-bold text-slate-800">
+                {stats.easy}
+                <span className="text-xs text-slate-400 font-medium ml-1">
+                  / {stats.totalEasy}
+                </span>
+              </div>
+            </div>
+            {/* Progress Bar */}
+            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-emerald-400 rounded-full shadow-[0_0_10px_rgba(52,211,153,0.3)] transition-all duration-1000"
+                style={{ width: `${(stats.easy / stats.totalEasy) * 100}%` }}
+              ></div>
+            </div>
+          </div>
+
+          {/* MEDIUM ROW */}
+          <div className="group">
+            <div className="flex justify-between items-end mb-1.5">
+              <span className="text-sm font-medium text-slate-600 group-hover:text-amber-500 transition-colors">
+                Medium
+              </span>
+              <div className="text-sm font-bold text-slate-800">
+                {stats.medium}
+                <span className="text-xs text-slate-400 font-medium ml-1">
+                  / {stats.totalMedium}
+                </span>
+              </div>
+            </div>
+            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-amber-400 rounded-full shadow-[0_0_10px_rgba(251,191,36,0.3)] transition-all duration-1000"
+                style={{
+                  width: `${(stats.medium / stats.totalMedium) * 100}%`,
+                }}
+              ></div>
+            </div>
+          </div>
+
+          {/* HARD ROW */}
+          <div className="group">
+            <div className="flex justify-between items-end mb-1.5">
+              <span className="text-sm font-medium text-slate-600 group-hover:text-rose-500 transition-colors">
+                Hard
+              </span>
+              <div className="text-sm font-bold text-slate-800">
+                {stats.hard}
+                <span className="text-xs text-slate-400 font-medium ml-1">
+                  / {stats.totalHard}
+                </span>
+              </div>
+            </div>
+            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-rose-500 rounded-full shadow-[0_0_10px_rgba(244,63,94,0.3)] transition-all duration-1000"
+                style={{ width: `${(stats.hard / stats.totalHard) * 100}%` }}
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const BlueHeatmap = () => {
+  // --- CONFIGURATION & MOCK DATA ---
+  const WEEKS = 52;
+  const DAYS = 7; // 0 = Sunday, 6 = Saturday
+  const MONTH_LABELS = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+
+  // Define the Blue Color Scale (Tailwind classes)
+  const COLOR_SCALE = {
+    0: "bg-slate-100 border-slate-200", // No activity
+    1: "bg-blue-200 border-blue-300", // Low
+    2: "bg-blue-400 border-blue-500", // Medium
+    3: "bg-blue-600 border-blue-700", // High
+    4: "bg-indigo-700 border-indigo-800", // Max
+  };
+
+  // Function to generate deterministic mock intensity (0-4) based on grid position
+  // This makes the pattern look semi-realistic without needing real data yet.
+  const getMockIntensity = (weekIndex, dayIndex) => {
+    // Create a wave-like pattern combined with some "randomness" based on indices
+    const base = Math.sin(weekIndex / 2.5) * Math.cos(dayIndex / 1.5);
+    const noise = (weekIndex * dayIndex) % 7;
+    const result = Math.abs(base * noise);
+
+    if (result > 3.5) return 4;
+    if (result > 2.5) return 3;
+    if (result > 1.5) return 2;
+    if (result > 0.5) return 1;
+    return 0;
+  };
+
+  // Memoize the grid data generation so it doesn't re-run needlessly
+  const heatmapGrid = useMemo(() => {
+    return Array.from({ length: WEEKS }).map((_, weekIdx) => {
+      return Array.from({ length: DAYS }).map((_, dayIdx) => {
+        const intensity = getMockIntensity(weekIdx, dayIdx);
+        return {
+          weekIdx,
+          dayIdx,
+          intensity,
+          // Simple mock tooltip text
+          tooltip: `${
+            intensity > 0 ? intensity * 2 + Math.floor(Math.random() * 3) : 0
+          } submissions`,
+        };
+      });
+    });
+  }, []);
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 animate-in fade-in slide-in-from-bottom-5 duration-700 delay-100">
+      {/* --- HEADER & LEGEND --- */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-3">
         <div>
-          <h3 className="text-sm font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
-            {code.title || "Untitled Snippet"}
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+            Submission Activity
           </h3>
-          <p className="text-xs text-gray-500 flex items-center gap-2">
-            <span className="font-mono">{code.language || "Text"}</span>
-            <span>•</span>
-            <span>{new Date(code.createdAt).toLocaleDateString()}</span>
+          <p className="text-sm font-bold text-slate-800 mt-1">
+            365 Submissions in the last year
           </p>
         </div>
+
+        {/* Legend */}
+        <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+          <span>Less</span>
+          {/* Render the scale squares */}
+          {[0, 1, 2, 3, 4].map((level) => (
+            <div
+              key={level}
+              className={`w-3 h-3 rounded-[3px] border ${COLOR_SCALE[level]}`}
+            ></div>
+          ))}
+          <span>More</span>
+        </div>
       </div>
 
-      <div className="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-2 group-hover:translate-x-0">
-        <span className="text-xs font-medium text-blue-600 flex items-center gap-1">
-          View Code <ChevronRight size={14} />
-        </span>
+      {/* --- THE HEATMAP GRID --- */}
+      <div className="relative">
+        {/* Container with horizontal scroll for small screens */}
+        <div className="overflow-x-auto pb-2 custom-scrollbar font-mono">
+          <div className="flex gap-[3px] min-w-max">
+            {/* Iterate through Weeks (Columns) */}
+            {heatmapGrid.map((week, wIdx) => (
+              <div key={wIdx} className="flex flex-col gap-[3px]">
+                {/* Iterate through Days (Rows) */}
+                {week.map((day, dIdx) => (
+                  <div
+                    key={`${wIdx}-${dIdx}`}
+                    title={day.tooltip} // Native browser tooltip
+                    className={`w-3 h-3 rounded-[3px] border transition-all duration-200 cursor-pointer hover:ring-2 hover:ring-blue-400 hover:scale-110 hover:z-10 ${
+                      COLOR_SCALE[day.intensity]
+                    }`}
+                  ></div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* --- MONTH LABELS (Footer) --- */}
+        {/* A simple distribution of month labels roughly spaced out */}
+        <div className="flex justify-between mt-2 px-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider pointer-events-none">
+          {MONTH_LABELS.map((month, idx) =>
+            // Only show some months to avoid overcrowding, based on index
+            idx % 2 === 0 || idx === MONTH_LABELS.length - 1 ? (
+              <span key={month}>{month}</span>
+            ) : null,
+          )}
+        </div>
       </div>
     </div>
   );
 };
 
-// --- MAIN COMPONENT ---
+const SubmissionsList = ({
+  savedCodes = [],
+  solvedProblems = [],
+  onSelect,
+}) => {
+  // State to manage the active view
+  const [activeTab, setActiveTab] = useState("saved"); // 'saved' or 'solved'
 
-const ProfileComponent = () => {
-  console.log("PROFILE COMPONENT RENDERED");
-
-  const [user, setUser] = useState(null);
-  const [codes, setCodes] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  // UI States
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [selectedCode, setSelectedCode] = useState(null); // Controls the View Modal
-
-  // Init
-  useEffect(() => {
-
-    const storedUser = localStorage.getItem("user");
-
-    if (storedUser) {
-      const parsed = JSON.parse(storedUser);
-      console.log(parsed);
-      setUser({
-        ...parsed,
-        bio: parsed.bio || "Full Stack Developer",
-        location: parsed.location || "Remote",
-      });
-    } else {
-      setLoading(false);
-    }
-  }, []);
-  
-  useEffect(() => {
-    const fetchCodes = async () => {
-      if (!user) return;
-      try {
-        const response = await axios.get(API_URL, {
-          withCredentials: true,
-          headers: { "Content-Type": "application/json" },
-        });
-        setCodes(response.data.codes || []);
-      } catch (err) {
-        setCodes([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (user) fetchCodes();
-  }, [user]);
-
-  const handleLogout = () => {
-    localStorage.removeItem("user");
-    window.location.reload();
-  };
-
-  const handleUpdateProfile = (newData) => {
-    const updatedUser = { ...user, ...newData };
-    setUser(updatedUser);
-    localStorage.setItem("user", JSON.stringify(updatedUser));
-  };
-
-  if (!user )
-    return <div className="p-10 text-center text-gray-500">Please log in.</div>;
+  // Helper to determine which data to show
+  const currentList = activeTab === "saved" ? savedCodes : solvedProblems;
+  const isSaved = activeTab === "saved";
 
   return (
-    <div className="min-h-screen bg-[#F3F4F6] font-sans text-gray-900 pb-20">
-      {/* HEADER: Clean & Minimal */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-30">
-        <div className="max-w-5xl mx-auto px-6 py-6 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white text-xl font-bold shadow-md">
-              {user.username.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">
-                {user.username}
-              </h1>
-              <p className="text-xs text-gray-500 font-medium">{user.email}</p>
-            </div>
-          </div>
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col min-h-[450px] animate-in fade-in slide-in-from-bottom-6 duration-700 delay-200">
+      {/* --- TABBED HEADER --- */}
+      <div className="flex items-center border-b border-slate-100">
+        {/* Tab 1: Saved Codes */}
+        <button
+          onClick={() => setActiveTab("saved")}
+          className={`flex-1 flex items-center justify-center gap-2 py-5 text-sm font-bold transition-all relative ${
+            isSaved
+              ? "text-blue-600"
+              : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+          }`}
+        >
+          <Code size={18} />
+          Saved Codes
+          {isSaved && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full mx-6"></div>
+          )}
+        </button>
 
-          <div className="flex gap-3">
-            <button
-              onClick={() => setIsEditOpen(true)}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-lg transition-colors flex items-center gap-2"
-            >
-              <Edit3 size={14} /> Edit Profile
-            </button>
-            <button
-              onClick={handleLogout}
-              className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
-            >
-              <LogOut size={18} />
-            </button>
-          </div>
-        </div>
+        {/* Tab 2: Solved Problems */}
+        <button
+          onClick={() => setActiveTab("solved")}
+          className={`flex-1 flex items-center justify-center gap-2 py-5 text-sm font-bold transition-all relative ${
+            !isSaved
+              ? "text-blue-600"
+              : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+          }`}
+        >
+          <CheckCircle2 size={18} />
+          Solved Questions
+          {!isSaved && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full mx-6"></div>
+          )}
+        </button>
       </div>
 
-      {/* BODY */}
-      <div className="max-w-5xl mx-auto px-6 py-10">
-        {/* Title & Search */}
-        <div className="flex flex-col md:flex-row justify-between items-end mb-6 gap-4">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Repository</h2>
-            <p className="text-gray-500 text-sm mt-1">
-              Manage your saved snippets and code blocks.
+      {/* --- LIST CONTENT --- */}
+      <div className="flex-1 overflow-hidden">
+        {currentList.length === 0 ? (
+          // Empty State (Dynamic based on tab)
+          <div className="flex flex-col items-center justify-center h-64 text-slate-400">
+            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+              {isSaved ? (
+                <Terminal size={32} className="text-slate-300" />
+              ) : (
+                <CheckCircle2 size={32} className="text-slate-300" />
+              )}
+            </div>
+            <p className="font-medium text-slate-500">
+              {isSaved ? "No saved codes found." : "No problems solved yet."}
+            </p>
+            <p className="text-sm mt-1 text-slate-400">
+              {isSaved
+                ? "Start a new project to save snippets."
+                : "Head to the arena and start solving!"}
             </p>
           </div>
-
-          <div className="relative w-full md:w-72">
-            <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              size={16}
-            />
-            <input
-              type="text"
-              placeholder="Search..."
-              className="w-full bg-white border border-gray-200 text-sm rounded-lg pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none shadow-sm"
-            />
-          </div>
-        </div>
-
-        {/* LIST VIEW (No Grids) */}
-        {loading ? (
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="h-20 bg-white rounded-xl animate-pulse"
-              ></div>
-            ))}
-          </div>
-        ) : codes.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-200 p-16 text-center">
-            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Code size={32} className="text-gray-400" />
-            </div>
-            <h3 className="text-lg font-bold text-gray-900">Empty Library</h3>
-          </div>
         ) : (
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            {codes.map((code) => (
-              <CodeListItem
-                key={code._id}
-                code={code}
-                onClick={setSelectedCode}
-              />
+          // Data List
+          <div className="divide-y divide-slate-50">
+            {currentList.map((item, index) => (
+              <div
+                key={item._id || index}
+                onClick={() => onSelect && onSelect(item)}
+                className="group px-6 py-4 hover:bg-slate-50/80 cursor-pointer transition-all duration-200 flex items-center justify-between border-l-4 border-transparent hover:border-blue-500"
+              >
+                {/* Left Side: Title & Info */}
+                <div className="flex flex-col gap-1">
+                  <h4 className="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">
+                    {item.title ||
+                      (isSaved ? "Untitled Snippet" : "Unknown Problem")}
+                  </h4>
+                  <div className="flex items-center gap-3 text-xs text-slate-400">
+                    <span className="flex items-center gap-1">
+                      <Calendar size={12} />
+                      {new Date(item.createdAt).toLocaleDateString()}
+                    </span>
+                    {/* Only show time if space permits */}
+                    <span className="hidden sm:flex items-center gap-1">
+                      <Clock size={12} />
+                      {new Date(item.createdAt).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Right Side: Badges */}
+                <div className="flex items-center gap-4">
+                  {/* Language Badge */}
+                  <span className="hidden sm:inline-block font-mono text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded border border-slate-200 uppercase tracking-wider">
+                    {item.language || "TEXT"}
+                  </span>
+
+                  {/* Context Badge: Show "Accepted" for Solved, or "Private/Public" for Saved */}
+                  {isSaved ? (
+                    <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 text-xs font-bold flex items-center gap-1">
+                      <Bookmark size={10} /> Saved
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 text-xs font-bold shadow-sm flex items-center gap-1">
+                      <CheckCircle2 size={10} /> Accepted
+                    </span>
+                  )}
+
+                  <ChevronRight
+                    size={16}
+                    className="text-slate-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all"
+                  />
+                </div>
+              </div>
             ))}
           </div>
         )}
       </div>
 
-      {/* SLIDE-OVER DRAWER for Edit Profile */}
-      <EditProfileDrawer
-        user={user}
-        isOpen={isEditOpen}
-        onClose={() => setIsEditOpen(false)}
-        onSave={handleUpdateProfile}
-      />
+      {/* --- FOOTER --- */}
+      <div className="p-4 border-t border-slate-100 bg-slate-50/50 rounded-b-2xl text-center">
+        <button className="text-xs font-bold text-blue-600 hover:text-blue-800 uppercase tracking-wide transition-colors">
+          View All {isSaved ? "Repositories" : "Submissions"}
+        </button>
+      </div>
+    </div>
+  );
+};
+//Dummy Data
 
-      {/* CODE VIEW MODAL */}
-      <CodeDetailModal
-        code={selectedCode}
-        isOpen={!!selectedCode}
-        onClose={() => setSelectedCode(null)}
-      />
+const dummyUser = {
+  username: "CodeMaster",
+  bio: "Full Stack Engineer obsessed with clean UI and scalable backends.",
+  location: "San Francisco, CA",
+  school: "Stanford University",
+  company: "Google",
+};
+
+const dummyCodes = new Array(7).fill({});
+
+// --- PLACEHOLDER COMPONENTS (We will build these one by one next) ---
+
+// --- MAIN LAYOUT COMPONENT ---
+
+const ProfileLayout = () => {
+  return (
+    <div>
+      {false ? (
+        <div className="min-h-screen bg-[#F8FAFC] font-sans text-slate-900 pb-20">
+          {/* 2. Main Content Grid */}
+          <div className="max-w-[1200px] mx-auto px-4 md:px-6 mt-4 md:mt-12">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* LEFT COLUMN (User Info) - Spans 4 of 12 columns */}
+              <div className="lg:col-span-4 space-y-6">
+                <UserSidebar
+                  user={dummyUser}
+                  onEdit={() => console.log("Edit Clicked")}
+                />{" "}
+                {/* You can add a 'SkillsSkeleton' here later if you want separate cards */}
+              </div>
+
+              {/* RIGHT COLUMN (Stats & Content) - Spans 8 of 12 columns */}
+              <div className="lg:col-span-8 space-y-6">
+                {/* Top Row: Solved Problems Stats */}
+                <SolvedProblemsCard codes={dummyCodes} />
+                {/* Middle Row: Submission Heatmap */}
+                <BlueHeatmap />
+                {/* Bottom Row: List of Submissions/Codes */}
+                <SubmissionsList
+                  savedCodes={dummyCodes} // Pass your saved snippets here
+                  solvedProblems={dummyCodes} // Pass your solved problems here
+                  onSelect={(item) => console.log("Clicked:", item)}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div class="flex min-h-[60vh] items-center justify-center">
+          <div class="rounded-2xl border border-white/10 bg-white/5 px-10 py-8 text-center backdrop-blur-md shadow-xl">
+            <h1 class="text-3xl font-semibold tracking-tight text-black">
+              🚧 Under Construction
+            </h1>
+            <p class="mt-3 text-sm text-black/70">
+              This page is currently being built. Check back soon.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default ProfileComponent;
+export default ProfileLayout;
