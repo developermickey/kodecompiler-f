@@ -6,6 +6,7 @@ import UBER from "../../assets/uber.png";
 import ATLASSIAN from "../../assets/atlassian.png";
 import AMAZON from "../../assets/amazon.png";
 import ADOBE from "../../assets/adobe.png";
+import { useSelector, useDispatch } from 'react-redux';
 const HeroSection = () => {
   const features = [
     {
@@ -26,6 +27,11 @@ const HeroSection = () => {
     },
   ];
 
+  const dispatch = useDispatch();
+  const user = useSelector((state)=>state.auth.user);
+
+
+  
   return (
     <div className="bg-gradient-to-b from-white to-gray-50 py-16 md:py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -55,7 +61,7 @@ const HeroSection = () => {
           </p>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
+          {user?<></>:<div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
             <a
               href="/register"
               className="w-full sm:w-auto px-8 py-4 bg-[#0652e9] text-white text-lg font-semibold rounded-xl hover:bg-[#0547d1] transition-all duration-200 shadow-lg hover:shadow-xl hover:shadow-[#0652e9]/30 hover:scale-105 transform"
@@ -68,7 +74,8 @@ const HeroSection = () => {
             >
               Try guest compiler
             </a>
-          </div>
+          </div>}
+          
 
           {/* Trust Indicators */}
           <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-500 mb-12">

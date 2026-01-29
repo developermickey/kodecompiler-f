@@ -12,28 +12,59 @@ import {
 } from "lucide-react";
 
 import QuickActions from "./QuickActions";
+import { useDispatch } from "react-redux";
+import { fetchProblems } from "../../redux/slices/problemSlice";
+import { fetchUserProgress } from "../../redux/slices/userprogressSlice";
+import { useEffect } from "react";
+import { fetchuserchallengeprogress } from "../../redux/slices/userchallengesprogressSlice";
+import {fetchGlobalLeaderboard} from "../../redux/slices/challengesGlobalLeaderboardSlice"
 
 const Welcome = () => {
+  const dispatch = useDispatch();
   const user = useSelector((state) => state.auth.user);
+
+  
 
   // Redirect if not logged in
   if (!user) {
-    // eslint-disable-next-line react-hooks/immutability
+   
     window.location.href = "/login";
     return null;
   }
 
+    useEffect(() => {
+      if (user) {
+        dispatch(fetchUserProgress());
+        dispatch(fetchuserchallengeprogress());
+        dispatch(fetchGlobalLeaderboard());
+      }
+         
+    }, [user]);
+   
+    const { solvedProblemIds, solvedCount } = useSelector(
+        (state) => state.userProgress
+      );
+    
+    const { streak} = useSelector((state) => state.userChallengesprogress);
+    const {myRank} = useSelector((state)=> state.globalLeaderboard)
+
+    
+
+  
   // Your REAL DATA from API (these will later come dynamically from backend)
   const stats = [
-    { icon: Code, label: "Problems Solved", value: user.problemsSolved || 0, color: "bg-blue-100 text-blue-600" },
-    { icon: Trophy, label: "Contests Won", value: user.contestsWon || 0, color: "bg-yellow-100 text-yellow-600" },
-    { icon: Target, label: "Current Streak", value: `${user.streak || 0} days`, color: "bg-green-100 text-green-600" },
-    { icon: Award, label: "Rank", value: user.rank || "N/A", color: "bg-purple-100 text-purple-600" },
+    { icon: Code, label: "Problems Solved", value: solvedCount , color: "bg-blue-100 text-blue-600" },
+    { icon: Zap, label: "Longest Streak", value: streak.longest_streak || 0, color: "bg-yellow-100 text-yellow-600" },
+    { icon: Target, label: "Current Streak", value: `${streak.current_streak || 0} days`, color: "bg-green-100 text-green-600" },
+    { icon: Award, label: "Rank", value: myRank || "N/A", color: "bg-purple-100 text-purple-600" },
   ];
 
-//   const recentActivity = user.activity || [];
+
 
   const recommendations = user.recommended || [];
+
+
+  
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">

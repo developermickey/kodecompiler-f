@@ -33,6 +33,7 @@ const Register = () => {
   // Redirect after successful registration
   useEffect(() => {
     if (success) {
+     
       setTimeout(() => navigate('/login'), 1500);
     }
   }, [success, navigate]);
