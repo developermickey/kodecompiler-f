@@ -65,7 +65,7 @@ const Navbar = () => {
               <div className="absolute left-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 py-2 z-50">
                 {user ? (
                   <NavLink
-                    to="/compiler"
+                    to="/editor"
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors"
                   >
                     <span className="font-medium">Compiler</span>
