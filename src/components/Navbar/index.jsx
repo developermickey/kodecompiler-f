@@ -32,10 +32,9 @@ const Navbar = () => {
   };
 
   const handleLogout = async () => {
-  await dispatch(logoutUser());
-  window.location.href = '/login';
-};
-
+    await dispatch(logoutUser());
+    window.location.href = "/login";
+  };
 
   return (
     <nav className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50">
@@ -318,7 +317,7 @@ const Navbar = () => {
             >
               {user ? (
                 <NavLink
-                  to="/compiler"
+                  to="/editor"
                   className="block px-6 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md ml-3 my-1 font-medium"
                 >
                   Compiler
