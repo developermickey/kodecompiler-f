@@ -22,6 +22,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { useRef } from "react";
 import NotFound from "../NotFound";
+import { API_BASE_URL } from "../../config/api";
 
 export default function ContestStartPage() {
   const [agreed, setAgreed] = useState(false);
@@ -45,7 +46,7 @@ export default function ContestStartPage() {
       try {
         setLoading(true);
         const res = await fetch(
-          `http://localhost:5000/api/weekly-challenges/${id}`,
+          `${API_BASE_URL}/weekly-challenges/${id}`,
           { credentials: "include" }
         );
         if (!res.ok) throw new Error("Unable to fetch contest data");
@@ -79,7 +80,7 @@ export default function ContestStartPage() {
     const fetchContestleaderboard = async () => {
       try {
         const res = await fetch(
-          `http://localhost:5000/api/weekly-challenges/${id}/leaderboard?skip=${leaderboardskip}`,
+          `${API_BASE_URL}/weekly-challenges/${id}/leaderboard?skip=${leaderboardskip}`,
           { credentials: "include" }
         );
         if (!res.ok) throw new Error("Unable to fetch contest data");

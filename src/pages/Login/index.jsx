@@ -12,6 +12,7 @@ import {
   verifyOTP, 
   clearMessages 
 } from '../../redux/slices/authSlice';
+import { API_BASE_URL } from "../../config/api";
 
 // Added props: wallTitle, wallMessage
 const Login = ({ isModal = false, wallTitle = "", wallMessage = "" }) => {
@@ -32,8 +33,11 @@ const Login = ({ isModal = false, wallTitle = "", wallMessage = "" }) => {
 
   useEffect(() => {
     if (user && !isModal) {
+      
       navigate('/welcome');
     }
+    console.log("API_BASE_URL =", API_BASE_URL);
+
   }, [user, navigate, isModal]);
 
   useEffect(() => {

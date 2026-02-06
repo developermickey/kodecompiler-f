@@ -1,4 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { API_BASE_URL } from "../../config/api";
 
 
 export const fetchweeklychallenges = createAsyncThunk(
@@ -7,7 +8,7 @@ export const fetchweeklychallenges = createAsyncThunk(
         {
             try
             {
-            const res = await fetch("http://localhost:5000/api/weekly-challenges/weekly",
+            const res = await fetch(`${API_BASE_URL}/weekly-challenges/weekly`,
                 {
                     method:"GET",
                     credentials:"include",
@@ -39,7 +40,7 @@ export const fetchpastchallenges = createAsyncThunk(
     {
         try
         {
-            const res = await fetch(`http://localhost:5000/api/weekly-challenges/past?skip=${skip}&limit=${limit}`,
+            const res = await fetch(`${API_BASE_URL}/weekly-challenges/past?skip=${skip}&limit=${limit}`,
                 {
                     method:"GET",
                     credentials:"include"
@@ -68,7 +69,7 @@ export const fetchnormalchallenges = createAsyncThunk(
 
         try{
 
-            const res = await fetch("http://localhost:5000/api/weekly-challenges/normal",
+            const res = await fetch(`${API_BASE_URL}/weekly-challenges/normal`,
                 {
                     method:"GET",
                     credentials:"include",
@@ -101,7 +102,7 @@ export const fetchChallengesCalendar = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const res = await fetch(
-        "http://localhost:5000/api/weekly-challenges/calendar",
+        `${API_BASE_URL}/weekly-challenges/calendar`,
         {
           method: "GET",
           credentials: "include"

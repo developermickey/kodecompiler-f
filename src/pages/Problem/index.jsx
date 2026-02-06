@@ -57,6 +57,8 @@ import {
 } from "lucide-react";
 import Editor from "@monaco-editor/react";
 import NotFound from "../NotFound";
+import { API_BASE_URL } from "../../config/api";
+
 
 const Problem = () => {
   const { problemId } = useParams();
@@ -199,7 +201,7 @@ const Problem = () => {
     const fetchData = async () => {
       try {
         const res = await fetch(
-          `http://localhost:5000/api/problems/${problemId}`,
+          `${API_BASE_URL}/problems/${problemId}`,
           { credentials: "include" }
         );
         const data = await res.json();
@@ -255,7 +257,7 @@ const Problem = () => {
 
       try {
         const res = await fetch(
-          `http://localhost:5000/api/problems/submissions/my?problem_id=${Number(
+         `${API_BASE_URL}/problems/submissions/my?problem_id=${Number(
             problemId
           )}`,
           {
@@ -300,7 +302,7 @@ const Problem = () => {
       setIsLoadingSolutions(true);
       try {
         const url = new URL(
-          `http://localhost:5000/api/solutions/problem/${problemId}`
+          `${API_BASE_URL}/solutions/problem/${problemId}`
         );
 
         const res = await fetch(url, {
@@ -399,7 +401,7 @@ const Problem = () => {
 
   const handlevote = async (vote, solutionId) => {
     const res = await fetch(
-      `http://localhost:5000/api/solutions/${solutionId}/vote`,
+      `${API_BASE_URL}/solutions/${solutionId}/vote`,
       {
         method: "POST",
         headers: {
@@ -430,7 +432,7 @@ const Problem = () => {
       setIsRunning(true);
       setOutput("");
 
-      const response = await fetch("http://localhost:5000/api/problems/run", {
+      const response = await fetch(`${API_BASE_URL}/problems/run`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

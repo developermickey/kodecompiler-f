@@ -1,4 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { API_BASE_URL } from "../../config/api";
 
 export const fetchuserchallengeprogress = createAsyncThunk(
     "weekly-challenges/my/progress",
@@ -6,7 +7,7 @@ export const fetchuserchallengeprogress = createAsyncThunk(
     async(_,{rejectWithValue})=>
     {
         try{
-            const res = await fetch("http://localhost:5000/api/weekly-challenges/my/progress",
+            const res = await fetch(`${API_BASE_URL}/weekly-challenges/my/progress`,
                 {
                     method:"GET",
                     credentials:"include"

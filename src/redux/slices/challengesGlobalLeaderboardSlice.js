@@ -1,12 +1,13 @@
 // src/redux/slices/globalLeaderboardSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { API_BASE_URL } from "../../config/api";
 
 export const fetchGlobalLeaderboard = createAsyncThunk(
   "weekly-challenges/leaderboard",
   async ({ limit = 100 } = {}, { rejectWithValue }) => {
     try {
       const res = await fetch(
-        `http://localhost:5000/api/weekly-challenges/leaderboard?limit=${limit}`,
+        `${API_BASE_URL}/weekly-challenges/leaderboard?limit=${limit}`,
         {
           method: "GET",
           credentials: "include"

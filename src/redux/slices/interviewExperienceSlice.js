@@ -1,4 +1,5 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import { API_BASE_URL } from "../../config/api";
 
 export const fetchinterviewExperience = createAsyncThunk(
   "interviewExperiences/fetchAll",
@@ -27,7 +28,7 @@ export const fetchinterviewExperience = createAsyncThunk(
       params.append("limit", limit);
 
       const res = await fetch(
-        `http://localhost:5000/api/interview-experiences?${params.toString()}`,
+        `${API_BASE_URL}/interview-experiences?${params.toString()}`,
         {
           method: "GET",
           credentials: "include", 
@@ -51,7 +52,7 @@ export const fetchinterviewbyid = createAsyncThunk(
   {
     try
     {
-       const res = await fetch(`http://localhost:5000/api/interview-experiences/${id}`,
+       const res = await fetch(`${API_BASE_URL}/interview-experiences/${id}`,
         {
           method: "GET",
           credentials: "include", 

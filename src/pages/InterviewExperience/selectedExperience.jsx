@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 import { fetchinterviewbyid } from "../../redux/slices/interviewExperienceSlice";
+import { API_BASE_URL } from "../../config/api";
 
 export default function SelectedExperience() {
   const { experienceId } = useParams();
@@ -37,7 +38,7 @@ export default function SelectedExperience() {
 
     try{
 
-        const res = await fetch(`http://localhost:5000/api/interview-experiences/${experienceId}/helpful`, {
+        const res = await fetch(`${API_BASE_URL}/interview-experiences/${experienceId}/helpful`, {
             method:"POST",
             credentials:"include"
         })
