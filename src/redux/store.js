@@ -12,6 +12,7 @@ import { userchallengeprogressReducer } from "./slices/userchallengesprogressSli
 import { globalLeaderboardReducer } from "./slices/challengesGlobalLeaderboardSlice";
 import { challengesCalendarReducer } from "./slices/challengesSlice";
 import codeReducer from "./slices/codeSlice";
+import folderReducer from "./slices/folderSlice";
 
 import contestReducer from "./slices/contestSlice";
 
@@ -32,6 +33,7 @@ export const store = configureStore({
     globalLeaderboard: globalLeaderboardReducer,
     challengesCalendar: challengesCalendarReducer,
     code: codeReducer,
+    folder: folderReducer,
 
     contest: contestReducer,
 

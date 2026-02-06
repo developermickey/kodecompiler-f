@@ -17,7 +17,11 @@ import {
   Menu,
   Keyboard,
   MoreVertical,
-  LayoutTemplate
+  LayoutTemplate,
+  FileText,
+  Search,
+  ChevronRight,
+  Folder
 } from "lucide-react";
 import {
   runCode,
@@ -27,15 +31,21 @@ import {
   createCode,
 } from "../../redux/slices/codeSlice";
 import axios from "axios";
+import { createFolder, fetchFolders } from "../../redux/slices/folderSlice";
 
 const MainCompilerLight = () => {
   const dispatch = useDispatch();
 
   // --- Redux State ---
   const { output, status, error, jobId, userCodes } = useSelector(
-    (store) => store?.code
+    (store) => store?.code,
   );
 
+  useEffect(() => {
+    dispatch(fetchFolders());
+  }, [dispatch]);
+
+  const { folders } = useSelector((state) => state?.folder);
   // --- Layout State ---
   const [leftWidth, setLeftWidth] = useState(60);
   const [ioHeight, setIoHeight] = useState(40);
@@ -60,6 +70,8 @@ const MainCompilerLight = () => {
   const [activeCodeId, setActiveCodeId] = useState(null);
   const [isCodeLoading, setIsCodeLoading] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
+  const [folderPath, setFolderPath] = useState();
+  const [showSaveModal, setShowSaveModal] = useState(false);
 
   // --- Refs ---
   const containerRef = useRef(null);
@@ -93,13 +105,14 @@ const MainCompilerLight = () => {
 
   const handleRun = () => {
     if (status === "running") return;
-    // On Desktop, switch tab
-    setActiveTab("Output");
-    // On Mobile, auto-switch to output view
-    setMobileTab("output");
-    
+
     dispatch(runCode({ language, code, input }));
   };
+  useEffect(() => {
+    if (status === "completed" && window.innerWidth < 768) {
+      setMobileTab("output");
+    }
+  }, [status]);
 
   useEffect(() => {
     if (!jobId) return;
@@ -120,22 +133,19 @@ const MainCompilerLight = () => {
   const toggleFilePanel = (tabName) => {
     // Mobile logic: always open if triggered
     if (window.innerWidth < 768) {
-      setIsFilePanelOpen(true);
+      setIsFilePanelOpen((prev) => !prev);
       setActiveTab(tabName);
     } else {
       // Desktop logic
-      if (isFilePanelOpen && activeTab === tabName) {
+      if (isFilePanelOpen) {
         setIsFilePanelOpen(false);
       } else {
         setIsFilePanelOpen(true);
         setActiveTab(tabName);
       }
     }
-    
-    if (
-      tabName === "My Codes" &&
-      (!userCodes?.codes || userCodes.codes.length === 0)
-    ) {
+
+    if (tabName === "My Codes") {
       dispatch(getUserCodes());
     }
   };
@@ -144,8 +154,14 @@ const MainCompilerLight = () => {
     if (!filename) return null;
     const ext = filename.split(".").pop().toLowerCase();
     const extensionMap = {
-      py: "python", js: "javascript", jsx: "javascript", ts: "javascript",
-      java: "java", cpp: "cpp", c: "cpp", cc: "cpp",
+      py: "python",
+      js: "javascript",
+      jsx: "javascript",
+      ts: "javascript",
+      java: "java",
+      cpp: "cpp",
+      c: "cpp",
+      cc: "cpp",
     };
     return extensionMap[ext] || null;
   };
@@ -156,7 +172,7 @@ const MainCompilerLight = () => {
     try {
       const res = await axios.get(
         `http://localhost:5000/api/codes/${code_id}`,
-        { withCredentials: true }
+        { withCredentials: true },
       );
       const fetchedTitle = res.data.title || "Untitled";
       setCodeName(fetchedTitle);
@@ -164,10 +180,9 @@ const MainCompilerLight = () => {
       setActiveCodeId(code_id);
       const detectedLang = detectLanguageFromExtension(fetchedTitle);
       if (detectedLang) setLanguage(detectedLang);
-      
-      // Close mobile drawer after selection
-      if(window.innerWidth < 768) setIsFilePanelOpen(false);
 
+      // Close mobile drawer after selection
+      if (window.innerWidth < 768) setIsFilePanelOpen(false);
     } catch (err) {
       console.error(err);
       showNotification("Failed to load code.");
@@ -214,20 +229,37 @@ const MainCompilerLight = () => {
       return;
     }
     const payload = {
-      title: codeName, language, code, description: "",
-      input, lastOutput: output || "", folderPath: "/",
-    };
+      title: codeName,
+      language,
+      code,
+      description: "",
+      input,
+      lastOutput: output || ""    };
     dispatch(saveCode({ code_id: activeCodeId, payload }))
       .unwrap()
       .then(() => showNotification("Saved successfully."))
       .catch((err) => showNotification("Failed to save."));
   };
 
+  const handleModalSave = () => {
+    dispatch(createFolder( folderPath ));
+    dispatch(
+      createCode({
+        title: codeName,
+        language,
+        code,
+        description: "",
+        input: input || "",
+        folderPath: folderPath,
+      }),
+    )
+      .unwrap()
+      .then(() => showNotification("Created successfully."))
+      .catch((err) => showNotification("Failed to save."));
+  };
+
   const handleCreateCode = () => {
-    dispatch(createCode({
-      title: codeName, language, code, description: "",
-      input: input || "", folderPath: "",
-    }));
+    setShowSaveModal((prev) => !prev);
   };
 
   // --- Monaco Setup ---
@@ -238,67 +270,54 @@ const MainCompilerLight = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen w-full bg-white text-gray-800 font-sans overflow-hidden">
-      {/* NOTIFICATION TOAST */}
-      {notification && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[60] bg-gray-900 text-white px-4 py-3 rounded-lg shadow-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 border border-gray-700">
-          <div className="bg-green-500/20 p-1 rounded-full">
-            <Check size={14} className="text-green-400" />
-          </div>
-          <span className="text-sm font-medium">{notification}</span>
-        </div>
-      )}
-
-      {/* ================= HEADER (Responsive) ================= */}
-      <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-3 md:px-4 z-40 shrink-0">
-        
-        {/* Left: Branding & Mobile Menu */}
-        <div className="flex items-center gap-3">
-          <button 
-            className="md:hidden p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-md"
-            onClick={() => toggleFilePanel("My Codes")}
-          >
-            <Menu size={20} />
-          </button>
-          
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2 group relative">
-              {isEditingName ? (
-                 <input
-                 ref={titleInputRef}
-                 type="text"
-                 value={codeName}
-                 onChange={(e) => setCodeName(e.target.value)}
-                 onBlur={() => setIsEditingName(false)}
-                 onKeyDown={(e) => e.key === "Enter" && setIsEditingName(false)}
-                 autoFocus
-                 className="text-sm font-bold text-gray-800 bg-gray-50 border border-blue-300 rounded px-2 py-0.5 outline-none focus:ring-2 focus:ring-blue-100 w-32 md:w-48"
-               />
-              ) : (
-                <div 
-                  onClick={() => setIsEditingName(true)}
-                  className="flex items-center gap-1.5 cursor-pointer hover:bg-gray-100 px-1.5 py-0.5 -ml-1.5 rounded transition-colors"
-                >
-                   <span className="text-sm font-bold text-gray-800 truncate max-w-[120px] md:max-w-[200px]">
-                    {codeName}
-                   </span>
-                   <FileCode2 size={12} className="text-gray-400 opacity-0 group-hover:opacity-100" />
-                </div>
-              )}
+    <div className="relative h-screen w-full">
+      {/* MAIN APP — ALWAYS MOUNTED */}
+      <div className="flex flex-col h-screen w-full bg-white text-gray-800 font-sans overflow-hidden">
+        {/* NOTIFICATION TOAST */}
+        {notification && (
+          <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[60] bg-gray-900 text-white px-4 py-3 rounded-lg shadow-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 border border-gray-700">
+            <div className="bg-green-500/20 p-1 rounded-full">
+              <Check size={14} className="text-green-400" />
             </div>
+            <span className="text-sm font-medium">{notification}</span>
           </div>
-        </div>
+        )}
 
-        {/* Center: Desktop Tools */}
-        <div className="hidden md:flex items-center gap-2">
-            <HeaderButton icon={<FolderOpen size={15}/>} label="My Codes" active={isFilePanelOpen && activeTab === "My Codes"} onClick={() => toggleFilePanel("My Codes")} />
+        {/* ================= HEADER (Responsive) ================= */}
+        <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-3 md:px-4 z-40 shrink-0">
+          {/* Left: Branding & Mobile Menu */}
+          <div className="flex items-center gap-3">
+            <button
+              className="md:hidden p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-md"
+              onClick={() => toggleFilePanel("My Codes")}
+            >
+              <Menu size={20} />
+            </button>
+          </div>
+
+          {/* Center: Desktop Tools */}
+          <div className="hidden md:flex items-center gap-2">
+            <HeaderButton
+              icon={<FolderOpen size={15} />}
+              label="My Codes"
+              active={isFilePanelOpen && activeTab === "My Codes"}
+              onClick={() => toggleFilePanel("My Codes")}
+            />
             <div className="h-4 w-px bg-gray-300 mx-1"></div>
-            <HeaderButton icon={<Save size={15}/>} label="Save" onClick={handleSave} />
-            <HeaderButton icon={<FileCode size={15}/>} label="New" onClick={handleCreateCode} />
-        </div>
+            <HeaderButton
+              icon={<Save size={15} />}
+              label="Save"
+              onClick={handleSave}
+            />
+            <HeaderButton
+              icon={<FileCode size={15} />}
+              label="New"
+              onClick={handleCreateCode}
+            />
+          </div>
 
-        {/* Right: Language & Run */}
-        <div className="flex items-center gap-2 md:gap-3">
+          {/* Right: Language & Run */}
+          <div className="flex items-center gap-2 md:gap-3">
             {/* Language Dropdown */}
             <div className="relative" ref={langMenuRef}>
               <button
@@ -306,16 +325,31 @@ const MainCompilerLight = () => {
                 className="flex items-center gap-2 bg-gray-50 hover:bg-gray-100 px-2 md:px-3 py-1.5 rounded-md text-xs font-semibold border border-gray-200 text-gray-700 transition-colors"
               >
                 <span className="capitalize hidden md:inline">{language}</span>
-                <span className="capitalize md:hidden">{language === 'javascript' ? 'JS' : language === 'python' ? 'PY' : 'C++'}</span>
-                <ChevronDown size={14} className={`transition-transform ${isLangMenuOpen ? "rotate-180" : ""}`} />
+                <span className="capitalize md:hidden">
+                  {language === "javascript"
+                    ? "JS"
+                    : language === "python"
+                      ? "PY"
+                      : "C++"}
+                </span>
+                <ChevronDown
+                  size={14}
+                  className={`transition-transform ${isLangMenuOpen ? "rotate-180" : ""}`}
+                />
               </button>
-              
+
               {isLangMenuOpen && (
                 <div className="absolute top-full right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-xl z-50 py-1 animate-in fade-in zoom-in-95">
                   {["python", "javascript", "java", "cpp"].map((lang) => (
-                    <div key={lang} onClick={() => handleLanguageSelect(lang)} className="px-4 py-2.5 text-sm hover:bg-blue-50 hover:text-blue-600 cursor-pointer capitalize flex items-center justify-between group">
+                    <div
+                      key={lang}
+                      onClick={() => handleLanguageSelect(lang)}
+                      className="px-4 py-2.5 text-sm hover:bg-blue-50 hover:text-blue-600 cursor-pointer capitalize flex items-center justify-between group"
+                    >
                       {lang === "cpp" ? "C++" : lang}
-                      {language === lang && <Check size={14} className="text-blue-600"/>}
+                      {language === lang && (
+                        <Check size={14} className="text-blue-600" />
+                      )}
                     </div>
                   ))}
                 </div>
@@ -331,236 +365,574 @@ const MainCompilerLight = () => {
                 ${status === "running" ? "bg-blue-100 text-blue-400 cursor-wait" : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20"}
               `}
             >
-              {status === "running" ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} fill="currentColor" />}
-              <span className="hidden md:inline">{status === "running" ? "Running" : "Run Code"}</span>
+              {status === "running" ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Play size={16} fill="currentColor" />
+              )}
+              <span className="hidden md:inline">
+                {status === "running" ? "Running" : "Run Code"}
+              </span>
             </button>
-            
+
             {/* Mobile More Menu */}
             <div className="md:hidden relative">
-               <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-gray-600">
-                  <MoreVertical size={20} />
-               </button>
-               {isMobileMenuOpen && (
-                 <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-xl z-50 py-1">
-                    <div className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase">Actions</div>
-                    <button onClick={() => { handleSave(); setIsMobileMenuOpen(false); }} className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 flex gap-3"><Save size={16}/> Save File</button>
-                    <button onClick={() => { handleCreateCode(); setIsMobileMenuOpen(false); }} className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 flex gap-3"><FileCode size={16}/> New File</button>
-                 </div>
-               )}
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="p-2 text-gray-600"
+              >
+                <MoreVertical size={20} />
+              </button>
+              {isMobileMenuOpen && (
+                <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-xl z-50 py-1">
+                  <div className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase">
+                    Actions
+                  </div>
+                  <button
+                    onClick={() => {
+                      handleSave();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 flex gap-3"
+                  >
+                    <Save size={16} /> Save File
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleCreateCode();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 flex gap-3"
+                  >
+                    <FileCode size={16} /> New File
+                  </button>
+                </div>
+              )}
             </div>
-        </div>
-      </header>
-
-      {/* ================= BODY CONTENT ================= */}
-      
-      {/* 1. DESKTOP LAYOUT (Hidden on mobile) */}
-      <div className="hidden md:flex flex-1 relative overflow-hidden" ref={containerRef}>
-         {/* ... Existing Sidebar Code ... */}
-         {isFilePanelOpen && (
-          <div className="w-64 bg-gray-50 border-r border-gray-200 flex flex-col shrink-0">
-             <SidebarContent 
-                activeTab={activeTab} 
-                userCodes={userCodes} 
-                activeCodeId={activeCodeId} 
-                handleCodeClick={handleCodeClick} 
-                dispatch={dispatch} 
-                close={() => setIsFilePanelOpen(false)}
-             />
           </div>
-        )}
+        </header>
 
-        {/* Desktop Split Panes */}
-        <div className="flex flex-col h-full bg-white relative" style={{ width: `${leftWidth}%` }}>
+        {/* ================= BODY CONTENT ================= */}
+
+        {/* 1. DESKTOP LAYOUT (Hidden on mobile) */}
+        <div
+          className="hidden md:flex flex-1 relative overflow-hidden"
+          ref={containerRef}
+        >
+          {/* ... Existing Sidebar Code ... */}
+          {isFilePanelOpen && (
+            <div className="w-64 bg-gray-50 border-r border-gray-200 flex flex-col shrink-0">
+              <SidebarContent
+                activeTab={activeTab}
+                userCodes={userCodes}
+                activeCodeId={activeCodeId}
+                handleCodeClick={handleCodeClick}
+                dispatch={dispatch}
+                close={() => setIsFilePanelOpen(false)}
+                folders={folders}
+              />
+            </div>
+          )}
+
+          {/* Desktop Split Panes */}
+          <div
+            className="flex flex-col h-full bg-white relative"
+            style={{ width: `${leftWidth}%` }}
+          >
             {/* Editor Wrapper */}
             <div className="h-full w-full relative">
-               <Editor 
-                 height="100%" 
-                 language={language === "c++" ? "cpp" : language} 
-                 value={code} 
-                 theme="light" 
-                 onChange={setCode} 
-                 onMount={handleEditorDidMount} 
-                 options={{ fontSize: 14, minimap: { enabled: false }, automaticLayout: true, padding: { top: 16 } }} 
-               />
+              <Editor
+                height="100%"
+                language={language === "c++" ? "cpp" : language}
+                value={code}
+                theme="light"
+                onChange={setCode}
+                onMount={handleEditorDidMount}
+                options={{
+                  fontSize: 14,
+                  minimap: { enabled: false },
+                  automaticLayout: true,
+                  padding: { top: 16 },
+                }}
+              />
             </div>
-        </div>
+          </div>
 
-        {/* Vertical Drag Handle */}
-        <div className="w-1 bg-gray-100 hover:bg-blue-500 cursor-col-resize z-10 transition-colors" onMouseDown={() => setIsDraggingVert(true)} />
+          {/* Vertical Drag Handle */}
+          <div
+            className="w-1 bg-gray-100 hover:bg-blue-500 cursor-col-resize z-10 transition-colors"
+            onMouseDown={() => setIsDraggingVert(true)}
+          />
 
-        {/* IO Panel */}
-        <div className="flex flex-col h-full bg-white min-w-0" style={{ width: `${100 - leftWidth}%` }}>
+          {/* IO Panel */}
+          <div
+            className="flex flex-col h-full bg-white min-w-0"
+            style={{ width: `${100 - leftWidth}%` }}
+          >
             <div className="flex flex-col flex-1 min-h-0">
-               <div className="bg-gray-50 px-3 py-2 text-xs font-bold text-gray-500 border-b">INPUT</div>
-               <textarea value={input} onChange={(e) => setInput(e.target.value)} className="flex-1 p-3 resize-none outline-none font-mono text-sm" placeholder="Input here..." />
+              <div className="bg-gray-50 px-3 py-2 text-xs font-bold text-gray-500 border-b">
+                INPUT
+              </div>
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                className="flex-1 p-3 resize-none outline-none font-mono text-sm"
+                placeholder="Input here..."
+              />
             </div>
-            <div className="h-1 bg-gray-100 hover:bg-blue-500 cursor-row-resize z-10" onMouseDown={() => setIsDraggingHorz(true)} />
+            <div
+              className="h-1 bg-gray-100 hover:bg-blue-500 cursor-row-resize z-10"
+              onMouseDown={() => setIsDraggingHorz(true)}
+            />
             <div className="flex flex-col" style={{ height: `${ioHeight}%` }}>
-                <div className="bg-gray-50 px-3 py-2 text-xs font-bold text-gray-500 border-b flex justify-between">
-                   <span>OUTPUT</span>
-                   {status === "running" && <span className="text-blue-500 animate-pulse">Processing...</span>}
-                </div>
-                <div className={`flex-1 p-3 font-mono text-sm overflow-auto whitespace-pre-wrap ${error ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-800'}`}>
-                   {output || error || <span className="text-gray-400 italic">No output yet</span>}
-                </div>
+              <div className="bg-gray-50 px-3 py-2 text-xs font-bold text-gray-500 border-b flex justify-between">
+                <span>OUTPUT</span>
+                {status === "running" && (
+                  <span className="text-blue-500 animate-pulse">
+                    Processing...
+                  </span>
+                )}
+              </div>
+              <div
+                className={`flex-1 p-3 font-mono text-sm overflow-auto whitespace-pre-wrap ${error ? "bg-red-50 text-red-600" : "bg-gray-50 text-gray-800"}`}
+              >
+                {output || error || (
+                  <span className="text-gray-400 italic">No output yet</span>
+                )}
+              </div>
             </div>
+          </div>
         </div>
-      </div>
 
-
-      {/* 2. MOBILE LAYOUT (Hidden on desktop) */}
-      <div className="md:hidden flex flex-col flex-1 relative w-full overflow-hidden bg-white">
-        
-        {/* Mobile File Drawer (Overlay) */}
-        {isFilePanelOpen && (
-          <div className="absolute inset-0 z-50 flex">
-             <div className="w-4/5 h-full bg-white shadow-2xl animate-in slide-in-from-left duration-200 border-r border-gray-200 flex flex-col">
-                <SidebarContent 
-                  activeTab={activeTab} 
-                  userCodes={userCodes} 
-                  activeCodeId={activeCodeId} 
-                  handleCodeClick={handleCodeClick} 
-                  dispatch={dispatch} 
+        {/* 2. MOBILE LAYOUT (Hidden on desktop) */}
+        <div className="md:hidden flex flex-col flex-1 relative w-full overflow-hidden bg-white">
+          {/* Mobile File Drawer (Overlay) */}
+          {isFilePanelOpen && (
+            <div className="absolute inset-0 z-50 flex">
+              <div className="w-4/5 h-full bg-white shadow-2xl animate-in slide-in-from-left duration-200 border-r border-gray-200 flex flex-col">
+                <SidebarContent
+                  activeTab={activeTab}
+                  dispatch={dispatch}
+                  folders={folders}
+                  userCodes={userCodes}
+                  activeCodeId={activeCodeId}
+                  handleCodeClick={handleCodeClick}
                   close={() => setIsFilePanelOpen(false)}
                   isMobile
                 />
-             </div>
-             <div className="w-1/5 h-full bg-black/20 backdrop-blur-sm" onClick={() => setIsFilePanelOpen(false)}></div>
-          </div>
-        )}
+              </div>
+              <div
+                className="w-1/5 h-full bg-black/20 backdrop-blur-sm"
+                onClick={() => setIsFilePanelOpen(false)}
+              ></div>
+            </div>
+          )}
 
-        {/* Tab Content Area */}
-        <div className="flex-1 relative overflow-hidden">
-           {/* EDITOR TAB */}
-           <div className={`absolute inset-0 flex flex-col ${mobileTab === 'editor' ? 'z-10 visible' : 'z-0 invisible'}`}>
-              <Editor 
-                 height="100%" 
-                 language={language === "c++" ? "cpp" : language} 
-                 value={code} 
-                 theme="light" 
-                 onChange={setCode} 
-                 options={{ 
-                    fontSize: 13, 
-                    minimap: { enabled: false }, 
-                    lineNumbers: "on", 
-                    glyphMargin: false, 
-                    folding: false, // Save space on mobile
-                    padding: { top: 10 } 
-                 }} 
+          {/* Tab Content Area */}
+          <div className="flex-1 relative overflow-hidden">
+            {/* EDITOR TAB */}
+            <div
+              className={`absolute inset-0 flex flex-col ${mobileTab === "editor" ? "z-10 visible" : "z-0 invisible"}`}
+            >
+              <Editor
+                height="100%"
+                language={language === "c++" ? "cpp" : language}
+                value={code}
+                theme="light"
+                onChange={setCode}
+                options={{
+                  fontSize: 13,
+                  minimap: { enabled: false },
+                  lineNumbers: "on",
+                  glyphMargin: false,
+                  folding: false, // Save space on mobile
+                  padding: { top: 10 },
+                }}
               />
-           </div>
+            </div>
 
-           {/* INPUT TAB */}
-           <div className={`absolute inset-0 flex flex-col bg-white ${mobileTab === 'input' ? 'z-20 visible' : 'z-0 invisible'}`}>
-               <div className="p-4 flex-1 flex flex-col">
-                  <label className="text-xs font-bold text-gray-500 uppercase mb-2">Standard Input (Stdin)</label>
-                  <textarea 
-                    value={input} 
-                    onChange={(e) => setInput(e.target.value)} 
-                    className="flex-1 w-full border border-gray-300 rounded-lg p-3 font-mono text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none bg-gray-50"
-                    placeholder="Enter input for your program here..."
-                  />
-               </div>
-           </div>
+            {/* INPUT TAB */}
+            <div
+              className={`absolute inset-0 flex flex-col bg-white ${mobileTab === "input" ? "z-20 visible" : "z-0 invisible"}`}
+            >
+              <div className="p-4 flex-1 flex flex-col">
+                <label className="text-xs font-bold text-gray-500 uppercase mb-2">
+                  Standard Input (Stdin)
+                </label>
+                <textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  className="flex-1 w-full border border-gray-300 rounded-lg p-3 font-mono text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none bg-gray-50"
+                  placeholder="Enter input for your program here..."
+                />
+              </div>
+            </div>
 
-           {/* OUTPUT TAB */}
-           <div className={`absolute inset-0 flex flex-col bg-white ${mobileTab === 'output' ? 'z-20 visible' : 'z-0 invisible'}`}>
-               <div className="flex-1 flex flex-col p-4 overflow-hidden">
-                  <div className="flex justify-between items-center mb-2">
-                     <label className="text-xs font-bold text-gray-500 uppercase">Console Output</label>
-                     {status === 'running' && <span className="text-xs text-blue-600 font-medium animate-pulse">Running...</span>}
-                  </div>
-                  
-                  <div className={`flex-1 rounded-lg border p-3 font-mono text-xs sm:text-sm overflow-auto whitespace-pre-wrap ${error ? 'bg-red-50 border-red-200 text-red-700' : 'bg-gray-900 border-gray-800 text-green-400'}`}>
-                     {status === "running" ? "..." : (output || error || "Run code to see output")}
-                  </div>
-                  
-                  {/* Quick stat info */}
-                  <div className="mt-2 flex gap-4 text-[10px] text-gray-400">
-                     <span>Job ID: {jobId ? jobId.slice(0, 8) : 'N/A'}</span>
-                     <span>Lang: {language}</span>
-                  </div>
-               </div>
-           </div>
-        </div>
+            {/* OUTPUT TAB */}
+            <div
+              className={`absolute inset-0 flex flex-col bg-white ${mobileTab === "output" ? "z-20 visible" : "z-0 invisible"}`}
+            >
+              <div className="flex-1 flex flex-col p-4 overflow-hidden">
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-xs font-bold text-gray-500 uppercase">
+                    Console Output
+                  </label>
+                  {status === "running" && (
+                    <span className="text-xs text-blue-600 font-medium animate-pulse">
+                      Running...
+                    </span>
+                  )}
+                </div>
 
-        {/* Bottom Navigation Bar */}
-        <div className="h-14 bg-white border-t border-gray-200 flex justify-around items-center shrink-0 pb-safe">
-           <MobileNavButton 
-             active={mobileTab === 'editor'} 
-             onClick={() => setMobileTab('editor')} 
-             icon={<FileCode2 size={20} />} 
-             label="Editor" 
-           />
-           <MobileNavButton 
-             active={mobileTab === 'input'} 
-             onClick={() => setMobileTab('input')} 
-             icon={<Keyboard size={20} />} 
-             label="Input" 
-           />
-           <MobileNavButton 
-             active={mobileTab === 'output'} 
-             onClick={() => setMobileTab('output')} 
-             icon={<Terminal size={20} />} 
-             label="Output" 
-             hasIndicator={status === 'running' || (output && mobileTab !== 'output')}
-           />
+                <div
+                  className={`flex-1 rounded-lg border p-3 font-mono text-xs sm:text-sm overflow-auto whitespace-pre-wrap ${error ? "bg-red-50 border-red-200 text-red-700" : "bg-gray-900 border-gray-800 text-green-400"}`}
+                >
+                  {status === "running"
+                    ? "..."
+                    : output || error || "Run code to see output"}
+                </div>
+
+                {/* Quick stat info */}
+                <div className="mt-2 flex gap-4 text-[10px] text-gray-400">
+                  <span>Job ID: {jobId ? jobId.slice(0, 8) : "N/A"}</span>
+                  <span>Lang: {language}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Navigation Bar */}
+          <div className="h-14 bg-white border-t border-gray-200 flex justify-around items-center shrink-0 pb-safe">
+            <MobileNavButton
+              active={mobileTab === "editor"}
+              onClick={() => setMobileTab("editor")}
+              icon={<FileCode2 size={20} />}
+              label="Editor"
+            />
+            <MobileNavButton
+              active={mobileTab === "input"}
+              onClick={() => setMobileTab("input")}
+              icon={<Keyboard size={20} />}
+              label="Input"
+            />
+            <MobileNavButton
+              active={mobileTab === "output"}
+              onClick={() => setMobileTab("output")}
+              icon={<Terminal size={20} />}
+              label="Output"
+              hasIndicator={
+                status === "running" || (output && mobileTab !== "output")
+              }
+            />
+          </div>
         </div>
       </div>
+
+      {/* MODAL OVERLAY */}
+      {showSaveModal && (
+        <SaveModal
+          setShowSaveModal={setShowSaveModal}
+          folderPath={folderPath}
+          setFolderPath={setFolderPath}
+          handleModalSave={handleModalSave}
+          setCodeName={setCodeName}
+          codeName={codeName}
+        />
+      )}
     </div>
   );
 };
 
 // --- Helper Components ---
 
-const SidebarContent = ({ activeTab, userCodes, activeCodeId, handleCodeClick, dispatch, close, isMobile }) => (
-  <>
-    <div className="p-3 border-b border-gray-200 flex justify-between items-center text-xs font-bold text-gray-500 uppercase bg-gray-50">
-      <span className="flex items-center gap-2">
-        {activeTab}
-        {activeTab === "My Codes" && (
-          <RefreshCw size={12} className="cursor-pointer hover:text-blue-600 active:rotate-180 transition-all" onClick={() => dispatch(getUserCodes())} />
-        )}
-      </span>
-      <button onClick={close} className="p-1 hover:bg-gray-200 rounded"><X size={14}/></button>
-    </div>
-    <div className="flex-1 overflow-y-auto p-2 space-y-1">
-      {activeTab === "My Codes" ? (
-        userCodes?.map((item) => (
-          <div
-            key={item._id}
-            onClick={() => handleCodeClick(item._id)}
-            className={`flex items-center gap-3 px-3 py-3 md:py-2 text-sm cursor-pointer rounded-lg transition-colors border ${activeCodeId === item._id ? "bg-blue-50 text-blue-700 border-blue-200" : "border-transparent text-gray-600 hover:bg-gray-100"}`}
-          >
-            <div className={`p-1.5 rounded ${activeCodeId === item._id ? 'bg-blue-100' : 'bg-gray-200'}`}>
-              <FileCode size={16} className="shrink-0" />
-            </div>
-            <div className="flex flex-col overflow-hidden">
-               <span className="truncate font-medium">{item.title || "Untitled"}</span>
-               <span className="text-[10px] text-gray-400">{new Date(item.createdAt || Date.now()).toLocaleDateString()}</span>
-            </div>
-          </div>
-        ))
-      ) : (
-        <div className="p-4 text-center text-gray-400 text-sm">No files found</div>
-      )}
-    </div>
-  </>
-);
 
+
+
+const SidebarContent = ({
+  activeTab,
+  userCodes,
+  activeCodeId,
+  handleCodeClick,
+  dispatch,
+  close,
+  isMobile,
+  folders,
+}) => {
+  const [openFolders, setOpenFolders] = useState({});
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const toggleFolder = (folderPath) => {
+    setOpenFolders((prev) => ({
+      ...prev,
+      [folderPath]: !prev[folderPath],
+    }));
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await dispatch(getUserCodes());
+    setTimeout(() => setIsRefreshing(false), 500); // Visual feedback delay
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-white border-r border-gray-200">
+      
+      {/* --- Header --- */}
+      <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100 bg-gray-50/50 backdrop-blur-sm sticky top-0 z-10">
+        <span className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider">
+          {activeTab}
+          {activeTab === "My Codes" && (
+            <button
+              onClick={handleRefresh}
+              className={`p-1 rounded-md hover:bg-blue-100 hover:text-blue-600 transition-all ${isRefreshing ? "animate-spin text-blue-600" : ""}`}
+              title="Refresh Files"
+            >
+              <RefreshCw size={12} />
+            </button>
+          )}
+        </span>
+        <button 
+          onClick={close} 
+          className="p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-700 rounded-md transition-colors"
+        >
+          <X size={14} />
+        </button>
+      </div>
+
+      {/* --- Tree View Content --- */}
+      <div className="flex-1 overflow-y-auto py-2 custom-scrollbar">
+        {activeTab === "My Codes" ? (
+          <div className="space-y-0.5">
+            {folders?.map((item) => {
+              const isOpen = openFolders[item.path];
+              
+              // Filter files for this folder
+              const folderFiles = userCodes?.filter(
+                (code) =>
+                  code?.folderPath &&
+                  item?.path &&
+                  code.folderPath === item.path
+              );
+
+              return (
+                <div key={item._id} className="select-none">
+                  {/* Folder Row */}
+                  <div
+                    onClick={() => toggleFolder(item.path)}
+                    className={`
+                      group flex items-center gap-1.5 px-3 py-1.5 cursor-pointer transition-all duration-200 border-l-2 border-transparent
+                      ${isOpen ? "bg-gray-50" : "hover:bg-gray-50"}
+                    `}
+                    title={`Created: ${new Date(item.createdAt || Date.now()).toLocaleDateString()}`}
+                  >
+                    {/* Chevron Toggle */}
+                    <span className={`text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-0" : "-rotate-90"}`}>
+                      <ChevronDown size={14} />
+                    </span>
+
+                    {/* Folder Icon */}
+                    <span className={`transition-colors ${isOpen ? "text-blue-600" : "text-blue-400 group-hover:text-blue-500"}`}>
+                      {isOpen ? <FolderOpen size={16} /> : <Folder size={16} />}
+                    </span>
+
+                    <span className={`truncate text-sm font-medium transition-colors ${isOpen ? "text-gray-900" : "text-gray-600 group-hover:text-gray-900"}`}>
+                      {item.path || "Untitled"}
+                    </span>
+                    
+                    {/* File Count Badge (Optional detail) */}
+                    <span className="ml-auto text-[10px] text-gray-300 group-hover:text-gray-400">
+                      {folderFiles?.length || 0}
+                    </span>
+                  </div>
+
+                  {/* Files inside folder (Tree Children) */}
+                  {isOpen && (
+                    <div className="relative animate-in slide-in-from-top-2 fade-in duration-200 origin-top">
+                      {/* Vertical Guide Line */}
+                      <div className="absolute left-[19px] top-0 bottom-0 w-px bg-gray-200" />
+
+                      {folderFiles && folderFiles.length > 0 ? (
+                        folderFiles.map((code) => (
+                          <div
+                            key={code._id}
+                            onClick={() => handleCodeClick(code._id)}
+                            className={`
+                              group/file flex items-center gap-2 pl-9 pr-3 py-1.5 cursor-pointer text-sm border-l-2 transition-all
+                              ${
+                                activeCodeId === code._id
+                                  ? "bg-blue-50/80 text-blue-700 border-blue-600 font-medium" 
+                                  : "text-gray-600 border-transparent hover:bg-gray-100 hover:text-gray-900 hover:border-gray-300" 
+                              }
+                            `}
+                          >
+                            <FileCode 
+                              size={14} 
+                              className={`shrink-0 transition-colors ${activeCodeId === code._id ? "text-blue-600" : "text-gray-400 group-hover/file:text-gray-600"}`} 
+                            />
+                            <span className="truncate">{code.title || "Untitled"}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="pl-9 py-2 text-xs text-gray-400 flex items-center gap-2 italic">
+                           <span className="w-1 h-1 rounded-full bg-gray-300"></span> Empty
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          /* Empty State for entire sidebar */
+          <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+            <div className="bg-gray-50 p-3 rounded-full mb-3">
+               <Search size={24} className="text-gray-300" />
+            </div>
+            <p className="text-sm font-medium">No files found</p>
+            <p className="text-xs text-gray-300 mt-1">Create a new snippet to get started</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 const HeaderButton = ({ icon, label, active, onClick }) => (
-  <button onClick={onClick} className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${active ? "bg-blue-50 text-blue-600 border border-blue-200" : "bg-white text-gray-600 hover:bg-gray-100 border border-transparent"}`}>
+  <button
+    onClick={onClick}
+    className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${active ? "bg-blue-50 text-blue-600 border border-blue-200" : "bg-white text-gray-600 hover:bg-gray-100 border border-transparent"}`}
+  >
     {icon} <span>{label}</span>
   </button>
 );
 
 const MobileNavButton = ({ active, onClick, icon, label, hasIndicator }) => (
-  <button onClick={onClick} className={`relative flex flex-col items-center justify-center w-full h-full gap-1 transition-colors ${active ? "text-blue-600" : "text-gray-400 hover:text-gray-600"}`}>
-    {hasIndicator && <span className="absolute top-2 right-8 w-2 h-2 bg-red-500 rounded-full animate-pulse border border-white"></span>}
+  <button
+    onClick={onClick}
+    className={`relative flex flex-col items-center justify-center w-full h-full gap-1 transition-colors ${active ? "text-blue-600" : "text-gray-400 hover:text-gray-600"}`}
+  >
+    {hasIndicator && (
+      <span className="absolute top-2 right-8 w-2 h-2 bg-red-500 rounded-full animate-pulse border border-white"></span>
+    )}
     {icon}
     <span className="text-[10px] font-medium">{label}</span>
-    {active && <span className="absolute bottom-0 w-8 h-1 bg-blue-600 rounded-t-full"></span>}
+    {active && (
+      <span className="absolute bottom-0 w-8 h-1 bg-blue-600 rounded-t-full"></span>
+    )}
   </button>
 );
+
+
+const SaveModal = ({
+  setShowSaveModal,
+  folderPath,
+  setFolderPath,
+  handleModalSave,
+  setCodeName,
+  codeName,
+}) => {
+  
+  // Handle "Enter" key to submit
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleModalSave();
+      setShowSaveModal(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px] flex items-center justify-center transition-all"
+      onClick={() => setShowSaveModal(false)}
+    >
+      {/* Modal Card */}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white w-full max-w-[400px] rounded-lg shadow-xl border border-gray-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+      >
+        {/* Header */}
+        <div className="flex justify-between items-center px-5 py-4 border-b border-gray-100 bg-gray-50/50">
+          <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+            <Save size={16} className="text-blue-600" />
+            Save Snippet
+          </h2>
+          <button
+            onClick={() => setShowSaveModal(false)}
+            className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-1 rounded-md transition-colors"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-5 space-y-4">
+          
+          {/* Name Input */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
+              Snippet Name
+            </label>
+            <div className="relative group">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors">
+                <FileText size={16} />
+              </div>
+              <input
+                type="text"
+                placeholder="e.g. Array Sort Algorithm"
+                value={codeName}
+                onChange={(e) => setCodeName(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 
+                         focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-gray-400"
+                autoFocus
+              />
+            </div>
+          </div>
+
+          {/* Folder Path Input */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
+              Folder Group
+            </label>
+            <div className="relative group">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors">
+                <Folder size={16} />
+              </div>
+              <input
+                type="text"
+                placeholder="e.g. Algorithms/Python"
+                value={folderPath}
+                onChange={(e) => setFolderPath(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 
+                         focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-gray-400"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Footer actions */}
+        <div className="flex justify-end gap-3 px-5 py-4 bg-gray-50 border-t border-gray-100">
+          <button
+            onClick={() => setShowSaveModal(false)}
+            className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:ring-2 focus:ring-gray-200 transition-all"
+          >
+            Cancel
+          </button>
+
+          <button
+            onClick={() => {
+              handleModalSave();
+              setShowSaveModal(false);
+            }}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 shadow-sm shadow-blue-200 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-all"
+          >
+            Save File
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default MainCompilerLight;

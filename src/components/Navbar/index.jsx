@@ -67,7 +67,7 @@ const Navbar = () => {
                     to="/editor"
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors"
                   >
-                    <span className="font-medium">Compiler</span>
+                    <span className="font-medium">Code Editor</span>
                     <p className="text-xs text-gray-500 mt-0.5">
                       Code your way to your dream company
                     </p>
@@ -77,7 +77,7 @@ const Navbar = () => {
                     to="/guest-editor"
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors"
                   >
-                    <span className="font-medium">Guest-Compiler</span>
+                    <span className="font-medium">Guest-Editor</span>
                     <p className="text-xs text-gray-500 mt-0.5">
                       Code without signing up
                     </p>
@@ -320,14 +320,14 @@ const Navbar = () => {
                   to="/editor"
                   className="block px-6 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md ml-3 my-1 font-medium"
                 >
-                  Compiler
+                  Code Editor
                 </NavLink>
               ) : (
                 <NavLink
                   to="/guest-editor"
                   className="block px-6 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md ml-3 my-1 font-medium"
                 >
-                  Guest-Compiler
+                  Guest-Editor
                 </NavLink>
               )}
               <NavLink
