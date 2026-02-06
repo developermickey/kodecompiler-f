@@ -81,7 +81,7 @@ const App = () => {
         <Route path="/challenge/:id" element={<ContestStartPage />} />
         {/* 2. Main Compiler */}
         <Route
-          path="/compiler"
+          path="/editor"
           element={
             <LoginGuard
               title="Compiler Locked"
