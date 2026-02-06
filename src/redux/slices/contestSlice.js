@@ -1,12 +1,13 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import axios from "axios";
+import { API_BASE_URL } from "../../config/api";
 
 export const fetchContestDetails = createAsyncThunk(
   "contest/fetchContestDetails",
   async (id, { rejectWithValue }) => {
     try {
       const response = await axios.get(
-        `http://localhost:5000/api/weekly-challenges/${id}`,
+        `${API_BASE_URL}/weekly-challenges/${id}`,
         {withCredentials: true}
       );
       return response.data;

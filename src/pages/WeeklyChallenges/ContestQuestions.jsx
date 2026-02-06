@@ -59,6 +59,7 @@ import Editor from "@monaco-editor/react";
 import NotFound from "../NotFound";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchContestDetails } from "../../redux/slices/contestSlice";
+import { API_BASE_URL } from "../../config/api";
 
 const ContestQuestion = () => {
   /* =========================
@@ -249,7 +250,7 @@ const ContestQuestion = () => {
       setIsRunning(true);
       setOutput("");
 
-      const response = await fetch("http://localhost:5000/api/problems/run", {
+      const response = await fetch(`${API_BASE_URL}/problems/run`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

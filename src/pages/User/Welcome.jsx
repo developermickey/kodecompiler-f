@@ -13,8 +13,12 @@ import {
   Clock
 } from "lucide-react";
 import QuickActions from "./QuickActions";
+import { useDispatch } from "react-redux";
+
+
 
 const Welcome = () => {
+
   const user = useSelector((state) => state.auth.user);
   const navigate = useNavigate();
 
@@ -58,6 +62,9 @@ const Welcome = () => {
 
   const recommendations = user.recommended || [];
   const date = new Date().toLocaleDateString("en-US", { weekday: 'long', month: 'long', day: 'numeric' });
+
+
+  
 
   return (
     <div className="min-h-screen bg-gray-50 pb-12">

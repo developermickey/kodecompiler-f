@@ -1,11 +1,12 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { API_BASE_URL } from "../../config/api";
 
 export const fetchUserProgress = createAsyncThunk(
   "userProgress/fetchUserProgress",
   async (_, { rejectWithValue }) => {
     try {
       const res = await fetch(
-        "http://localhost:5000/api/problems/user-progress",
+        `${API_BASE_URL}/problems/user-progress`,
         { credentials: "include" }
       );
 

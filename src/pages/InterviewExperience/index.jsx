@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchinterviewExperience } from '../../redux/slices/interviewExperienceSlice';
 import { data } from 'react-router-dom';
+import { API_BASE_URL } from "../../config/api";
 
 const InterviewExperiences = () => {
   const dispatch = useDispatch();
@@ -72,8 +73,8 @@ const InterviewExperiences = () => {
 });
 
 
-  // Debounced fetch
   useEffect(() => {
+
     const timer = setTimeout(() => {
       const filters = {
         company: companySearch || undefined,
@@ -227,7 +228,7 @@ const InterviewExperiences = () => {
     }
     
     try {
-      const res = await fetch("http://localhost:5000/api/interview-experiences", {
+      const res = await fetch(`${API_BASE_URL}/interview-experiences`, {
         method: "POST",
         credentials: "include",
         headers: {

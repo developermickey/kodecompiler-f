@@ -1,14 +1,15 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
+import { API_BASE_URL } from "../../config/api";
 
-const API_URL = "http://localhost:5000/api/auth";
+
 
 /* ========================= LOGIN ========================= */
 export const loginUser = createAsyncThunk(
   "auth/login",
   async (credentials, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_URL}/login`, credentials, {
+      const response = await axios.post(`${API_BASE_URL}/auth/login`, credentials, {
         headers: {
           accept: "application/json",
           "Content-Type": "application/json",
@@ -40,7 +41,7 @@ export const registerUser = createAsyncThunk(
   "auth/register",
   async (userData, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_URL}/register`, userData, {
+      const response = await axios.post(`${API_BASE_URL}/auth/register`, userData, {
         headers: {
           accept: "application/json",
           "Content-Type": "application/json",
@@ -72,7 +73,7 @@ export const getOTP = createAsyncThunk(
   "auth/getOTP",
   async (payload, { rejectWithValue }) => {
     try {
-      const res = await axios.post(`${API_URL}/login/otp/request`, payload, {
+      const res = await axios.post(`${API_BASE_URL}/auth/login/otp/request`, payload, {
         headers: {
           accept: "application/json",
           "Content-Type": "application/json",
@@ -92,7 +93,7 @@ export const verifyOTP = createAsyncThunk(
   "auth/verifyOTP",
   async (payload, { rejectWithValue }) => {
     try {
-      const res = await axios.post(`${API_URL}/login/otp/verify`, payload, {
+      const res = await axios.post(`${API_BASE_URL}/login/otp/verify`, payload, {
         headers: {
           accept: "application/json",
           "Content-Type": "application/json",
@@ -123,7 +124,7 @@ export const googleLogin = createAsyncThunk(
   "auth/googleLogin",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_URL}/google/login`, {
+      const response = await axios.get(`${API_BASE_URL}/google/login`, {
         withCredentials: true,
       });
       return response.data;
@@ -139,7 +140,7 @@ export const logoutUser = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       await axios.post(
-        `${API_URL}/logout`,
+        `${API_BASE_URL}/auth/logout`,
         {},
         { withCredentials: true } // 🔑 clears httpOnly cookie
       );
