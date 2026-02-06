@@ -2,7 +2,7 @@ import React, {lazy,Suspense} from "react";
 
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
-import Loader from "./components/loader" 
+import Loader from './components/Loader'
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
