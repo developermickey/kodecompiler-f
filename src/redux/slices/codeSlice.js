@@ -7,7 +7,7 @@ export const runCode = createAsyncThunk(
     async (code, { rejectWithValue }) => {
         try {
             // apiClient handles baseURL and headers automatically
-            const { data } = await apiClient.post("/execute", code);
+            const { data } = await apiClient.post("/api/execute", code);
             return data; // { job_id }
         } catch (err) {
             return rejectWithValue(
@@ -22,7 +22,7 @@ export const getResult = createAsyncThunk(
     "code/getResult",
     async (job_id, { rejectWithValue }) => {
         try {
-            const { data } = await apiClient.get(`/execute/${job_id}/status`);
+            const { data } = await apiClient.get(`/api/execute/${job_id}/status`);
             return data; // { status, output?, error? }
         } catch (err) {
             return rejectWithValue(
@@ -37,7 +37,7 @@ export const getUserCodes = createAsyncThunk(
   "code/getUserCodes",
   async (_, { rejectWithValue }) => {
     try {
-      const { data } = await apiClient.get("/codes/");
+      const { data } = await apiClient.get("/api/codes/");
       return data;
     } catch (err) {
       return rejectWithValue(
@@ -52,7 +52,7 @@ export const saveCode = createAsyncThunk(
     "code/saveCode",
     async ({ code_id, payload }, { rejectWithValue }) => {
         try {
-            const { data } = await apiClient.put(`/codes/${code_id}`, payload);
+            const { data } = await apiClient.put(`/api/codes/${code_id}`, payload);
             return data;
         } catch (err) {
             return rejectWithValue(
@@ -66,7 +66,7 @@ export const saveCode = createAsyncThunk(
 export const createCode = createAsyncThunk(
     'code/createCode', async (code, { rejectWithValue }) => {
         try {
-            const res = await apiClient.post('/codes/', code)
+            const res = await apiClient.post('/api/codes/', code)
             return res.data
         }
         catch (err) {

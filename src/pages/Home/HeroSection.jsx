@@ -8,10 +8,7 @@ const HeroSection = () => {
     { icon: Zap, text: 'Real Interview Qs', sub: 'FAANG Verified' },
   ];
 
-  const dispatch = useDispatch();
-  const user = useSelector((state)=>state.auth.user);
-
-
+  
   
   return (
     <section className="relative bg-white py-20 lg:py-32 overflow-hidden">
