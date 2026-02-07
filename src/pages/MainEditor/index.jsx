@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import Editor from "@monaco-editor/react";
 import {
+  Edit2,
+  Trash2,
+  FilePlus,
   FolderOpen,
   Save,
   Play,
@@ -21,7 +24,7 @@ import {
   FileText,
   Search,
   ChevronRight,
-  Folder
+  Folder,
 } from "lucide-react";
 import {
   runCode,
@@ -29,9 +32,14 @@ import {
   getUserCodes,
   saveCode,
   createCode,
+  deleteCode,
 } from "../../redux/slices/codeSlice";
 import axios from "axios";
-import { createFolder, fetchFolders } from "../../redux/slices/folderSlice";
+import {
+  createFolder,
+  deleteFolder,
+  fetchFolders,
+} from "../../redux/slices/folderSlice";
 
 const MainCompilerLight = () => {
   const dispatch = useDispatch();
@@ -234,7 +242,8 @@ const MainCompilerLight = () => {
       code,
       description: "",
       input,
-      lastOutput: output || ""    };
+      lastOutput: output || "",
+    };
     dispatch(saveCode({ code_id: activeCodeId, payload }))
       .unwrap()
       .then(() => showNotification("Saved successfully."))
@@ -242,7 +251,7 @@ const MainCompilerLight = () => {
   };
 
   const handleModalSave = () => {
-    dispatch(createFolder( folderPath ));
+    dispatch(createFolder(folderPath));
     dispatch(
       createCode({
         title: codeName,
@@ -423,13 +432,17 @@ const MainCompilerLight = () => {
           {isFilePanelOpen && (
             <div className="w-64 bg-gray-50 border-r border-gray-200 flex flex-col shrink-0">
               <SidebarContent
-                activeTab={activeTab}
                 userCodes={userCodes}
                 activeCodeId={activeCodeId}
                 handleCodeClick={handleCodeClick}
                 dispatch={dispatch}
                 close={() => setIsFilePanelOpen(false)}
                 folders={folders}
+                activeTab={activeTab}
+                code={code}
+                language={language}
+                input={input}
+                showNotification={showNotification}
               />
             </div>
           )}
@@ -513,9 +526,13 @@ const MainCompilerLight = () => {
                 <SidebarContent
                   activeTab={activeTab}
                   dispatch={dispatch}
+                  code={code}
+                  language={language}
+                  input={input}
                   folders={folders}
                   userCodes={userCodes}
                   activeCodeId={activeCodeId}
+                  showNotification={showNotification}
                   handleCodeClick={handleCodeClick}
                   close={() => setIsFilePanelOpen(false)}
                   isMobile
@@ -643,11 +660,6 @@ const MainCompilerLight = () => {
   );
 };
 
-// --- Helper Components ---
-
-
-
-
 const SidebarContent = ({
   activeTab,
   userCodes,
@@ -655,11 +667,42 @@ const SidebarContent = ({
   handleCodeClick,
   dispatch,
   close,
+  code,
+  language,
   isMobile,
+  input,
   folders,
+  showNotification,
 }) => {
   const [openFolders, setOpenFolders] = useState({});
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [folderPath, setFolderPath] = useState("");
+  const [codeName, setCodeName] = useState("Untitled Project");
+
+  // --- Renaming State ---
+  const [renamingId, setRenamingId] = useState(null);
+  const [renameValue, setRenameValue] = useState("");
+
+  // --- Context Menu State ---
+  const [contextMenu, setContextMenu] = useState({
+    show: false,
+    x: 0,
+    y: 0,
+    type: null, // 'folder' or 'file'
+    data: null,
+  });
+
+  const contextMenuRef = useRef(null);
+
+  // --- Effects ---
+  useEffect(() => {
+    const handleClick = () => setContextMenu({ ...contextMenu, show: false });
+    document.addEventListener("click", handleClick);
+    return () => document.removeEventListener("click", handleClick);
+  }, [contextMenu]);
+
+  // --- Handlers ---
 
   const toggleFolder = (folderPath) => {
     setOpenFolders((prev) => ({
@@ -671,132 +714,318 @@ const SidebarContent = ({
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await dispatch(getUserCodes());
-    setTimeout(() => setIsRefreshing(false), 500); // Visual feedback delay
+    await dispatch(fetchFolders());
+    setIsRefreshing(false);
+  };
+
+  const handleModalSave = () => {
+    console.log(codeName, language, code, input, folderPath);
+    dispatch(
+      createCode({
+        title: codeName,
+        language,
+        code,
+        description: "",
+        input: input || "",
+        folderPath: folderPath,
+      }),
+    )
+      .unwrap()
+      .then(() => showNotification("Created successfully."))
+      .catch((err) => showNotification("Failed to save."));
+  };
+  const handleCreateFile = (data) => {
+    setContextMenu({ ...contextMenu, show: false });
+    setFolderPath(data.path);
+    // console.log("Creating file in folder:", data);
+    setSaveModalOpen(true);
+  };
+
+  const handleContextMenu = (e, type, data) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const x = e.clientX;
+    const y = e.clientY;
+    setContextMenu({ show: true, x, y, type, data });
+  };
+
+  // --- Action Handlers ---
+
+  const handleRenameStart = () => {
+    setRenamingId(contextMenu.data._id);
+    // Use 'title' for files, 'path' or name for folders depending on your DB structure
+    setRenameValue(contextMenu.data.title || contextMenu.data.path || "");
+    setContextMenu({ ...contextMenu, show: false });
+  };
+
+  const handleRenameSubmit = async () => {
+    if (!renameValue.trim()) return setRenamingId(null);
+
+    if (contextMenu.type === "folder") {
+      // Dispatch folder rename
+      // await dispatch(renameFolder({ id: renamingId, name: renameValue }));
+      await dispatch(fetchFolders()); // Refresh folders
+    } else {
+      // Dispatch file rename
+      // Assuming editCode takes { id, payload }
+      await dispatch(
+        saveCode({
+          code_id: renamingId,
+          payload: { title: renameValue },
+        }),
+      );
+      await dispatch(getUserCodes()); // Refresh files
+    }
+    setRenamingId(null);
+  };
+
+  const handleDelete = async () => {
+    setContextMenu({ ...contextMenu, show: false });
+
+    if (contextMenu.type === "folder") {
+      // Handle Folder Delete
+      await dispatch(deleteFolder(contextMenu.data._id));
+      dispatch(fetchFolders()); // Refresh folder list
+    } else {
+      // Handle File Delete
+      await dispatch(deleteCode(contextMenu.data._id))
+        .unwrap() // Wait for the promise to resolve
+        .then(() => {
+          // FIX: Explicitly fetch codes again to update UI
+          dispatch(getUserCodes());
+        })
+        .catch((err) => console.error("Delete failed", err));
+    }
+  };
+
+  // Helper to detect Enter key on Rename Input
+  const handleRenameKeyDown = (e) => {
+    if (e.key === "Enter") handleRenameSubmit();
+    if (e.key === "Escape") setRenamingId(null);
   };
 
   return (
-    <div className="flex flex-col h-full bg-white border-r border-gray-200">
-      
-      {/* --- Header --- */}
-      <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100 bg-gray-50/50 backdrop-blur-sm sticky top-0 z-10">
-        <span className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider">
-          {activeTab}
-          {activeTab === "My Codes" && (
-            <button
-              onClick={handleRefresh}
-              className={`p-1 rounded-md hover:bg-blue-100 hover:text-blue-600 transition-all ${isRefreshing ? "animate-spin text-blue-600" : ""}`}
-              title="Refresh Files"
-            >
-              <RefreshCw size={12} />
-            </button>
-          )}
-        </span>
-        <button 
-          onClick={close} 
-          className="p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-700 rounded-md transition-colors"
-        >
-          <X size={14} />
-        </button>
-      </div>
+    <>
+      <div
+        className="flex flex-col h-full bg-white border-r border-gray-200 relative"
+        onContextMenu={(e) => e.preventDefault()}
+      >
+        {/* --- Header --- */}
+        <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100 bg-gray-50/50 backdrop-blur-sm sticky top-0 z-10">
+          <span className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider">
+            {activeTab}
+            {activeTab === "My Codes" && (
+              <button
+                onClick={handleRefresh}
+                className={`p-1 rounded-md hover:bg-blue-100 hover:text-blue-600 transition-all ${isRefreshing ? "animate-spin text-blue-600" : ""}`}
+                title="Refresh Files"
+              >
+                <RefreshCw size={12} />
+              </button>
+            )}
+          </span>
+          <button
+            onClick={close}
+            className="p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-700 rounded-md transition-colors"
+          >
+            <X size={14} />
+          </button>
+        </div>
 
-      {/* --- Tree View Content --- */}
-      <div className="flex-1 overflow-y-auto py-2 custom-scrollbar">
-        {activeTab === "My Codes" ? (
-          <div className="space-y-0.5">
-            {folders?.map((item) => {
-              const isOpen = openFolders[item.path];
-              
-              // Filter files for this folder
-              const folderFiles = userCodes?.filter(
-                (code) =>
-                  code?.folderPath &&
-                  item?.path &&
-                  code.folderPath === item.path
-              );
+        {/* --- Tree View Content --- */}
+        <div className="flex-1 overflow-y-auto py-2 custom-scrollbar">
+          {activeTab === "My Codes" ? (
+            <div className="space-y-0.5">
+              {folders?.map((item) => {
+                const isOpen = openFolders[item.path];
+                const folderFiles = userCodes?.filter(
+                  (code) => code?.folderPath === item.path,
+                );
 
-              return (
-                <div key={item._id} className="select-none">
-                  {/* Folder Row */}
-                  <div
-                    onClick={() => toggleFolder(item.path)}
-                    className={`
+                return (
+                  <div key={item._id} className="select-none">
+                    {/* Folder Row */}
+                    <div
+                      onClick={() => {
+                        toggleFolder(item.path);
+                      }}
+                      onContextMenu={(e) =>
+                        handleContextMenu(e, "folder", item)
+                      }
+                      className={`
                       group flex items-center gap-1.5 px-3 py-1.5 cursor-pointer transition-all duration-200 border-l-2 border-transparent
                       ${isOpen ? "bg-gray-50" : "hover:bg-gray-50"}
                     `}
-                    title={`Created: ${new Date(item.createdAt || Date.now()).toLocaleDateString()}`}
-                  >
-                    {/* Chevron Toggle */}
-                    <span className={`text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-0" : "-rotate-90"}`}>
-                      <ChevronDown size={14} />
-                    </span>
+                    >
+                      <span
+                        className={`text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-0" : "-rotate-90"}`}
+                      >
+                        <ChevronDown size={14} />
+                      </span>
 
-                    {/* Folder Icon */}
-                    <span className={`transition-colors ${isOpen ? "text-blue-600" : "text-blue-400 group-hover:text-blue-500"}`}>
-                      {isOpen ? <FolderOpen size={16} /> : <Folder size={16} />}
-                    </span>
+                      <span
+                        className={`transition-colors ${isOpen ? "text-blue-600" : "text-blue-400 group-hover:text-blue-500"}`}
+                      >
+                        {isOpen ? (
+                          <FolderOpen size={16} />
+                        ) : (
+                          <Folder size={16} />
+                        )}
+                      </span>
 
-                    <span className={`truncate text-sm font-medium transition-colors ${isOpen ? "text-gray-900" : "text-gray-600 group-hover:text-gray-900"}`}>
-                      {item.path || "Untitled"}
-                    </span>
-                    
-                    {/* File Count Badge (Optional detail) */}
-                    <span className="ml-auto text-[10px] text-gray-300 group-hover:text-gray-400">
-                      {folderFiles?.length || 0}
-                    </span>
-                  </div>
+                      {/* FOLDER RENAME INPUT OR TEXT */}
+                      {renamingId === item._id ? (
+                        <input
+                          autoFocus
+                          type="text"
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value)}
+                          onBlur={handleRenameSubmit}
+                          onKeyDown={handleRenameKeyDown}
+                          onClick={(e) => e.stopPropagation()} // Prevent folder toggle when clicking input
+                          className="flex-1 min-w-0 bg-white border border-blue-500 rounded px-1 py-0.5 text-sm outline-none"
+                        />
+                      ) : (
+                        <span
+                          className={`truncate text-sm font-medium transition-colors ${isOpen ? "text-gray-900" : "text-gray-600 group-hover:text-gray-900"}`}
+                        >
+                          {item.path || "Untitled"}
+                        </span>
+                      )}
 
-                  {/* Files inside folder (Tree Children) */}
-                  {isOpen && (
-                    <div className="relative animate-in slide-in-from-top-2 fade-in duration-200 origin-top">
-                      {/* Vertical Guide Line */}
-                      <div className="absolute left-[19px] top-0 bottom-0 w-px bg-gray-200" />
+                      <span className="ml-auto text-[10px] text-gray-300 group-hover:text-gray-400">
+                        {folderFiles?.length || 0}
+                      </span>
+                    </div>
 
-                      {folderFiles && folderFiles.length > 0 ? (
-                        folderFiles.map((code) => (
-                          <div
-                            key={code._id}
-                            onClick={() => handleCodeClick(code._id)}
-                            className={`
+                    {/* Files inside folder */}
+                    {isOpen && (
+                      <div className="relative animate-in slide-in-from-top-2 fade-in duration-200 origin-top">
+                        <div className="absolute left-[19px] top-0 bottom-0 w-px bg-gray-200" />
+
+                        {folderFiles && folderFiles.length > 0 ? (
+                          folderFiles.map((code) => (
+                            <div
+                              key={code._id}
+                              onClick={() => handleCodeClick(code._id)}
+                              onContextMenu={(e) =>
+                                handleContextMenu(e, "file", code)
+                              }
+                              className={`
                               group/file flex items-center gap-2 pl-9 pr-3 py-1.5 cursor-pointer text-sm border-l-2 transition-all
                               ${
                                 activeCodeId === code._id
-                                  ? "bg-blue-50/80 text-blue-700 border-blue-600 font-medium" 
-                                  : "text-gray-600 border-transparent hover:bg-gray-100 hover:text-gray-900 hover:border-gray-300" 
+                                  ? "bg-blue-50/80 text-blue-700 border-blue-600 font-medium"
+                                  : "text-gray-600 border-transparent hover:bg-gray-100 hover:text-gray-900 hover:border-gray-300"
                               }
                             `}
-                          >
-                            <FileCode 
-                              size={14} 
-                              className={`shrink-0 transition-colors ${activeCodeId === code._id ? "text-blue-600" : "text-gray-400 group-hover/file:text-gray-600"}`} 
-                            />
-                            <span className="truncate">{code.title || "Untitled"}</span>
+                            >
+                              <FileCode
+                                size={14}
+                                className={`shrink-0 transition-colors ${activeCodeId === code._id ? "text-blue-600" : "text-gray-400 group-hover/file:text-gray-600"}`}
+                              />
+
+                              {/* FILE RENAME INPUT OR TEXT */}
+                              {renamingId === code._id ? (
+                                <input
+                                  autoFocus
+                                  type="text"
+                                  value={renameValue}
+                                  onChange={(e) =>
+                                    setRenameValue(e.target.value)
+                                  }
+                                  onBlur={handleRenameSubmit}
+                                  onKeyDown={handleRenameKeyDown}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="flex-1 min-w-0 bg-white border border-blue-500 rounded px-1 py-0 text-sm outline-none"
+                                />
+                              ) : (
+                                <span className="truncate">
+                                  {code.title || "Untitled"}
+                                </span>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="pl-9 py-2 text-xs text-gray-400 flex items-center gap-2 italic">
+                            <span className="w-1 h-1 rounded-full bg-gray-300"></span>{" "}
+                            Empty
                           </div>
-                        ))
-                      ) : (
-                        <div className="pl-9 py-2 text-xs text-gray-400 flex items-center gap-2 italic">
-                           <span className="w-1 h-1 rounded-full bg-gray-300"></span> Empty
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          /* Empty State for entire sidebar */
-          <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-            <div className="bg-gray-50 p-3 rounded-full mb-3">
-               <Search size={24} className="text-gray-300" />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-            <p className="text-sm font-medium">No files found</p>
-            <p className="text-xs text-gray-300 mt-1">Create a new snippet to get started</p>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+              <div className="bg-gray-50 p-3 rounded-full mb-3">
+                <Search size={24} className="text-gray-300" />
+              </div>
+              <p className="text-sm font-medium">No files found</p>
+            </div>
+          )}
+        </div>
+
+        {/* --- Custom Context Menu --- */}
+        {contextMenu.show && (
+          <div
+            ref={contextMenuRef}
+            className="fixed z-50 w-48 bg-white rounded-lg shadow-xl border border-gray-100 py-1 text-sm text-gray-700 animate-in fade-in zoom-in-95 duration-100"
+            style={{ top: contextMenu.y, left: contextMenu.x }}
+          >
+            <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 border-b border-gray-100 bg-gray-50 rounded-t-lg">
+              {contextMenu.type === "folder"
+                ? "Folder Actions"
+                : "File Actions"}
+            </div>
+
+            <button
+              onClick={handleRenameStart}
+              className="w-full text-left px-3 py-2 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2 transition-colors"
+            >
+              <Edit2 size={14} /> Rename
+            </button>
+
+            <button
+              onClick={handleDelete}
+              className="w-full text-left px-3 py-2 hover:bg-red-50 hover:text-red-600 flex items-center gap-2 transition-colors"
+            >
+              <Trash2 size={14} /> Delete
+            </button>
+
+            {contextMenu.type === "folder" && (
+              <button
+                // onClick={() => {
+                //   console.log("Create file in:", contextMenu.data);
+                //   setContextMenu({ ...contextMenu, show: false });
+                // }}
+                onClick={() => {
+                  handleCreateFile(contextMenu.data);
+                }}
+                className="w-full text-left px-3 py-2 hover:bg-green-50 hover:text-green-600 flex items-center gap-2 transition-colors border-t border-gray-50"
+              >
+                <FilePlus size={14} /> New File
+              </button>
+            )}
           </div>
         )}
       </div>
-    </div>
+      {saveModalOpen && (
+        <SaveModal
+          setShowSaveModal={setSaveModalOpen}
+          folderPath={folderPath}
+          setFolderPath={setFolderPath}
+          handleModalSave={handleModalSave}
+          setCodeName={setCodeName}
+          codeName={codeName}
+        />
+      )}
+    </>
   );
 };
+
 const HeaderButton = ({ icon, label, active, onClick }) => (
   <button
     onClick={onClick}
@@ -822,7 +1051,6 @@ const MobileNavButton = ({ active, onClick, icon, label, hasIndicator }) => (
   </button>
 );
 
-
 const SaveModal = ({
   setShowSaveModal,
   folderPath,
@@ -831,10 +1059,9 @@ const SaveModal = ({
   setCodeName,
   codeName,
 }) => {
-  
   // Handle "Enter" key to submit
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       handleModalSave();
       setShowSaveModal(false);
     }
@@ -866,7 +1093,6 @@ const SaveModal = ({
 
         {/* Body */}
         <div className="p-5 space-y-4">
-          
           {/* Name Input */}
           <div className="space-y-1.5">
             <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
