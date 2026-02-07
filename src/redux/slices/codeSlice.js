@@ -77,6 +77,18 @@ export const createCode = createAsyncThunk(
     }
 )
 
+// ================= DELETE CODE ==================
+export const deleteCode = createAsyncThunk(
+    'code/deleteCode', async (codeId, { rejectWithValue }) => {
+        try {
+            const res = await apiClient.delete(`/api/codes/${codeId}`)
+            return { codeId, ...res.data }
+        }catch (err) {
+            return rejectWithValue(
+                err.response?.data || { message: "Failed to delete code" }
+            )
+        }
+    })
 
 /* ===================== SLICE ===================== */
 const codeSlice = createSlice({
