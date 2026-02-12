@@ -74,7 +74,7 @@ export default function ContestStartPage() {
       }
     };
     if (id) fetchContestData();
-  }, [id]);
+  }, [id, user]);
 
   useEffect(() => {
     const fetchContestleaderboard = async () => {
