@@ -116,6 +116,9 @@ const MainCompilerLight = () => {
 
     dispatch(runCode({ language, code, input }));
   };
+
+
+  
   useEffect(() => {
     if (status === "completed" && window.innerWidth < 768) {
       setMobileTab("output");

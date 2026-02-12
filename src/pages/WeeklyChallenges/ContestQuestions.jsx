@@ -2,67 +2,30 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import {
   Settings,
-  History,
   Moon,
   Sun,
   Type,
   X,
-  Loader,
   Play,
   CheckCircle,
-  AlertCircle,
-  Clock,
   Tag,
-  Building,
   Code,
   Terminal,
   ChevronDown,
-  ChevronUp,
-  ChevronRight,
   AlertTriangle,
-  Info,
   Check,
-  PlayCircle,
   Copy,
-  BarChart3,
-  Zap,
-  Maximize2,
-  Minimize2,
-  Download,
-  ExternalLink,
-  Bookmark,
-  BookmarkCheck,
-  RefreshCw,
-  Sparkles,
-  Cpu,
-  HardDrive,
-  Eye,
-  EyeOff,
-  Filter,
-  Search,
-  TrendingUp,
-  Users,
-  Star,
-  Calendar,
-  GitBranch,
   FileText,
-  HelpCircle,
-  ListChecks,
   Send,
-  AlertCircle as AlertIcon,
-  Pause,
-  ThumbsUp,
-  ThumbsDown,
-  User,
   Menu,
   Smartphone,
+  Monitor,
 } from "lucide-react";
 import Editor from "@monaco-editor/react";
-import NotFound from "../NotFound";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchContestDetails } from "../../redux/slices/contestSlice";
-import { API_BASE_URL } from "../../config/api";
 import apiClient from "../../redux/api/axios";
+import { getResult, runCode, resetCodeState } from "../../redux/slices/codeSlice";
 
 const ContestQuestion = () => {
   const [isMobile, setIsMobile] = useState(false);
@@ -70,12 +33,15 @@ const ContestQuestion = () => {
   /* =========================
    ROUTING / DATA
 ========================= */
+
   const { id } = useParams();
   const [problem, setProblem] = useState(null);
   const dispatch = useDispatch();
+
   /* =========================
      CODE EDITOR STATE
   ========================= */
+
   const [selectedLanguage, setSelectedLanguage] = useState("python");
   const [code, setCode] = useState("");
   const [fontSize, setFontSize] = useState(14);
@@ -84,19 +50,29 @@ const ContestQuestion = () => {
   /* =========================
      EXECUTION / SUBMISSION
   ========================= */
-  const [isRunning, setIsRunning] = useState(false);
-  const [output, setOutput] = useState("");
-  const [isSubmitted, setIsSubmitted] = useState(false);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitResult, setSubmitResult] = useState(null); // { success, message, passed, total, details }
 
   /* =========================
      TEST CASES / TABS
   ========================= */
+
   const [activeTestCase, setActiveTestCase] = useState(0);
   const [activeTab, setActiveTab] = useState("testcases");
+  
+  /* =========================
+     MOBILE VIEW STATE
+  ========================= */
+
+  const [mobileActiveTab, setMobileActiveTab] = useState("editor"); // 'problem' | 'editor'
+  const [mobileView, setMobileView] = useState("vertical"); // 'vertical' | 'horizontal'
+  const [showQuestionMenu, setShowQuestionMenu] = useState(false);
 
   /* =========================
      UI / THEME / SETTINGS
   ========================= */
+
   const [darkMode, setDarkMode] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
@@ -104,6 +80,7 @@ const ContestQuestion = () => {
   /* =========================
      LAYOUT / RESIZING
   ========================= */
+
   const [leftWidth, setLeftWidth] = useState(50);
   const [isResizing, setIsResizing] = useState(false);
 
@@ -261,71 +238,84 @@ const ContestQuestion = () => {
   }, []);
 
   
-  const handleRun = async () => {
-  console.log("Running code for problem ID:", problem);
-  console.log("Selected Language:", selectedLanguage);
-  console.log("Code Snippet:", code);
 
-  try {
-    setIsRunning(true);
-    setOutput("");
 
-    const { data } = await apiClient.post("/problems/run", {
-      problem_id: problem.question_number,
-      language: selectedLanguage,
-      code,
-    });
+  const { output, status, error, jobId, userCodes } = useSelector(
+    (store) => store?.code,
+  );
 
-    if (data.status === "Success") {
-      setOutput(
-        `Input:\n${data.test_case_used?.input || ""}\n\nOutput:\n${
-          data.output
-        }\n\nExecution Time: ${data.execution_time} ms`
-      );
-    } else {
-      setOutput(`Error:\n${data.error || "Unknown error"}`);
-    }
-  } catch (err) {
-    // interceptor already normalized the error
-    setOutput(`Error:\n${err.message || "Error connecting to server"}`);
-  } finally {
-    setIsRunning(false);
-  }
-};
 
-  const handleSubmit = () => {
-    setIsRunning(true);
-    setIsSubmitted(false);
+  // Reset code state when changing questions
+  useEffect(() => {
+    dispatch(resetCodeState());
+    setSubmitResult(null);
+  }, [question_number, dispatch]);
+
+  const handleRun = () => {
+    if (status === "running" || status === "submitting" || isSubmitting) return;
+    setSubmitResult(null);
     setActiveTab("results");
+    // Ensure we stay on editor tab in mobile view
+    if (isMobile) setMobileActiveTab("editor");
+    dispatch(runCode({ language: selectedLanguage, code, input: '' }));
+  };
 
-    setTimeout(() => {
-      const passed = Math.random() > 0.3;
-      if (passed) {
-        setOutput(
-          `✅ Accepted\n\n✓ All test cases passed\n✓ Runtime: ${Math.floor(
-            Math.random() * 100 + 50,
-          )} ms\n✓ Memory: ${(Math.random() * 20 + 40).toFixed(
-            1,
-          )} MB\n✓ Beats ${Math.floor(Math.random() * 30 + 60)}% of users`,
-        );
-        setIsSubmitted(true);
-      } else {
-        const randomTestCase = problem?.testCases?.length
-          ? Math.floor(Math.random() * problem.testCases.length)
-          : 0;
-
-        setOutput(
-          `❌ Wrong Answer\n\n✗ Test Case ${
-            randomTestCase + 1
-          } failed\n\nInput: ${
-            problem?.testCases?.[0]?.input || "N/A"
-          }\nYour Output: ${
-            Math.random() > 0.5 ? "null" : "undefined"
-          }\nExpected: ${problem?.testCases?.[0]?.expected || "N/A"}`,
-        );
-      }
-      setIsRunning(false);
+  // Poll for run results
+  useEffect(() => {
+    if (!jobId) return;
+    const interval = setInterval(() => {
+      dispatch(getResult(jobId));
     }, 2000);
+    if (status === "completed" || status === "failed") {
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [jobId, dispatch, status]);
+
+  const handleSubmit = async () => {
+    if (isSubmitting || status === "running") return;
+    
+    setIsSubmitting(true);
+    setSubmitResult(null);
+    setActiveTab("results");
+    // Ensure we stay on editor tab in mobile view
+    if (isMobile) setMobileActiveTab("editor");
+
+    try {
+      const response = await apiClient.post(
+        `/weekly-challenges/${id}/question/${problem.question_number}/submit`,
+        {
+          code,
+          language: selectedLanguage,
+        }
+      );
+      
+      console.log("Submit response:", response.data);
+      
+      // Handle various response formats
+      const data = response.data;
+      const isSuccess = data?.success === true || 
+                        data?.status === "accepted" || 
+                        (data?.passed !== undefined && data?.passed === data?.total);
+      
+      setSubmitResult({
+        success: isSuccess,
+        message: data?.message || data?.error || (isSuccess ? "All test cases passed!" : "Some test cases failed"),
+        passed: data?.passed,
+        total: data?.total,
+        details: data?.details || data?.results || data?.test_results,
+        execution_time: data?.execution_time || data?.time,
+      });
+    } catch (err) {
+      console.error("Submit error:", err.response?.data || err.message);
+      setSubmitResult({
+        success: false,
+        message: err.response?.data?.message || err.response?.data?.error || err.response?.data?.detail || "Submission failed. Please try again.",
+        error: true,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!problem) {
@@ -390,30 +380,7 @@ const ContestQuestion = () => {
     ? "scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-zinc-900"
     : "scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100";
 
-  const MobileViewComponent = () => {
-  // --- State Management ---
-  // Navigation State
-  const [showQuestionMenu, setShowQuestionMenu] = React.useState(false);
-  const [mobileActiveTab, setMobileActiveTab] = React.useState("problem"); // 'problem' | 'editor'
-  
-  // Editor View State
-  const [activeTab, setActiveTab] = React.useState("testcases"); // 'testcases' | 'results'
-  const [activeTestCase, setActiveTestCase] = React.useState(0);
-  const [mobileView, setMobileView] = React.useState("vertical"); // 'vertical' | 'horizontal' (for editor split)
-  const [showLanguageDropdown, setShowLanguageDropdown] = React.useState(false);
-
-  // --- Helpers ---
-  // Ensure we have a difficulty color map if not provided by parent
-  const getDiffColor = (d) => {
-    const lower = d?.toLowerCase() || "easy";
-    if (lower === "hard") return { bg: "bg-red-500/10", text: "text-red-500", border: "border-red-500/20" };
-    if (lower === "medium") return { bg: "bg-yellow-500/10", text: "text-yellow-500", border: "border-yellow-500/20" };
-    return { bg: "bg-emerald-500/10", text: "text-emerald-500", border: "border-emerald-500/20" };
-  };
-  
-  const diff = getDiffColor(problem.difficulty);
-
-  return (
+  const MobileViewComponent = () => (
     <div className={`h-screen flex flex-col ${bgPrimary} overflow-hidden font-sans`}>
       
       {/* ===== HEADER ===== */}
@@ -611,17 +578,23 @@ const ContestQuestion = () => {
                       {selectedLanguage}
                       <ChevronDown className="w-3 h-3" />
                     </button>
-                    {/* Simplified Dropdown Logic */}
                     {showLanguageDropdown && (
-                      <div className={`absolute top-full left-0 mt-1 w-32 ${bgSecondary} ${borderColor} border rounded-lg shadow-xl z-50 overflow-hidden`}>
-                         {/* Replace with your language array map */}
-                         {['javascript', 'python', 'cpp', 'java'].map(lang => (
+                      <div className={`absolute top-full left-0 mt-1 w-36 ${bgSecondary} ${borderColor} border rounded-lg shadow-xl z-50 overflow-hidden`}>
+                         {languageOptions.map((option) => (
                            <button 
-                             key={lang}
-                             onClick={() => { setSelectedLanguage(lang); setShowLanguageDropdown(false); }}
-                             className={`w-full text-left px-3 py-2 text-xs hover:bg-blue-500 hover:text-white ${textSecondary}`}
+                             key={option.value}
+                             onClick={() => { 
+                               setSelectedLanguage(option.value); 
+                               setCode(problem?.starter_code?.[option.value] || "");
+                               setShowLanguageDropdown(false); 
+                             }}
+                             className={`w-full text-left px-3 py-2 text-xs transition-colors ${
+                               selectedLanguage === option.value
+                                 ? "bg-blue-500 text-white"
+                                 : `${textSecondary} hover:bg-blue-500 hover:text-white`
+                             }`}
                            >
-                             {lang}
+                             {option.label}
                            </button>
                          ))}
                       </div>
@@ -630,7 +603,11 @@ const ContestQuestion = () => {
                   
                   {/* Action Icons */}
                   <div className="flex items-center gap-1">
-                     <button className="p-2 rounded hover:bg-zinc-800/50 transition-colors" title="Copy">
+                     <button 
+                       onClick={handleCopyCode}
+                       className={`p-2 rounded transition-colors ${darkMode ? "hover:bg-zinc-700" : "hover:bg-gray-200"}`} 
+                       title="Copy code"
+                     >
                         <Copy className={`w-4 h-4 ${textTertiary}`} />
                      </button>
                   </div>
@@ -640,23 +617,24 @@ const ContestQuestion = () => {
                 <div className="flex gap-2">
                   <button
                     onClick={handleRun}
-                    disabled={isRunning}
+                    disabled={status === "running" || isSubmitting}
                     className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all shadow-sm
-                      ${isRunning 
+                      ${status === "running" || isSubmitting
                         ? "bg-zinc-700 text-zinc-400 cursor-not-allowed" 
                         : `${darkMode ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700" : "bg-white hover:bg-gray-100 text-gray-700 border border-gray-300"}`
                       }`}
                   >
-                    {isRunning ? <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"/> : <Play className="w-3 h-3" />}
+                    {status === "running" ? <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"/> : <Play className="w-3 h-3" />}
                     Run
                   </button>
                   <button
                     onClick={handleSubmit}
-                    disabled={isRunning}
-                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all shadow-sm text-white bg-blue-600 hover:bg-blue-500`}
+                    disabled={status === "running" || isSubmitting}
+                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all shadow-sm text-white 
+                      ${isSubmitting ? "bg-blue-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-500"}`}
                   >
-                    <CheckCircle className="w-3 h-3" />
-                    Submit
+                    {isSubmitting ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"/> : <Send className="w-3 h-3" />}
+                    {isSubmitting ? "Submitting..." : "Submit"}
                   </button>
                 </div>
               </div>
@@ -695,7 +673,7 @@ const ContestQuestion = () => {
                   onClick={() => setActiveTab("results")}
                   className={`flex-1 px-3 py-2 text-xs font-medium relative transition-colors ${activeTab === "results" ? `${textPrimary} border-b-2 border-blue-500` : `${textTertiary}`}`}
                 >
-                  Results {output && (output.includes("✅") ? "• Passed" : "• Failed")}
+                  Results
                 </button>
               </div>
 
@@ -740,24 +718,55 @@ const ContestQuestion = () => {
                 ) : (
                   /* Results View */
                   <div>
-                    {!output ? (
+                    {status === "running" || status === "submitting" || status === "submitted" || isSubmitting ? (
+                      <div className="flex flex-col items-center justify-center h-full pt-8">
+                        <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-2" />
+                        <p className={`text-xs ${textTertiary}`}>{isSubmitting ? "Submitting..." : "Running..."}</p>
+                      </div>
+                    ) : submitResult ? (
+                      /* Submission Results */
+                      <div className="space-y-3">
+                        <div className={`flex items-center gap-2 text-sm font-bold ${submitResult.success ? "text-emerald-500" : "text-rose-500"}`}>
+                          {submitResult.success ? <CheckCircle className="w-4 h-4"/> : <X className="w-4 h-4"/>}
+                          {submitResult.success ? "Accepted" : "Failed"}
+                        </div>
+                        {submitResult.passed !== undefined && (
+                          <div className={`text-xs ${textSecondary}`}>
+                            Passed: {submitResult.passed}/{submitResult.total} test cases
+                          </div>
+                        )}
+                        <pre className={`text-xs font-mono p-3 rounded border ${
+                          submitResult.success 
+                            ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" 
+                            : "bg-rose-500/10 border-rose-500/20 text-rose-500"
+                        } whitespace-pre-wrap`}>
+                          {submitResult.message}
+                        </pre>
+                        {submitResult.execution_time && (
+                          <div className={`text-xs ${textTertiary}`}>
+                            Execution time: {(submitResult.execution_time * 1000).toFixed(2)}ms
+                          </div>
+                        )}
+                      </div>
+                    ) : !output && !error ? (
                       <div className="flex flex-col items-center justify-center h-full pt-8 opacity-50">
-                        <Play className="w-8 h-8 mb-2" />
-                        <p className="text-xs">Run code to see results</p>
+                        <Play className={`w-8 h-8 mb-2 ${textTertiary}`} />
+                        <p className={`text-xs ${textTertiary}`}>Run code to see results</p>
                       </div>
                     ) : (
+                      /* Run Results */
                       <div className="space-y-3">
-                         <div className={`flex items-center gap-2 text-sm font-bold ${output.includes("✅") ? "text-emerald-500" : "text-rose-500"}`}>
-                           {output.includes("✅") ? <CheckCircle className="w-4 h-4"/> : <X className="w-4 h-4"/>}
-                           {output.includes("✅") ? "Accepted" : "Wrong Answer"}
-                         </div>
-                         <pre className={`text-xs font-mono p-3 rounded border ${
-                           output.includes("✅") 
-                             ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" 
-                             : "bg-rose-500/10 border-rose-500/20 text-rose-500"
-                         } whitespace-pre-wrap`}>
-                           {output}
-                         </pre>
+                        <div className={`flex items-center gap-2 text-sm font-bold ${error ? "text-rose-500" : "text-emerald-500"}`}>
+                          {error ? <X className="w-4 h-4"/> : <CheckCircle className="w-4 h-4"/>}
+                          {error ? "Error" : "Success"}
+                        </div>
+                        <pre className={`text-xs font-mono p-3 rounded border ${
+                          error 
+                            ? "bg-rose-500/10 border-rose-500/20 text-rose-500" 
+                            : "bg-emerald-500/10 border-emerald-500/20 text-emerald-500"
+                        } whitespace-pre-wrap`}>
+                          {error || output || "No output"}
+                        </pre>
                       </div>
                     )}
                   </div>
@@ -769,7 +778,7 @@ const ContestQuestion = () => {
       </div>
     </div>
   );
-};
+
   const DesktopViewComponent = () => {
     return (
       <div className={`h-screen flex flex-col ${bgPrimary} overflow-hidden`}>
@@ -1121,16 +1130,16 @@ const ContestQuestion = () => {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleRun}
-                    disabled={isRunning}
+                    disabled={status === "running" || isSubmitting}
                     className={`cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                      isRunning
+                      status === "running" || isSubmitting
                         ? "bg-zinc-600 cursor-not-allowed"
                         : darkMode
                           ? "bg-zinc-800 hover:bg-zinc-700"
                           : "bg-gray-200 hover:bg-gray-300"
                     } ${textSecondary}`}
                   >
-                    {isRunning ? (
+                    {status === "running" ? (
                       <>
                         <div className="w-3 h-3 border-2 border-zinc-400/30 border-t-zinc-400 rounded-full animate-spin"></div>
                         Running...
@@ -1145,25 +1154,32 @@ const ContestQuestion = () => {
 
                   <button
                     onClick={handleSubmit}
-                    disabled={isRunning}
+                    disabled={status === "running" || isSubmitting}
                     className={`cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                      isSubmitted
+                      submitResult?.success
                         ? darkMode
                           ? "bg-emerald-600 hover:bg-emerald-700"
                           : "bg-emerald-500 hover:bg-emerald-600"
-                        : darkMode
-                          ? "bg-blue-600 hover:bg-blue-700"
-                          : "bg-blue-500 hover:bg-blue-600"
+                        : isSubmitting
+                          ? "bg-blue-400 cursor-not-allowed"
+                          : darkMode
+                            ? "bg-blue-600 hover:bg-blue-700"
+                            : "bg-blue-500 hover:bg-blue-600"
                     } text-white`}
                   >
-                    {isSubmitted ? (
+                    {isSubmitting ? (
+                      <>
+                        <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        Submitting...
+                      </>
+                    ) : submitResult?.success ? (
                       <>
                         <Check className="w-3.5 h-3.5" />
-                        Submitted
+                        Accepted
                       </>
                     ) : (
                       <>
-                        <CheckCircle className="w-3.5 h-3.5" />
+                        <Send className="w-3.5 h-3.5" />
                         Submit
                       </>
                     )}
@@ -1322,94 +1338,91 @@ const ContestQuestion = () => {
                         <h4 className={`font-bold ${textPrimary} text-sm`}>
                           Results
                         </h4>
-                        {output && (
+                        {(output || error || submitResult) && (
                           <div className="flex items-center gap-1.5">
                             <div
                               className={`w-2 h-2 rounded-full ${
-                                output.includes("✅") || output.includes("✓")
-                                  ? "bg-emerald-500"
-                                  : "bg-rose-500"
+                                (error || (submitResult && !submitResult.success))
+                                  ? "bg-rose-500"
+                                  : "bg-emerald-500"
                               }`}
                             ></div>
                             <span
                               className={`text-xs ${
-                                output.includes("✅") || output.includes("✓")
-                                  ? "text-emerald-400"
-                                  : "text-rose-400"
+                                (error || (submitResult && !submitResult.success))
+                                  ? "text-rose-400"
+                                  : "text-emerald-400"
                               }`}
                             >
-                              {output.includes("✅") || output.includes("✓")
-                                ? "Success"
-                                : "Failed"}
+                              {submitResult 
+                                ? (submitResult.success ? "Accepted" : "Failed")
+                                : (error ? "Failed" : "Success")}
                             </span>
                           </div>
                         )}
                       </div>
 
-                      <div
-                        className={`${
-                          darkMode ? "bg-zinc-900/50" : "bg-gray-100"
-                        } rounded p-3 border ${borderColor}`}
-                      >
-                        <pre
-                          className={`text-xs font-mono whitespace-pre-wrap leading-relaxed ${
-                            output.includes("✅") || output.includes("✓")
-                              ? "text-emerald-400"
-                              : output.includes("❌")
-                                ? "text-rose-400"
-                                : textSecondary
-                          }`}
-                        >
-                          {output || "Run your code to see results here"}
-                        </pre>
-                      </div>
-
-                      {output && (
-                        <div className="mt-4 grid grid-cols-3 gap-2">
+                      {/* Loading State */}
+                      {(status === "running" || status === "submitting" || status === "submitted" || isSubmitting) ? (
+                        <div className="flex flex-col items-center justify-center py-12">
+                          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-3" />
+                          <p className={`text-sm ${textTertiary}`}>{isSubmitting ? "Submitting..." : "Running..."}</p>
+                        </div>
+                      ) : submitResult ? (
+                        /* Submission Results */
+                        <div className="space-y-4">
                           <div
-                            className={`p-2 rounded ${
-                              darkMode ? "bg-zinc-800/30" : "bg-gray-50"
-                            } border ${borderColor} text-center`}
+                            className={`${
+                              darkMode ? "bg-zinc-900/50" : "bg-gray-100"
+                            } rounded-lg p-4 border ${submitResult.success ? "border-emerald-500/30" : "border-rose-500/30"}`}
                           >
-                            <div className={`text-xs ${textTertiary} mb-0.5`}>
-                              Status
+                            <div className={`flex items-center gap-2 mb-2 font-bold ${
+                              submitResult.success ? "text-emerald-500" : "text-rose-500"
+                            }`}>
+                              {submitResult.success ? <CheckCircle className="w-5 h-5" /> : <X className="w-5 h-5" />}
+                              {submitResult.success ? "Accepted" : "Wrong Answer"}
                             </div>
-                            <div
-                              className={`text-xs font-bold ${
-                                output.includes("✅") || output.includes("✓")
-                                  ? "text-emerald-400"
-                                  : "text-rose-400"
+                            {submitResult.passed !== undefined && (
+                              <p className={`text-sm ${textSecondary} mb-2`}>
+                                Test Cases: {submitResult.passed}/{submitResult.total} passed
+                              </p>
+                            )}
+                            <pre className={`text-xs font-mono whitespace-pre-wrap ${
+                              submitResult.success ? "text-emerald-400" : "text-rose-400"
+                            }`}>
+                              {submitResult.message}
+                            </pre>
+                          </div>
+                          {submitResult.execution_time && (
+                            <div className={`text-xs ${textTertiary}`}>
+                              Execution time: {(submitResult.execution_time * 1000).toFixed(2)}ms
+                            </div>
+                          )}
+                        </div>
+                      ) : (output || error) ? (
+                        /* Run Results */
+                        <div>
+                          <div
+                            className={`${
+                              darkMode ? "bg-zinc-900/50" : "bg-gray-100"
+                            } rounded p-3 border ${borderColor}`}
+                          >
+                            <pre
+                              className={`text-xs font-mono whitespace-pre-wrap leading-relaxed ${
+                                error
+                                  ? "text-rose-400"
+                                  : "text-emerald-400"
                               }`}
                             >
-                              {output.includes("✅") || output.includes("✓")
-                                ? "Accepted"
-                                : "Failed"}
-                            </div>
+                              {error || output}
+                            </pre>
                           </div>
-                          <div
-                            className={`p-2 rounded ${
-                              darkMode ? "bg-zinc-800/30" : "bg-gray-50"
-                            } border ${borderColor} text-center`}
-                          >
-                            <div className={`text-xs ${textTertiary} mb-0.5`}>
-                              Runtime
-                            </div>
-                            <div className={`text-xs font-bold ${textPrimary}`}>
-                              {output.match(/\d+(\.\d+)?\s*ms/)?.[0] || "N/A"}
-                            </div>
-                          </div>
-                          <div
-                            className={`p-2 rounded ${
-                              darkMode ? "bg-zinc-800/30" : "bg-gray-50"
-                            } border ${borderColor} text-center`}
-                          >
-                            <div className={`text-xs ${textTertiary} mb-0.5`}>
-                              Memory
-                            </div>
-                            <div className={`text-xs font-bold ${textPrimary}`}>
-                              {output.match(/\d+(\.\d+)?\s*MB/)?.[0] || "N/A"}
-                            </div>
-                          </div>
+                        </div>
+                      ) : (
+                        /* Empty State */
+                        <div className="flex flex-col items-center justify-center py-12 opacity-50">
+                          <Play className={`w-10 h-10 mb-3 ${textTertiary}`} />
+                          <p className={`text-sm ${textTertiary}`}>Run your code to see results</p>
                         </div>
                       )}
                     </div>
@@ -1427,3 +1440,4 @@ const ContestQuestion = () => {
 };
 
 export default ContestQuestion;
+
