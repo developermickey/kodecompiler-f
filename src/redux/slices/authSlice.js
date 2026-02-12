@@ -93,7 +93,7 @@ export const verifyOTP = createAsyncThunk(
   "auth/verifyOTP",
   async (payload, { rejectWithValue }) => {
     try {
-      const res = await axios.post(`${API_BASE_URL}/login/otp/verify`, payload, {
+      const res = await axios.post(`${API_BASE_URL}/auth/login/otp/verify`, payload, {
         headers: {
           accept: "application/json",
           "Content-Type": "application/json",

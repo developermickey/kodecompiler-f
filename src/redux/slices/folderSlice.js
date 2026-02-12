@@ -5,7 +5,7 @@ export const fetchFolders = createAsyncThunk(
   "folder/getFolder",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await apiClient.get("/api/folders/");
+      const response = await apiClient.get("/folders/");
       return response.data;
     } catch (err) {
       return rejectWithValue(
@@ -19,7 +19,7 @@ export const createFolder = createAsyncThunk(
   "folder/createFolder",
   async (path, { rejectWithValue }) => {
     try {
-      const res = await apiClient.post("/api/folders/", {path});
+      const res = await apiClient.post("/folders/", {path});
       return res.data;
     } catch (err) {
       return rejectWithValue(
@@ -34,7 +34,7 @@ export const deleteFolder = createAsyncThunk(
   "folder/deleteFolder",
   async (folderId, { rejectWithValue }) => {
     try {
-      const res = await apiClient.delete(`/api/folders/${folderId}`);
+      const res = await apiClient.delete(`/folders/${folderId}`);
       return { folderId, ...res.data };
     } catch (err) {
       return rejectWithValue(
@@ -49,7 +49,7 @@ export const updateFolder = createAsyncThunk(
   "folder/updateFolder",
   async ({ folderId, updates }, { rejectWithValue }) => {
     try {
-      const res = await apiClient.put(`/api/folders/${folderId}`, updates);
+      const res = await apiClient.put(`/folders/${folderId}`, updates);
       return res.data;
     } catch (err) {
       return rejectWithValue(
