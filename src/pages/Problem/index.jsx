@@ -64,6 +64,8 @@ import NotFound from "../NotFound";
 import { API_BASE_URL } from "../../config/api";
 
 const Problem = () => {
+
+
   const { problemId } = useParams();
   const [problem, setProblem] = useState(null);
   const [selectedLanguage, setSelectedLanguage] = useState("python");
@@ -101,6 +103,17 @@ const Problem = () => {
   const [solutionLanguages, setSolutionLanguages] = useState([]);
   const [showLanguageFilter, setShowLanguageFilter] = useState(false);
   const [votechange, setvotechange] = useState(true);
+  
+  const [showAddSolutionModal, setShowAddSolutionModal] = useState(false);
+  const [newSolution, setNewSolution] = useState({
+   title: "",
+  explanation: "",
+  language: selectedLanguage,
+  code: "",
+  time_complexity: "",
+  space_complexity: ""
+  });
+  const [isSubmittingSolution, setIsSubmittingSolution] = useState(false);
   
   // Mobile-specific states
   const [isMobile, setIsMobile] = useState(false);
@@ -168,6 +181,75 @@ const Problem = () => {
       setTimeout(() => setCopied(false), 2000);
     });
   };
+
+  const handleAddSolution = async () => {
+  // 🔒 Validation FIRST
+  if (!newSolution.title.trim()) {
+    alert("Title is required");
+    return;
+  }
+
+  if (!newSolution.explanation.trim()) {
+    alert("Explanation is required");
+    return;
+  }
+
+  if (!newSolution.code.trim()) {
+    alert("Code is required");
+    return;
+  }
+
+  try {
+    setIsSubmittingSolution(true);
+
+    const response = await fetch(`${API_BASE_URL}/solutions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        problem_id: Number(problemId),
+        title: newSolution.title,
+        explanation: newSolution.explanation,
+        language: newSolution.language,
+        code: newSolution.code,
+        time_complexity: newSolution.time_complexity,
+        space_complexity: newSolution.space_complexity,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error(data);
+      throw new Error("Failed to add solution");
+    }
+
+    // ✅ Close modal
+    setShowAddSolutionModal(false);
+
+    // ✅ Reset form
+    setNewSolution({
+      title: "",
+      explanation: "",
+      language: selectedLanguage,
+      code: "",
+      time_complexity: "",
+      space_complexity: ""
+    });
+
+    // ✅ Refresh solutions
+    setvotechange(!votechange);
+
+  } catch (err) {
+    console.error("Add solution error:", err);
+   
+  } finally {
+    setIsSubmittingSolution(false);
+  }
+};
+
 
   useEffect(() => {
     // remove old scrollbar style if exists
@@ -324,8 +406,7 @@ const Problem = () => {
 
   // Fetch submissions
   useEffect(() => {
-    if (leftPanelTab !== "submissions" || !problem) return;
-
+    
     const fetchSubmissions = async () => {
       setIsLoadingSubmissions(true);
 
@@ -442,6 +523,9 @@ const Problem = () => {
         }
       }
     };
+
+
+
     const handleMouseUp = () => {
       setIsResizing(false);
       setIsResizingTestCase(false);
@@ -1062,6 +1146,31 @@ const Problem = () => {
                           {option.label}
                         </button>
                       ))}
+                      <br></br>
+
+                      
+                    {submissions.length > 0 ?<button
+                    onClick={() => {
+                      setNewSolution({
+                        title: "",
+                        explanation: "",
+                        language: selectedLanguage,
+                        code: code, // 🔥 auto-fill current editor code
+                        time_complexity: "",
+                        space_complexity: ""
+                      });
+                      setShowAddSolutionModal(true);
+                    }}
+                    className={`cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg 
+                    ${
+                      darkMode
+                        ? "bg-green-700 hover:bg-green-600"
+                        : "bg-green-500 hover:bg-green-600"
+                    } 
+                    text-white border border-green-600 text-sm font-medium transition-colors`}
+                  >
+                    Add Solution
+                  </button>:null}
                     </div>
                   </div>
                    {isLoadingSolutions ? (
@@ -1884,20 +1993,62 @@ const Problem = () => {
                     <h1 className={`text-xl font-bold ${textPrimary} mb-2`}>Solutions</h1>
                     <p className={`${textSecondary} text-sm`}>Browse solutions submitted by other users</p>
                   </div>
+                   <div className="flex items-center gap-3">
+
+                  {/* Add Solution Button */}
+                  {submissions.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setNewSolution({
+                          title: "",
+                          explanation: "",
+                          language: selectedLanguage,
+                          code: code,
+                          time_complexity: "",
+                          space_complexity: ""
+                        });
+                        setShowAddSolutionModal(true);
+                      }}
+                      className={`cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg 
+                        ${
+                          darkMode
+                            ? "bg-green-700 hover:bg-green-600"
+                            : "bg-green-500 hover:bg-green-600"
+                        } 
+                        text-white border border-green-600 text-sm font-medium transition-colors`}
+                    >
+                      Add Solution
+                    </button>
+                  )}
 
                   {/* Language Filter Dropdown */}
                   <div className="relative">
                     <button
                       onClick={() => setShowLanguageFilter(!showLanguageFilter)}
-                      className={`cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg ${darkMode ? "bg-zinc-800 hover:bg-zinc-700" : "bg-gray-100 hover:bg-gray-200"} border ${borderColor} text-sm font-medium ${textPrimary} transition-colors`}
+                      className={`cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg ${
+                        darkMode
+                          ? "bg-zinc-800 hover:bg-zinc-700"
+                          : "bg-gray-100 hover:bg-gray-200"
+                      } border ${borderColor} text-sm font-medium ${textPrimary} transition-colors`}
                     >
                       <Filter className="w-4 h-4" />
-                      {solutionsFilter === "all" ? "All Languages" : solutionsFilter === "verified" ? "Verified Only" : solutionsFilter.charAt(0).toUpperCase() + solutionsFilter.slice(1)}
-                      <ChevronDown className={`w-4 h-4 ${textTertiary} transition-transform ${showLanguageFilter ? "rotate-180" : ""}`} />
+                      {solutionsFilter === "all"
+                        ? "All Languages"
+                        : solutionsFilter === "verified"
+                        ? "Verified Only"
+                        : solutionsFilter.charAt(0).toUpperCase() +
+                          solutionsFilter.slice(1)}
+                      <ChevronDown
+                        className={`w-4 h-4 ${textTertiary} transition-transform ${
+                          showLanguageFilter ? "rotate-180" : ""
+                        }`}
+                      />
                     </button>
 
                     {showLanguageFilter && (
-                      <div className={`absolute right-0 mt-2 w-56 ${bgSecondary} ${borderColor} border rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto`}>
+                      <div
+                        className={`absolute right-0 mt-2 w-56 ${bgSecondary} ${borderColor} border rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto`}
+                      >
                         <div className="p-2">
                           {languageFilterOptions.map((option) => (
                             <button
@@ -1906,10 +2057,26 @@ const Problem = () => {
                                 setSolutionsFilter(option.value);
                                 setShowLanguageFilter(false);
                               }}
-                              className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded ${solutionsFilter === option.value ? `${darkMode ? "bg-blue-500/20 text-blue-400" : "bg-blue-100 text-blue-600"}` : `${textSecondary} ${darkMode ? "hover:bg-zinc-800" : "hover:bg-gray-100"}`} transition-colors`}
+                              className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded ${
+                                solutionsFilter === option.value
+                                  ? `${
+                                      darkMode
+                                        ? "bg-blue-500/20 text-blue-400"
+                                        : "bg-blue-100 text-blue-600"
+                                    }`
+                                  : `${textSecondary} ${
+                                      darkMode
+                                        ? "hover:bg-zinc-800"
+                                        : "hover:bg-gray-100"
+                                    }`
+                              } transition-colors`}
                             >
-                              <span className="flex-1 text-left">{option.label}</span>
-                              {solutionsFilter === option.value && <Check className="w-4 h-4" />}
+                              <span className="flex-1 text-left">
+                                {option.label}
+                              </span>
+                              {solutionsFilter === option.value && (
+                                <Check className="w-4 h-4" />
+                              )}
                             </button>
                           ))}
                         </div>
@@ -1917,6 +2084,11 @@ const Problem = () => {
                     )}
                   </div>
                 </div>
+
+                   
+                </div>
+                
+                
 
                 {/* Filter Status */}
                 <div className="flex items-center justify-between mb-6">
@@ -2523,2280 +2695,152 @@ const Problem = () => {
         </div>
       </div>
     </div>
-  );
+  ); 
+
+  
+
+
+
 
   // Return appropriate layout based on screen size
-  return isMobile ? <MobileLayout /> : <DesktopLayout />;
+ return (
+  <>
+    {isMobile ? <MobileLayout /> : <DesktopLayout />}
+
+    {showAddSolutionModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowAddSolutionModal(false)}
+        />
+
+        <div
+          className={`${bgSecondary} relative w-[600px] max-h-[90vh] overflow-y-auto rounded-xl border ${borderColor} shadow-2xl p-6 z-10`}
+        >
+          <div className="flex justify-between items-center mb-4">
+            <h2 className={`text-lg font-bold ${textPrimary}`}>
+              Add Solution
+            </h2>
+            <X
+              className={`w-4 h-4 cursor-pointer ${textTertiary}`}
+              onClick={() => setShowAddSolutionModal(false)}
+            />
+          </div>
+
+          <div className="space-y-4">
+            <input
+              type="text"
+              placeholder="Solution Title"
+              value={newSolution.title}
+              onChange={(e) =>
+                setNewSolution({ ...newSolution, title: e.target.value })
+              }
+              className={`w-full px-3 py-2 rounded border ${borderColor} ${
+                darkMode
+                  ? "bg-zinc-900 text-zinc-100"
+                  : "bg-white text-gray-900"
+              }`}
+            />
+
+            <textarea
+              placeholder="Explanation"
+              value={newSolution.explanation}
+              onChange={(e) =>
+                setNewSolution({ ...newSolution, explanation: e.target.value })
+              }
+              rows={3}
+              className={`w-full px-3 py-2 rounded border ${borderColor} ${
+                darkMode
+                  ? "bg-zinc-900 text-zinc-100"
+                  : "bg-white text-gray-900"
+              }`}
+            />
+
+            <select
+              value={newSolution.language}
+              onChange={(e) =>
+                setNewSolution({ ...newSolution, language: e.target.value })
+              }
+              className={`w-full px-3 py-2 rounded border ${borderColor} ${
+                darkMode
+                  ? "bg-zinc-900 text-zinc-100"
+                  : "bg-white text-gray-900"
+              }`}
+            >
+              {languageOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+
+            <textarea
+              placeholder="Paste your solution code"
+              value={newSolution.code}
+              onChange={(e) =>
+                setNewSolution({ ...newSolution, code: e.target.value })
+              }
+              rows={8}
+              className={`w-full font-mono px-3 py-2 rounded border ${borderColor} ${
+                darkMode
+                  ? "bg-zinc-900 text-zinc-100"
+                  : "bg-white text-gray-900"
+              }`}
+            />
+
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                type="text"
+                placeholder="Time Complexity (e.g. O(n))"
+                value={newSolution.time_complexity}
+                onChange={(e) =>
+                  setNewSolution({
+                    ...newSolution,
+                    time_complexity: e.target.value,
+                  })
+                }
+                className={`px-3 py-2 rounded border ${borderColor} ${
+                  darkMode
+                    ? "bg-zinc-900 text-zinc-100"
+                    : "bg-white text-gray-900"
+                }`}
+              />
+
+              <input
+                type="text"
+                placeholder="Space Complexity (e.g. O(1))"
+                value={newSolution.space_complexity}
+                onChange={(e) =>
+                  setNewSolution({
+                    ...newSolution,
+                    space_complexity: e.target.value,
+                  })
+                }
+                className={`px-3 py-2 rounded border ${borderColor} ${
+                  darkMode
+                    ? "bg-zinc-900 text-zinc-100"
+                    : "bg-white text-gray-900"
+                }`}
+              />
+            </div>
+
+            <button
+              onClick={handleAddSolution}
+              disabled={isSubmittingSolution}
+              className="w-full py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors"
+            >
+              {isSubmittingSolution ? "Submitting..." : "Submit Solution"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+  </>
+);
+
 };
 
 export default Problem;
 
 
 
-
-
-
-
-// import React, { useState, useEffect, useRef, useMemo } from "react";
-// import { useParams } from "react-router-dom";
-// import {
-//   Settings,
-//   History,
-//   Moon,
-//   Sun,
-//   Type,
-//   X,
-//   Loader,
-//   Play,
-//   CheckCircle,
-//   AlertCircle,
-//   Clock,
-//   Tag,
-//   Building,
-//   Code,
-//   Terminal,
-//   ChevronDown,
-//   ChevronUp,
-//   ChevronRight,
-//   AlertTriangle,
-//   Info,
-//   Check,
-//   PlayCircle,
-//   Copy,
-//   BarChart3,
-//   Zap,
-//   Maximize2,
-//   Minimize2,
-//   Download,
-//   ExternalLink,
-//   Bookmark,
-//   BookmarkCheck,
-//   RefreshCw,
-//   Sparkles,
-//   Cpu,
-//   HardDrive,
-//   Eye,
-//   EyeOff,
-//   Filter,
-//   Search,
-//   TrendingUp,
-//   Users,
-//   Star,
-//   Calendar,
-//   GitBranch,
-//   FileText,
-//   HelpCircle,
-//   ListChecks,
-//   Send,
-//   AlertCircle as AlertIcon,
-//   Pause,
-//   ThumbsUp,
-//   ThumbsDown,
-//   User,
-//   Menu,
-//   Smartphone,
-//   Monitor,
-//   Upload,
-//   XCircle,
-// } from "lucide-react";
-// import Editor from "@monaco-editor/react";
-// import NotFound from "../NotFound";
-// import { API_BASE_URL } from "../../config/api";
-
-// const Problem = () => {
-//   const { problemId } = useParams();
-//   const [problem, setProblem] = useState(null);
-//   const [selectedLanguage, setSelectedLanguage] = useState("python");
-//   const [code, setCode] = useState("");
-//   const [isRunning, setIsRunning] = useState(false);
-//   const [output, setOutput] = useState(null);
-//   const [openHintIndex, setOpenHintIndex] = useState(null);
-//   const [darkMode, setDarkMode] = useState(true);
-//   const [showSettings, setShowSettings] = useState(false);
-//   const [fontSize, setFontSize] = useState(14);
-//   const [leftWidth, setLeftWidth] = useState(50);
-//   const [isResizing, setIsResizing] = useState(false);
-//   const [testCaseHeight, setTestCaseHeight] = useState(200);
-//   const [isResizingTestCase, setIsResizingTestCase] = useState(false);
-//   const [timer, setTimer] = useState(1800);
-//   const [isTimerRunning, setIsTimerRunning] = useState(false);
-//   const [activeTestCase, setActiveTestCase] = useState(0);
-//   const [isSubmitted, setIsSubmitted] = useState(false);
-//   const [activeTab, setActiveTab] = useState("testcases");
-//   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
-//   const [bookmarked, setBookmarked] = useState(false);
-//   const [copied, setCopied] = useState(false);
-//   const [showTimerModal, setShowTimerModal] = useState(false);
-//   const [customTimerMinutes, setCustomTimerMinutes] = useState(30);
-//   const [leftPanelTab, setLeftPanelTab] = useState("description");
-//   const [submissions, setSubmissions] = useState([]);
-//   const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
-//   const [selectedsubLanguage, setSeletcedsubLanguage] = useState(null);
-//   const [selectedcode, setSelectedCode] = useState(null);
-//   const [solutions, setSolutions] = useState([]);
-//   const [isLoadingSolutions, setIsLoadingSolutions] = useState(false);
-//   const [selectedSolutionId, setSelectedSolutionId] = useState(null);
-//   const [solutionsFilter, setSolutionsFilter] = useState("all");
-//   const [expandedSolutionId, setExpandedSolutionId] = useState(null);
-//   const [solutionLanguages, setSolutionLanguages] = useState([]);
-//   const [showLanguageFilter, setShowLanguageFilter] = useState(false);
-//   const [votechange, setvotechange] = useState(true);
-  
-//   // Mobile-specific states
-//   const [isMobile, setIsMobile] = useState(false);
-//   const [mobileActiveTab, setMobileActiveTab] = useState("problem"); // "problem" or "editor"
-//   const [showMobileLeftPanel, setShowMobileLeftPanel] = useState(false);
-//   const [mobileView, setMobileView] = useState("vertical"); // "vertical" or "horizontal"
-
-//   const MONACO_LANG_MAP = {
-//     python: "python",
-//     javascript: "javascript",
-//     java: "java",
-//     cpp: "cpp",
-//     c: "c",
-//     go: "go",
-//     rust: "rust",
-//     php: "php",
-//     ruby: "ruby",
-//     bash: "bash",
-//   };
-
-//   const containerRef = useRef(null);
-//   const hintsRef = useRef(null);
-//   const companiesRef = useRef(null);
-
-//   // Check if mobile on mount and resize
-//   useEffect(() => {
-//     const checkMobile = () => {
-//       setIsMobile(window.innerWidth < 1024); // Changed from 768 to 1024 for better tablet support
-//     };
-    
-//     checkMobile();
-//     window.addEventListener('resize', checkMobile);
-//     return () => window.removeEventListener('resize', checkMobile);
-//   }, []);
-
-//   // Timer functionality
-//   useEffect(() => {
-//     let interval;
-//     if (isTimerRunning && timer > 0) {
-//       interval = setInterval(() => {
-//         setTimer((prev) => prev - 1);
-//       }, 1000);
-//     } else if (timer === 0) {
-//       setIsTimerRunning(false);
-//     }
-//     return () => clearInterval(interval);
-//   }, [isTimerRunning, timer]);
-
-//   const formatTime = (seconds) => {
-//     const mins = Math.floor(seconds / 60);
-//     const secs = seconds % 60;
-//     return `${mins.toString().padStart(2, "0")}:${secs
-//       .toString()
-//       .padStart(2, "0")}`;
-//   };
-
-//   const resetTimer = () => {
-//     setTimer(customTimerMinutes * 60);
-//     setIsTimerRunning(false);
-//   };
-
-//   const handleCopyCode = () => {
-//     navigator.clipboard.writeText(code).then(() => {
-//       setCopied(true);
-//       setTimeout(() => setCopied(false), 2000);
-//     });
-//   };
-
-//   useEffect(() => {
-//     // remove old scrollbar style if exists
-//     const oldStyle = document.getElementById("custom-scrollbar-style");
-//     if (oldStyle) {
-//       oldStyle.remove();
-//     }
-
-//     const style = document.createElement("style");
-//     style.id = "custom-scrollbar-style";
-
-//     style.innerHTML = `
-//     /* ===== NORMAL SCROLLBAR ONLY ===== */
-
-//     /* Chrome, Edge, Safari */
-//     ::-webkit-scrollbar {
-//       width: 8px;
-//       height: 8px;
-//     }
-
-//     ::-webkit-scrollbar-track {
-//       background: ${darkMode ? "#09090b" : "#f4f4f5"};
-//     }
-
-//     ::-webkit-scrollbar-thumb {
-//       background-color: ${darkMode ? "#3f3f46" : "#a1a1aa"};
-//       border-radius: 6px;
-//     }
-
-//     ::-webkit-scrollbar-thumb:hover {
-//       background-color: ${darkMode ? "#52525b" : "#71717a"};
-//     }
-
-//     /* Firefox */
-//     * {
-//       scrollbar-width: thin;
-//       scrollbar-color: ${darkMode ? "#3f3f46 #09090b" : "#a1a1aa #f4f4f5"};
-//     }
-
-//     /* Mobile optimizations */
-//     @media (max-width: 1024px) {
-//       .mobile-hide {
-//         display: none !important;
-//       }
-      
-//       .mobile-only {
-//         display: block !important;
-//       }
-      
-//       .mobile-flex-col {
-//         flex-direction: column !important;
-//       }
-      
-//       .mobile-w-full {
-//         width: 100% !important;
-//       }
-      
-//       .mobile-text-sm {
-//         font-size: 0.875rem !important;
-//         line-height: 1.25rem !important;
-//       }
-      
-//       .mobile-text-xs {
-//         font-size: 0.75rem !important;
-//         line-height: 1rem !important;
-//       }
-      
-//       .mobile-p-3 {
-//         padding: 0.75rem !important;
-//       }
-      
-//       .mobile-p-2 {
-//         padding: 0.5rem !important;
-//       }
-      
-//       .mobile-gap-2 {
-//         gap: 0.5rem !important;
-//       }
-      
-//       .mobile-overflow-auto {
-//         overflow: auto !important;
-//       }
-      
-//       .mobile-max-h-64 {
-//         max-height: 16rem !important;
-//       }
-//     }
-    
-//     @media (min-width: 1025px) {
-//       .mobile-only {
-//         display: none !important;
-//       }
-//     }
-//   `;
-
-//     document.head.appendChild(style);
-
-//     return () => {
-//       style.remove();
-//     };
-//   }, [darkMode]);
-
-//   // Fetch data from API
-//   useEffect(() => {
-//     const fetchData = async () => {
-//       try {
-//         const res = await fetch(
-//           `${API_BASE_URL}/problems/${problemId}`,
-//           { credentials: "include" }
-//         );
-//         const data = await res.json();
-
-//         const acceptanceRate =
-//           data.total_submissions > 0
-//             ? (
-//                 (data.accepted_submissions / data.total_submissions) *
-//                 100
-//               ).toFixed(2)
-//             : "0.00";
-
-//         const formattedProblem = {
-//           id: problemId,
-//           title: data.title || "",
-//           difficulty: data.difficulty || "Medium",
-//           description: data.description || "",
-//           examples: data.examples || [],
-//           constraints: data.constraints || [],
-//           hints: data.hints || [],
-//           tags: data.tags || [],
-//           starter_code: data.starter_code || {},
-//           companies: data.companies || [],
-//           testCases: (data.test_cases || []).filter((tc) => !tc.hidden),
-//           points: data.points || 0,
-//           acceptanceRate,
-//           total_submissions: data.total_submissions || 0,
-//           accepted_submissions: data.accepted_submissions || 0,
-//           time_limit: data.time_limit || "2s",
-//           memory_limit: data.memory_limit || "256MB",
-//         };
-
-//         setProblem(formattedProblem);
-//         const languages = Object.keys(formattedProblem.starter_code);
-//         if (languages.length > 0) {
-//           setSelectedLanguage(languages[0]);
-//           setCode(formattedProblem.starter_code[languages[0]] || "");
-//         }
-//       } catch (err) {
-//         console.error("Error fetching problem:", err);
-//       }
-//     };
-
-//     fetchData();
-//   }, [problemId]);
-
-//   // Fetch submissions
-//   useEffect(() => {
-//     if (leftPanelTab !== "submissions" || !problem) return;
-
-//     const fetchSubmissions = async () => {
-//       setIsLoadingSubmissions(true);
-
-//       try {
-//         const res = await fetch(
-//          `${API_BASE_URL}/problems/submissions/my?problem_id=${Number(
-//             problemId
-//           )}`,
-//           {
-//             method: "GET",
-//             credentials: "include",
-//           }
-//         );
-
-//         if (!res.ok) {
-//           throw new Error("Failed to fetch submissions");
-//         }
-
-//         const data = await res.json();
-
-//         const formatted = data.map((sub) => ({
-//           id: sub.id || sub._id,
-//           date: new Date(sub.submitted_at).toLocaleString(),
-//           language: sub.language,
-//           status: sub.status,
-//           runtime: sub.runtime_ms ? `${sub.runtime_ms} ms` : "-",
-//           memory: sub.memory_kb ? `${sub.memory_kb} MB` : "-",
-//           code: sub.code,
-//         }));
-
-//         setSubmissions(formatted);
-//       } catch (err) {
-//         console.error("Error fetching submissions:", err);
-//         setSubmissions([]);
-//       } finally {
-//         setIsLoadingSubmissions(false);
-//       }
-//     };
-
-//     fetchSubmissions();
-//   }, [leftPanelTab, problemId, problem]);
-
-//   // Fetch solutions
-//   useEffect(() => {
-//     if (leftPanelTab !== "solutions" || !problemId) return;
-
-//     const fetchSolutions = async () => {
-//       setIsLoadingSolutions(true);
-//       try {
-//         const url = new URL(
-//           `${API_BASE_URL}/solutions/problem/${problemId}`
-//         );
-
-//         const res = await fetch(url, {
-//           method: "GET",
-//           credentials: "include",
-//         });
-
-//         if (!res.ok) {
-//           throw new Error("Failed to fetch solutions");
-//         }
-
-//         const data = await res.json();
-
-//         // Extract unique languages from solutions
-//         const languages = [...new Set(data.map((sol) => sol.language))];
-//         setSolutionLanguages(languages);
-
-//         setSolutions(data);
-
-//         // Auto-select first solution
-//         if (!selectedSolutionId && data.length > 0) {
-//           setSelectedSolutionId(data[0]._id);
-//         }
-//       } catch (err) {
-//         console.error("Error fetching solutions:", err);
-//         setSolutions([]);
-//       } finally {
-//         setIsLoadingSolutions(false);
-//       }
-//     };
-
-//     fetchSolutions();
-//   }, [leftPanelTab, problemId, votechange]);
-
-//   const selectedSolution = useMemo(() => {
-//     return solutions.find((s) => s._id === selectedSolutionId) || null;
-//   }, [solutions, selectedSolutionId]);
-
-//   // Resizing logic for main panel (desktop only)
-//   useEffect(() => {
-//     if (isMobile) return;
-
-//     const handleMouseMove = (e) => {
-//       if (isResizing && containerRef.current) {
-//         const container = containerRef.current;
-//         const containerRect = container.getBoundingClientRect();
-//         const newLeftWidth =
-//           ((e.clientX - containerRect.left) / containerRect.width) * 100;
-
-//         if (newLeftWidth > 25 && newLeftWidth < 75) {
-//           setLeftWidth(newLeftWidth);
-//         }
-//       }
-
-//       if (isResizingTestCase && containerRef.current) {
-//         const containerHeight = containerRef.current.clientHeight;
-//         const relativeY = e.clientY;
-//         const containerRect = containerRef.current.getBoundingClientRect();
-//         const newHeight = containerRect.bottom - relativeY;
-
-//         if (newHeight > 100 && newHeight < containerHeight - 200) {
-//           setTestCaseHeight(newHeight);
-//         }
-//       }
-//     };
-//     const handleMouseUp = () => {
-//       setIsResizing(false);
-//       setIsResizingTestCase(false);
-//     };
-
-//     document.addEventListener("mousemove", handleMouseMove);
-//     document.addEventListener("mouseup", handleMouseUp);
-
-//     return () => {
-//       document.removeEventListener("mousemove", handleMouseMove);
-//       document.removeEventListener("mouseup", handleMouseUp);
-//     };
-//   }, [isResizing, isResizingTestCase, isMobile]);
-
-//   const filteredSolutions = useMemo(() => {
-//     if (solutionsFilter === "all") return solutions;
-//     return solutions.filter((s) => s.language === solutionsFilter);
-//   }, [solutionsFilter, solutions]);
-
-//   // Scroll to section
-//   const scrollToSection = (ref) => {
-//     if (ref.current) {
-//       ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
-//     }
-//   };
-
-//   const handlevote = async (vote, solutionId) => {
-//     const res = await fetch(
-//       `${API_BASE_URL}/solutions/${solutionId}/vote`,
-//       {
-//         method: "POST",
-//         headers: {
-//           "Content-Type": "application/json",
-//         },
-//         credentials: "include",
-//         body: JSON.stringify({
-//           solution_id: solutionId, // ✅ ADD THIS
-//           vote_type: vote, // "upvote" or "downvote"
-//         }),
-//       }
-//     );
-
-//     if (!res.ok) {
-//       const err = await res.json();
-//       console.error("422 error details:", err);
-//       throw new Error("Vote failed");
-//       return;
-//     }
-
-//     setvotechange(!votechange);
-
-//     return res.json();
-//   };
-
-//   const handleRun = async () => {
-//     try 
-//     {
-
-//       setIsRunning(true);
-//       setOutput(null);
-
-//       const response = await fetch(`${API_BASE_URL}/problems/run`, {
-//         method: "POST",
-//         headers: { "Content-Type": "application/json" },
-//         credentials: "include",
-//         body: JSON.stringify({
-//           problem_id: problemId,
-//           language: selectedLanguage,
-//           code: code,
-//         }),
-//       });
-
-//       const data = await response.json();
-
-//       // 1️⃣ Execution / timeout / runtime error
-//       if (data.status !== "Success") {
-//         setOutput({
-//           status: "Error",
-//           error: data.error || "Execution failed",
-//           executionTime: data.execution_time ?? 0,
-//           input: data.test_case_used?.input ?? "",
-//         });
-//         return;
-//       }
-
-//       // 2️⃣ Frontend judging (because backend doesn't)
-//       const actualOutput = (data.output || "").trim();
-//       const expectedOutput = (data.test_case_used?.expected || "").trim();
-
-//       const isCorrect = actualOutput === expectedOutput;
-
-//       // 3️⃣ Unified output object
-//       setOutput({
-//         status: isCorrect ? "Accepted" : "Wrong Answer",
-//         input: data.test_case_used.input,
-//         actualOutput,
-//         expectedOutput,
-//         executionTime: data.execution_time,
-//       });
-
-//     } catch (err) {
-//       console.error(err);
-//       setOutput({
-//         status: "Error",
-//         error: "Unable to connect to server",
-//       });
-//     } finally {
-//       setIsRunning(false);
-//     }
-//   };
-
-//   const handleSubmit = async () => {
-//     try {
-//       setIsRunning(true);
-//       setIsSubmitted(false);
-//       setActiveTab("results");
-//       setOutput(null);
-
-//       const response = await fetch(`${API_BASE_URL}/problems/submit`, {
-//         method: "POST",
-//         headers: { "Content-Type": "application/json" },
-//         credentials: "include",
-//         body: JSON.stringify({
-//           problem_id: problemId,
-//           language: selectedLanguage,
-//           code: code,
-//         }),
-//       });
-
-//       const data = await response.json();
-
-//       // 🔴 Submission / execution error
-//       if (data.status === "Error") {
-//         setOutput({
-//           status: "Error",
-//           error:
-//             data.test_results?.[0]?.error ||
-//             "Submission failed",
-//         });
-//         return;
-//       }
-
-//       // ✅ Accepted / ❌ Wrong Answer
-//       setOutput({
-//         status: data.status, // Accepted | Wrong Answer
-//         passedTests: data.passed_tests,
-//         totalTests: data.total_tests,
-//         runtimeMs: data.runtime_ms,
-//         points: data.points,
-//         testResults: data.test_results,
-//       });
-
-//       if (data.status === "Accepted") {
-//         setIsSubmitted(true);
-//       }
-
-//     } catch (err) {
-//       console.error(err);
-//       setOutput({
-//         status: "Error",
-//         error: "Unable to connect to server",
-//       });
-//     } finally {
-//       setIsRunning(false);
-//     }
-//   };
-
-//   const resetcode = () => {
-//     setCode(problem.starter_code[selectedLanguage])
-//   }
-
-//   if (!problem) {
-//     return (
-//       <div className="min-h-screen bg-gradient-to-br from-zinc-950 to-zinc-900 flex items-center justify-center">
-//         <div className="text-center space-y-4">
-//           <div className="relative">
-//             <div className="w-12 h-12 border-3 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto"></div>
-//             <Code className="w-6 h-6 text-blue-400 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
-//           </div>
-//           <p className="text-zinc-400 font-medium">Loading problem...</p>
-//         </div>
-//       </div>
-//     );
-//   }
-
-//   if (!problem.title) {
-//     return <NotFound />;
-//   }
-
-//   // Color schemes with smaller text
-//   const difficultyColors = {
-//     Easy: {
-//       bg: "bg-emerald-500/15",
-//       text: "text-emerald-500",
-//       border: "border-emerald-500/30",
-//       ring: "ring-emerald-500/20",
-//     },
-//     Medium: {
-//       bg: "bg-amber-500/15",
-//       text: "text-amber-500",
-//       border: "border-amber-500/30",
-//       ring: "ring-amber-500/20",
-//     },
-//     Hard: {
-//       bg: "bg-rose-500/15",
-//       text: "text-rose-500",
-//       border: "border-rose-500/30",
-//       ring: "ring-rose-500/20",
-//     },
-//   };
-
-//   const diff = difficultyColors[problem.difficulty] || difficultyColors.Medium;
-
-//   // Zinc-based dark theme colors
-//   const bgPrimary = darkMode ? "bg-zinc-950" : "bg-gray-50";
-//   const bgSecondary = darkMode ? "bg-zinc-900" : "bg-white";
-//   const bgTertiary = darkMode ? "bg-zinc-800" : "bg-gray-100";
-//   const textPrimary = darkMode ? "text-zinc-100" : "text-gray-900";
-//   const textSecondary = darkMode ? "text-zinc-300" : "text-gray-700";
-//   const textTertiary = darkMode ? "text-zinc-400" : "text-gray-500";
-//   const borderColor = darkMode ? "border-zinc-800" : "border-gray-200";
-//   const hoverBg = darkMode ? "hover:bg-zinc-800" : "hover:bg-gray-100";
-//   const activeBg = darkMode ? "bg-zinc-800" : "bg-gray-200";
-
-//   // Language options
-//   const languageOptions = Object.keys(problem.starter_code || {}).map(
-//     (lang) => ({
-//       value: lang,
-//       label: lang.charAt(0).toUpperCase() + lang.slice(1),
-//     })
-//   );
-
-//   // Custom scrollbar styles
-//   const scrollbarStyles = darkMode
-//     ? "scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-zinc-900"
-//     : "scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100";
-
-//   // Status badge colors
-//   const getStatusColor = (status) => {
-//     switch (status) {
-//       case "Accepted":
-//         return {
-//           bg: "bg-emerald-500/10",
-//           text: "text-emerald-500",
-//           border: "border-emerald-500/20",
-//         };
-//       case "Wrong Answer":
-//         return {
-//           bg: "bg-rose-500/10",
-//           text: "text-rose-700",
-//           border: "border-rose-500/20",
-//         };
-//       case "Time Limit Exceeded":
-//         return {
-//           bg: "bg-amber-500/15",
-//           text: "text-amber-600",
-//           border: "border-amber-500/20",
-//         };
-//       case "Runtime Error":
-//         return {
-//           bg: "bg-red-500/10",
-//           text: "text-red-300",
-//           border: "border-red-500/20",
-//         };
-//       default:
-//         return {
-//           bg: "bg-zinc-500/10",
-//           text: "text-zinc-300",
-//           border: "border-zinc-500/20",
-//         };
-//     }
-//   };
-
-//   // Language filter options for solutions
-//   const languageFilterOptions = [
-//     { value: "all", label: "All Languages" },
-//     { value: "verified", label: "Verified Only" },
-//     ...solutionLanguages.map((lang) => ({
-//       value: lang,
-//       label: lang.charAt(0).toUpperCase() + lang.slice(1),
-//     })),
-//   ];
-
-//   // ========== Mobile Layout ==========
-//   const MobileLayout = () => {
-//   // Helper for status colors in submissions
-//   const getStatusColor = (status) => {
-//     switch (status) {
-//       case "Accepted": return { bg: "bg-emerald-500/10", text: "text-emerald-500", border: "border-emerald-500/20" };
-//       case "Wrong Answer": return { bg: "bg-rose-500/10", text: "text-rose-500", border: "border-rose-500/20" };
-//       default: return { bg: "bg-amber-500/10", text: "text-amber-500", border: "border-amber-500/20" };
-//     }
-//   };
-
-//   return (
-//     <div className={`h-[100dvh] flex flex-col ${bgPrimary} overflow-hidden font-sans`}>
-      
-//       {/* --- MODALS --- */}
-//       {showTimerModal && (
-//         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-//           <div className={`${bgSecondary} w-full max-w-sm rounded-xl border ${borderColor} shadow-2xl p-4`}>
-//             <div className="flex justify-between items-center mb-4">
-//               <h3 className={`${textPrimary} font-semibold`}>Timer Settings</h3>
-//               <button onClick={() => setShowTimerModal(false)} className="p-1 hover:bg-zinc-800 rounded">
-//                 <X className="w-5 h-5 text-zinc-400" />
-//               </button>
-//             </div>
-//             {/* ... Timer Inputs (kept simplified for brevity) ... */}
-//             <div className="flex gap-2 mt-4">
-//               <button
-//                 onClick={() => { setTimer(customTimerMinutes * 60); setIsTimerRunning(false); setShowTimerModal(false); }}
-//                 className="flex-1 py-2.5 bg-blue-600 rounded-lg text-white text-sm font-medium"
-//               >
-//                 Set Timer
-//               </button>
-//             </div>
-//           </div>
-//         </div>
-//       )}
-
-//       {/* --- HEADER --- */}
-//       <header className={`${bgSecondary} border-b ${borderColor} h-14 flex-none px-3 flex items-center justify-between`}>
-//         <div className="flex items-center gap-3 overflow-hidden">
-//           <button onClick={() => setShowMobileLeftPanel(!showMobileLeftPanel)} className="p-2 -ml-2 rounded-lg hover:bg-zinc-800">
-//             <Menu className="w-5 h-5 text-zinc-300" />
-//           </button>
-//           <div className="flex flex-col min-w-0">
-//             <span className={`${textPrimary} text-sm font-semibold truncate`}>
-//               {problemId}. {problem.title}
-//             </span>
-//             <div className="flex items-center gap-2 text-xs text-zinc-500">
-//               <span className={`px-1.5 rounded border ${diff.bg} ${diff.text} ${diff.border} text-[10px]`}>
-//                 {problem.difficulty}
-//               </span>
-//             </div>
-//           </div>
-//         </div>
-
-//         <div className="flex items-center gap-2">
-//            {/* View Toggle */}
-//           <button
-//             onClick={() => setMobileView(mobileView === "vertical" ? "horizontal" : "vertical")}
-//             className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400"
-//           >
-//             {mobileView === "vertical" ? <Smartphone className="w-4 h-4" /> : <Monitor className="w-4 h-4" />}
-//           </button>
-          
-//           {/* Timer Display */}
-//           <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-zinc-800/50 border border-zinc-700/50">
-//             <Clock className={`w-3.5 h-3.5 ${timer < 300 ? "text-rose-500" : "text-blue-500"}`} />
-//             <span className={`font-mono text-xs ${timer < 300 ? "text-rose-500" : "text-zinc-300"}`}>
-//               {formatTime(timer)}
-//             </span>
-//           </div>
-//         </div>
-//       </header>
-
-//       {/* --- NAVIGATION TABS --- */}
-//       <div className={`flex flex-none border-b ${borderColor} bg-zinc-900/50`}>
-//         {['problem', 'editor', 'submissions'].map((tab) => (
-//           <button
-//             key={tab}
-//             onClick={() => setMobileActiveTab(tab)}
-//             className={`flex-1 py-2.5 text-xs font-medium uppercase tracking-wider border-b-2 transition-colors
-//               ${mobileActiveTab === tab 
-//                 ? `border-blue-500 text-blue-400 bg-blue-500/5` 
-//                 : `border-transparent ${textTertiary} hover:bg-white/5`}`}
-//           >
-//             {tab}
-//           </button>
-//         ))}
-//       </div>
-
-//       {/* --- MAIN CONTENT AREA --- */}
-//       <div className="flex-1 min-h-0 relative overflow-hidden">
-        
-//         {/* TAB 1: PROBLEM DESCRIPTION */}
-//         {mobileActiveTab === "problem" && (
-//           <div className={`h-full overflow-y-auto p-4 ${scrollbarStyles}`}>
-//             <h1 className={`text-xl font-bold ${textPrimary} mb-2`}>{problem.title}</h1>
-//             <div className="flex gap-2 mb-4">
-//               <span className={`px-2 py-0.5 rounded-full text-xs border ${diff.bg} ${diff.text} ${diff.border}`}>
-//                 {problem.difficulty}
-//               </span>
-//               <span className="px-2 py-0.5 rounded-full text-xs bg-zinc-800 text-zinc-400 border border-zinc-700">
-//                 Points: {problem.points}
-//               </span>
-//             </div>
-            
-//             <div className={`prose prose-invert prose-sm max-w-none ${textSecondary}`}>
-//               <p>{problem.description}</p>
-//             </div>
-
-//             {/* Examples */}
-//             <div className="mt-6 space-y-4">
-//               {problem.examples.map((ex, idx) => (
-//                 <div key={idx} className={`rounded-lg border ${borderColor} overflow-hidden`}>
-//                   <div className={`bg-zinc-800/50 px-3 py-1.5 border-b ${borderColor} text-xs font-medium text-zinc-400`}>
-//                     Example {idx + 1}
-//                   </div>
-//                   <div className="p-3 space-y-2 bg-zinc-900/30">
-//                     <div className="flex gap-2">
-//                       <span className="text-xs w-12 shrink-0 text-zinc-500">Input:</span>
-//                       <code className="text-xs flex-1 text-zinc-300 font-mono bg-zinc-800/50 px-1 rounded">{ex.input}</code>
-//                     </div>
-//                     <div className="flex gap-2">
-//                       <span className="text-xs w-12 shrink-0 text-zinc-500">Output:</span>
-//                       <code className="text-xs flex-1 text-zinc-300 font-mono bg-zinc-800/50 px-1 rounded">{ex.output}</code>
-//                     </div>
-//                   </div>
-//                 </div>
-//               ))}
-//             </div>
-//           </div>
-//         )}
-
-//         {/* TAB 2: EDITOR & CONSOLE */}
-//         {mobileActiveTab === "editor" && (
-//           <div className={`h-full flex ${mobileView === "vertical" ? "flex-col" : "flex-row"}`}>
-            
-//             {/* Editor Container */}
-//             <div className={`flex flex-col ${mobileView === "vertical" ? "h-3/5" : "w-1/2"} border-r ${borderColor} min-h-0`}>
-//               {/* Language & Actions Toolbar */}
-//               <div className={`flex items-center justify-between px-2 py-1.5 border-b ${borderColor} ${bgSecondary}`}>
-//                 <div className="relative z-20">
-//                   <button 
-//                     onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
-//                     className="flex items-center gap-1.5 px-2 py-1 rounded bg-zinc-800 border border-zinc-700 text-xs text-zinc-300"
-//                   >
-//                     {selectedLanguage} <ChevronDown className="w-3 h-3" />
-//                   </button>
-//                   {/* Language Dropdown (simplified) */}
-//                   {showLanguageDropdown && (
-//                     <div className="absolute top-full left-0 mt-1 w-32 bg-zinc-900 border border-zinc-700 rounded shadow-xl py-1">
-//                       {languageOptions.map(opt => (
-//                         <button key={opt.value} onClick={() => { setSelectedLanguage(opt.value); setShowLanguageDropdown(false); }} 
-//                           className="w-full text-left px-3 py-1.5 text-xs hover:bg-zinc-800 text-zinc-300">
-//                           {opt.label}
-//                         </button>
-//                       ))}
-//                     </div>
-//                   )}
-//                 </div>
-//                 <div className="flex gap-1">
-//                   <button onClick={resetcode} className="p-1.5 hover:bg-zinc-800 rounded text-zinc-400"><History className="w-3.5 h-3.5" /></button>
-//                 </div>
-//               </div>
-
-//               <div className="flex-1 relative">
-//                 <Editor
-//                   height="100%"
-//                   language={MONACO_LANG_MAP[selectedLanguage]}
-//                   value={code}
-//                   theme={darkMode ? "vs-dark" : "light"}
-//                   options={{ minimap: { enabled: false }, fontSize: 13, lineNumbers: "on", padding: { top: 10 } }}
-//                 />
-//               </div>
-//             </div>
-
-//             {/* Console / Output Container */}
-//             <div className={`flex flex-col ${mobileView === "vertical" ? "h-2/5 border-t" : "w-1/2"} ${borderColor} ${bgSecondary}`}>
-              
-//               {/* Console Tabs */}
-//               <div className="flex border-b border-zinc-700">
-//                 <button 
-//                   onClick={() => setActiveTab("testcases")}
-//                   className={`px-4 py-2 text-xs font-medium ${activeTab === "testcases" ? "text-blue-400 border-b-2 border-blue-500" : "text-zinc-500"}`}
-//                 >
-//                   Test Cases
-//                 </button>
-//                 <button 
-//                   onClick={() => setActiveTab("results")}
-//                   className={`px-4 py-2 text-xs font-medium ${activeTab === "results" ? "text-green-400 border-b-2 border-green-500" : "text-zinc-500"}`}
-//                 >
-//                   Run Result
-//                 </button>
-//               </div>
-
-//               <div className="flex-1 overflow-y-auto p-3">
-//                 {activeTab === "testcases" ? (
-//                   <div className="space-y-4">
-//                     <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-//                       {problem.testCases?.map((_, i) => (
-//                         <button 
-//                           key={i} onClick={() => setActiveTestCase(i)}
-//                           className={`px-3 py-1 rounded-full text-xs whitespace-nowrap transition-colors
-//                             ${activeTestCase === i ? "bg-zinc-700 text-white" : "bg-zinc-800/50 text-zinc-500 hover:bg-zinc-800"}`}
-//                         >
-//                           Case {i + 1}
-//                         </button>
-//                       ))}
-//                     </div>
-//                     <div className="space-y-3">
-//                       <div>
-//                         <span className="text-xs text-zinc-500 block mb-1">Input</span>
-//                         <div className="bg-zinc-800/50 p-2 rounded border border-zinc-700/50 font-mono text-xs text-zinc-300">
-//                           {problem.testCases?.[activeTestCase].input}
-//                         </div>
-//                       </div>
-//                       <div>
-//                         <span className="text-xs text-zinc-500 block mb-1">Expected Output</span>
-//                         <div className="bg-zinc-800/50 p-2 rounded border border-zinc-700/50 font-mono text-xs text-zinc-300">
-//                           {problem.testCases?.[activeTestCase].expected}
-//                         </div>
-//                       </div>
-//                     </div>
-//                   </div>
-//                 ) : (
-//                   // RESULT VIEW (LeetCode Style)
-//                   <div className="space-y-4">
-//                     {!output ? (
-//                       <div className="flex flex-col items-center justify-center h-full text-zinc-500 space-y-2 mt-4">
-//                         <Play className="w-8 h-8 opacity-20" />
-//                         <span className="text-xs">Run code to see results</span>
-//                       </div>
-//                     ) : (
-//                       <>
-//                         {/* Status Header */}
-//                         <div className={`p-3 rounded-lg border flex items-center gap-3
-//                           ${output.status === "Accepted" ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
-//                           {output.status === "Accepted" ? <CheckCircle className="w-5 h-5 text-emerald-500" /> : <XCircle className="w-5 h-5 text-rose-500" />}
-//                           <div>
-//                             <div className={`text-sm font-bold ${output.status === "Accepted" ? "text-emerald-500" : "text-rose-500"}`}>
-//                               {output.status === "Wrong Answer" ? "Wrong Answer" : output.status}
-//                             </div>
-//                             {output.executionTime && (
-//                               <div className="text-[10px] text-zinc-400 mt-0.5">Runtime: {output.executionTime}ms</div>
-//                             )}
-//                           </div>
-//                         </div>
-
-//                         {/* Error Message */}
-//                         {output.error && (
-//                           <div className="bg-rose-950/30 p-3 rounded border border-rose-900/50">
-//                             <pre className="text-xs text-rose-300 font-mono whitespace-pre-wrap">{output.error}</pre>
-//                           </div>
-//                         )}
-
-//                         {/* I/O Diff */}
-//                         {!output.error && (
-//                           <div className="space-y-3">
-//                             <div>
-//                               <span className="text-xs text-zinc-500 block mb-1">Input</span>
-//                               <div className="bg-zinc-900 p-2 rounded border border-zinc-800 font-mono text-xs text-zinc-400">
-//                                 {problem.testCases?.[0]?.input || "Hidden"}
-//                               </div>
-//                             </div>
-                            
-//                             <div>
-//                               <span className="text-xs text-zinc-500 block mb-1">Output</span>
-//                               <div className={`p-2 rounded border font-mono text-xs
-//                                 ${output.status === "Accepted" ? "bg-zinc-900 border-zinc-800 text-white" : "bg-rose-950/20 border-rose-900/30 text-rose-200"}`}>
-//                                 {output.actualOutput}
-//                               </div>
-//                             </div>
-
-//                             {output.expectedOutput && (
-//                               <div>
-//                                 <span className="text-xs text-zinc-500 block mb-1">Expected</span>
-//                                 <div className="bg-zinc-900 p-2 rounded border border-zinc-800 font-mono text-xs text-zinc-400">
-//                                   {output.expectedOutput}
-//                                 </div>
-//                               </div>
-//                             )}
-//                           </div>
-//                         )}
-//                       </>
-//                     )}
-//                   </div>
-//                 )}
-//               </div>
-
-//               {/* Action Buttons (Sticky Bottom of Console) */}
-//               <div className="p-2 border-t border-zinc-800 bg-zinc-900 flex gap-2">
-//                 <button 
-//                   onClick={() => { setActiveTab("results"); handleRun(); }} 
-//                   disabled={isRunning}
-//                   className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-xs font-medium text-white flex items-center justify-center gap-2"
-//                 >
-//                   {isRunning ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <Play className="w-3 h-3" />}
-//                   Run
-//                 </button>
-//                 <button 
-//                   onClick={handleSubmit}
-//                   disabled={isRunning}
-//                   className="flex-1 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-xs font-medium text-white flex items-center justify-center gap-2"
-//                 >
-//                   <Upload className="w-3 h-3" /> Submit
-//                 </button>
-//               </div>
-//             </div>
-//           </div>
-//         )}
-
-//         {/* TAB 3: SUBMISSIONS (New List View) */}
-//         {mobileActiveTab === "submissions" && (
-//           <div className="h-full overflow-y-auto p-4 bg-zinc-900/50">
-//             <h2 className="text-sm font-bold text-zinc-300 mb-4 uppercase tracking-wider">My Submissions</h2>
-//             {isLoadingSubmissions ? (
-//               <div className="flex justify-center p-8"><div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>
-//             ) : submissions.length === 0 ? (
-//               <div className="text-center p-8 text-zinc-500 text-sm">No submissions yet.</div>
-//             ) : (
-//               <div className="space-y-3">
-//                 {submissions.map((sub, idx) => {
-//                   const style = getStatusColor(sub.status);
-//                   return (
-//                     <div key={idx} 
-//                       onClick={() => { setSelectedCode(sub.code); setMobileActiveTab("editor"); }}
-//                       className="group bg-zinc-800/40 border border-zinc-700/50 rounded-lg p-3 active:bg-zinc-800 transition-all cursor-pointer"
-//                     >
-//                       <div className="flex justify-between items-start mb-2">
-//                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${style.bg} ${style.text} ${style.border}`}>
-//                           {sub.status}
-//                         </span>
-//                         <span className="text-[10px] text-zinc-500">{sub.date || "Just now"}</span>
-//                       </div>
-//                       <div className="flex items-center justify-between text-xs text-zinc-400">
-//                         <div className="flex gap-3">
-//                           <span className="font-mono text-zinc-300">{sub.language}</span>
-//                           {sub.runtime && <span>⏱ {sub.runtime}</span>}
-//                         </div>
-//                         <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-300" />
-//                       </div>
-//                     </div>
-//                   );
-//                 })}
-//               </div>
-//             )}
-//           </div>
-//         )}
-//       </div>
-//     </div>
-//   );
-// };
-//   // ========== Desktop Layout (Original) ==========
-//   const DesktopLayout = () => (
-//     <div className={`h-screen flex flex-col ${bgPrimary} overflow-hidden`}>
-//       {/* Timer Modal */}
-//       {showTimerModal && (
-//         <div className="fixed inset-0 z-50 flex items-center justify-center">
-//           <div
-//             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-//             onClick={() => setShowTimerModal(false)}
-//           />
-//           <div
-//             className={`${bgSecondary} relative w-[380px] rounded-xl border ${borderColor} shadow-2xl p-6 z-10`}
-//           >
-//             <div className="flex items-center justify-between mb-5">
-//               <div className="flex items-center gap-3">
-//                 <div className="w-9 h-9 rounded-lg bg-blue-600/15 flex items-center justify-center">
-//                   ⏱️
-//                 </div>
-//                 <div>
-//                   <h3 className={`${textPrimary} font-semibold text-lg`}>
-//                     Timer Settings
-//                   </h3>
-//                   <p className={`${textTertiary} text-xs`}>
-//                     Set your focus duration
-//                   </p>
-//                 </div>
-//               </div>
-//               <button
-//                 onClick={() => setShowTimerModal(false)}
-//                 className={`cursor-pointer p-1.5 rounded-md ${hoverBg} transition-colors`}
-//                 aria-label="Close"
-//               >
-//                 <X className={`w-4 h-4 ${textTertiary}`} />
-//               </button>
-//             </div>
-//             <div className="space-y-5">
-//               <div>
-//                 <label className={`${textSecondary} text-sm font-medium mb-2 block`}>
-//                   Duration (minutes)
-//                 </label>
-//                 <div className="relative">
-//                   <input
-//                     type="number"
-//                     min="1"
-//                     max="180"
-//                     value={customTimerMinutes}
-//                     onChange={(e) =>
-//                       setCustomTimerMinutes(
-//                         Math.max(1, Math.min(180, Number(e.target.value) || 1))
-//                       )
-//                     }
-//                     className={`w-full pl-4 pr-12 py-2.5 rounded-lg text-sm border ${borderColor}
-//                       ${darkMode
-//                         ? "bg-zinc-900 text-zinc-100 focus:ring-blue-500"
-//                         : "bg-gray-50 text-gray-900 focus:ring-blue-500"
-//                       }
-//                       focus:outline-none focus:ring-2`}
-//                   />
-//                   <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs ${textTertiary}`}>
-//                     min
-//                   </span>
-//                 </div>
-//                 <p className={`${textTertiary} text-xs mt-1`}>
-//                   Max 180 minutes • Recommended: 25–50
-//                 </p>
-//               </div>
-//               <div className={`rounded-lg border ${borderColor} p-3 text-xs ${textSecondary} ${darkMode ? "bg-zinc-800/40" : "bg-gray-100"}`}>
-//                 ⏳ Current timer will be set to{" "}
-//                 <span className="font-semibold text-blue-500">
-//                   {customTimerMinutes} minutes
-//                 </span>{" "}
-//                 ({customTimerMinutes * 60} seconds)
-//               </div>
-//               <div className="flex gap-3 pt-2">
-//                 <button
-//                   onClick={() => {
-//                     setTimer(customTimerMinutes * 60);
-//                     setIsTimerRunning(false);
-//                     setShowTimerModal(false);
-//                   }}
-//                   className="cursor-pointer flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-colors"
-//                 >
-//                   ▶ Apply
-//                 </button>
-//                 <button
-//                   onClick={resetTimer}
-//                   className={`cursor-pointer flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-sm border ${borderColor}
-//                     ${darkMode
-//                       ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
-//                       : "bg-white hover:bg-gray-100 text-gray-700"
-//                     } transition-colors`}
-//                 >
-//                   ↺ Reset
-//                 </button>
-//               </div>
-//             </div>
-//           </div>
-//         </div>
-//       )}
-
-//       {/* ===== TOP NAVIGATION ===== */}
-//       <div className={`${bgSecondary} border-b ${borderColor} px-5 py-2.5 flex items-center justify-between mobile-hide`}>
-//         {/* Left Section */}
-//         <div className="flex items-center gap-4">
-//           {/* Navigation Tabs */}
-//           <div className="flex items-center gap-1 border-l border-zinc-800 pl-4">
-//             <button
-//               onClick={() => setLeftPanelTab("description")}
-//               className={`cursor-pointer px-3 py-1.5 text-xs font-medium rounded flex items-center gap-1.5 transition-colors ${leftPanelTab === "description" ? `${activeBg} ${textPrimary}` : `${textTertiary} ${hoverBg}`}`}
-//             >
-//               <FileText className="w-3 h-3" />
-//               Description
-//             </button>
-//             <button
-//               onClick={() => setLeftPanelTab("submissions")}
-//               className={`cursor-pointer px-3 py-1.5 text-xs font-medium rounded flex items-center gap-1.5 transition-colors ${leftPanelTab === "submissions" ? `${activeBg} ${textPrimary}` : `${textTertiary} ${hoverBg}`}`}
-//             >
-//               <ListChecks className="w-3 h-3" />
-//               Submissions
-//             </button>
-//             <button
-//               onClick={() => setLeftPanelTab("solutions")}
-//               className={`cursor-pointer px-3 py-1.5 text-xs font-medium rounded flex items-center gap-1.5 transition-colors ${leftPanelTab === "solutions" ? `${activeBg} ${textPrimary}` : `${textTertiary} ${hoverBg}`}`}
-//             >
-//               <Code className="w-3 h-3" />
-//               Solutions
-//             </button>
-//           </div>
-//         </div>
-
-//         {/* Center Section - Problem Stats */}
-//         <div className="flex items-center gap-4">
-//           <div className="text-center">
-//             <div className={`text-xs ${textTertiary} mb-0.5`}>Acceptance</div>
-//             <div className={`font-bold text-sm ${textPrimary}`}>
-//               {problem.acceptanceRate}%
-//             </div>
-//           </div>
-//           <div className="text-center">
-//             <div className={`text-xs ${textTertiary} mb-0.5`}>Points</div>
-//             <div className={`font-bold text-sm ${textPrimary}`}>
-//               {problem.points}
-//             </div>
-//           </div>
-//         </div>
-
-//         {/* Right Section - Actions */}
-//         <div className="flex items-center gap-3">
-//           {/* Timer */}
-//           <div className={`flex items-center gap-3 px-3.5 py-2 rounded-xl border ${borderColor} ${darkMode ? "bg-zinc-800/70" : "bg-gray-100"} shadow-sm`}>
-//             <div className={`flex items-center justify-center w-7 h-7 rounded-lg ${timer < 300 ? "bg-rose-500/15" : "bg-blue-500/15"}`}>
-//               <Clock className={`w-3.5 h-3.5 ${timer < 300 ? "text-rose-500" : "text-blue-500"}`} />
-//             </div>
-//             <span className={`font-mono font-semibold text-sm tracking-wide ${timer < 300 ? "text-rose-500" : textPrimary}`}>
-//               {formatTime(timer)}
-//             </span>
-//             <div className={`h-5 w-px ${darkMode ? "bg-zinc-700" : "bg-gray-300"}`} />
-//             <button
-//               onClick={() => setIsTimerRunning(!isTimerRunning)}
-//               className={`cursor-pointer p-1.5 rounded-lg transition-colors ${darkMode ? "hover:bg-zinc-700 text-zinc-300" : "hover:bg-gray-200 text-gray-700"}`}
-//               title={isTimerRunning ? "Pause Timer" : "Start Timer"}
-//             >
-//               {isTimerRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-//             </button>
-//             <button
-//               onClick={() => setShowTimerModal(true)}
-//               className={`cursor-pointer p-1.5 rounded-lg transition-colors ${darkMode ? "hover:bg-zinc-700 text-zinc-300" : "hover:bg-gray-200 text-gray-700"}`}
-//               title="Timer Settings"
-//             >
-//               <Settings className="w-4 h-4" />
-//             </button>
-//           </div>
-
-//           <button
-//             className={`cursor-pointer p-2 rounded-lg ${hoverBg} transition-colors`}
-//             onClick={resetcode}
-//           >
-//             <History className={`w-4 h-4 ${textTertiary}`} />
-//           </button>
-
-//           <div className="relative">
-//             <button
-//               onClick={() => setShowSettings(!showSettings)}
-//               className={`cursor-pointer p-2 rounded-lg ${hoverBg} transition-colors`}
-//             >
-//               <Settings className={`w-4 h-4 ${textTertiary}`} />
-//             </button>
-//             {showSettings && (
-//               <div className={`absolute right-0 mt-2 w-64 ${bgSecondary} ${borderColor} border rounded-lg shadow-xl z-50`}>
-//                 <div className="p-4">
-//                   <div className="flex justify-between items-center mb-3">
-//                     <h3 className={`${textPrimary} font-bold text-sm`}>Settings</h3>
-//                     <X onClick={() => setShowSettings(false)} className={`w-4 h-4 ${textTertiary} cursor-pointer hover:text-zinc-300`} />
-//                   </div>
-//                   <div className="space-y-3">
-//                     <div>
-//                       <div className="flex items-center justify-between mb-2">
-//                         <label className={`${textSecondary} text-xs font-medium flex items-center gap-1.5`}>
-//                           {darkMode ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
-//                           Theme
-//                         </label>
-//                         <button
-//                           onClick={() => setDarkMode(!darkMode)}
-//                           className={`w-10 h-5 rounded-full transition-colors relative ${darkMode ? "bg-blue-500" : "bg-gray-300"}`}
-//                         >
-//                           <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${darkMode ? "left-5" : "left-0.5"}`}></div>
-//                         </button>
-//                       </div>
-//                     </div>
-//                     <div>
-//                       <label className={`${textSecondary} text-xs font-medium mb-2 flex items-center gap-1.5`}>
-//                         <Type className="w-3.5 h-3.5" />
-//                         Font Size: {fontSize}px
-//                       </label>
-//                       <input
-//                         type="range"
-//                         min="12"
-//                         max="18"
-//                         value={fontSize}
-//                         onChange={(e) => setFontSize(Number(e.target.value))}
-//                         className="w-full h-1.5 bg-zinc-700 rounded appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-500"
-//                       />
-//                     </div>
-//                   </div>
-//                 </div>
-//               </div>
-//             )}
-//           </div>
-//         </div>
-//       </div>
-
-//       {/* ===== MAIN CONTENT ===== */}
-//       <div ref={containerRef} className="flex flex-1 overflow-hidden">
-//         {/* ===== LEFT PANEL ===== */}
-//         <div style={{ width: `${leftWidth}%` }} className={`overflow-y-auto ${bgSecondary} p-6 ${scrollbarStyles} mobile-hide`}>
-//           {leftPanelTab === "description" ? (
-//             <>
-//               {/* Problem Header */}
-//               <div className="mb-6">
-//                 <div className="flex items-start justify-between mb-4">
-//                   <div className="flex-1">
-//                     <div className="flex items-center gap-2 mb-3">
-//                       <span className={`px-2.5 py-1 rounded text-xs font-semibold border ${diff.bg} ${diff.text} ${diff.border} ring-1 ${diff.ring}`}>
-//                         {problem.difficulty}
-//                       </span>
-//                       <div className="flex items-center gap-1.5 text-xs">
-//                         <button
-//                           onClick={() => scrollToSection(hintsRef)}
-//                           className={`cursor-pointer ${textTertiary} hover:text-zinc-200 px-2 py-1 rounded transition-colors`}
-//                         >
-//                           💡 Hints ({problem.hints.length})
-//                         </button>
-//                         {problem.companies.length > 0 && (
-//                           <>
-//                             <span className={textTertiary}>•</span>
-//                             <button
-//                               onClick={() => scrollToSection(companiesRef)}
-//                               className={`cursor-pointer ${textTertiary} hover:text-zinc-200 px-2 py-1 rounded flex items-center gap-1 transition-colors`}
-//                             >
-//                               <Building className="w-3 h-3" />
-//                               Companies ({problem.companies.length})
-//                             </button>
-//                           </>
-//                         )}
-//                       </div>
-//                     </div>
-//                     <h1 className={`text-2xl font-bold ${textPrimary} mb-3`}>
-//                       {problem.id}. {problem.title}
-//                     </h1>
-//                     <p className={`${textSecondary} text-sm leading-normal`}>
-//                       {problem.description}
-//                     </p>
-//                   </div>
-//                 </div>
-
-//                 {/* Stats */}
-//                 <div className="grid grid-cols-3 gap-3 mb-6">
-//                   <div className={`p-3 rounded-lg ${darkMode ? "bg-zinc-800/30" : "bg-gray-50"} border ${borderColor}`}>
-//                     <div className={`text-xs ${textTertiary} mb-1`}>Total Submissions</div>
-//                     <div className={`font-bold ${textPrimary}`}>{problem.total_submissions?.toLocaleString() || 0}</div>
-//                   </div>
-//                   <div className={`p-3 rounded-lg ${darkMode ? "bg-zinc-800/30" : "bg-gray-50"} border ${borderColor}`}>
-//                     <div className={`text-xs ${textTertiary} mb-1`}>Accepted Submissions</div>
-//                     <div className={`font-bold ${textPrimary}`}>{problem.accepted_submissions}</div>
-//                   </div>
-//                   <div className={`p-3 rounded-lg ${darkMode ? "bg-emerald-500/10" : "bg-emerald-100"} border ${darkMode ? "border-emerald-500/20" : "border-emerald-200"}`}>
-//                     <div className={`text-xs ${darkMode ? "text-emerald-300" : "text-emerald-700"} mb-1`}>Acceptance Rate</div>
-//                     <div className={`font-bold ${darkMode ? "text-emerald-300" : "text-emerald-700"}`}>{problem.acceptanceRate}%</div>
-//                   </div>
-//                 </div>
-//               </div>
-
-//               {/* Examples Section */}
-//               {problem.examples.length > 0 && (
-//                 <div className="mb-6">
-//                   <h3 className={`${textPrimary} font-bold text-sm mb-3 flex items-center gap-1.5`}>
-//                     <Terminal className="w-3.5 h-3.5" />
-//                     Examples
-//                   </h3>
-//                   <div className="space-y-4">
-//                     {problem.examples.map((ex, idx) => (
-//                       <div key={idx} className={`border ${borderColor} rounded-lg overflow-hidden ${darkMode ? "bg-zinc-800/20" : "bg-gray-50"}`}>
-//                         <div className={`px-4 py-2.5 ${darkMode ? "bg-zinc-800/40" : "bg-gray-100"} border-b ${borderColor}`}>
-//                           <span className={`text-xs font-semibold ${darkMode ? "text-blue-400" : "text-blue-600"}`}>Example {idx + 1}</span>
-//                         </div>
-//                         <div className="p-4">
-//                           <div className="space-y-3">
-//                             <div>
-//                               <div className={`text-xs ${textTertiary} mb-1.5`}>Input</div>
-//                               <pre className={`text-xs font-mono p-3 rounded ${darkMode ? "bg-zinc-900 text-zinc-300" : "bg-white text-gray-800"} overflow-x-auto border ${borderColor}`}>
-//                                 {ex.input}
-//                               </pre>
-//                             </div>
-//                             <div>
-//                               <div className={`text-xs ${textTertiary} mb-1.5`}>Output</div>
-//                               <pre className={`text-xs font-mono p-3 rounded ${darkMode ? "bg-zinc-900 text-zinc-300" : "bg-white text-gray-800"} overflow-x-auto border ${borderColor}`}>
-//                                 {ex.output}
-//                               </pre>
-//                             </div>
-//                             {ex.explanation && (
-//                               <div>
-//                                 <div className={`text-xs ${textTertiary} mb-1.5`}>Explanation</div>
-//                                 <p className={`text-xs ${textSecondary}`}>{ex.explanation}</p>
-//                               </div>
-//                             )}
-//                           </div>
-//                         </div>
-//                       </div>
-//                     ))}
-//                   </div>
-//                 </div>
-//               )}
-
-//               {/* Constraints Section */}
-//               {problem.constraints.length > 0 && (
-//                 <div className="mb-6">
-//                   <h3 className={`${textPrimary} font-bold text-sm mb-3 flex items-center gap-1.5`}>
-//                     <AlertTriangle className="w-3.5 h-3.5" />
-//                     Constraints
-//                   </h3>
-//                   <div className={`${darkMode ? "bg-zinc-800/20" : "bg-gray-50"} border ${borderColor} rounded-lg p-4`}>
-//                     <ul className={`space-y-2 text-xs ${textSecondary}`}>
-//                       {problem.constraints.map((c, i) => (
-//                         <li key={i} className="flex items-start">
-//                           <span className="mr-2 mt-0.5 text-zinc-500">•</span>
-//                           <span className="font-mono">{c}</span>
-//                         </li>
-//                       ))}
-//                     </ul>
-//                   </div>
-//                 </div>
-//               )}
-
-//               {/* Tags Section */}
-//               {problem.tags.length > 0 && (
-//                 <div className="mb-6">
-//                   <h3 className={`${textPrimary} font-bold text-sm mb-3 flex items-center gap-1.5`}>
-//                     <Tag className="w-3.5 h-3.5" />
-//                     Topics & Tags
-//                   </h3>
-//                   <div className="flex flex-wrap gap-2">
-//                     {problem.tags.map((tag, index) => (
-//                       <span key={index} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${darkMode ? "bg-zinc-800 text-zinc-300 hover:bg-zinc-700 border border-zinc-700" : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300"} transition-colors cursor-pointer`}>
-//                         {tag}
-//                       </span>
-//                     ))}
-//                   </div>
-//                 </div>
-//               )}
-
-//               {/* Companies Section */}
-//               {problem.companies.length > 0 && (
-//                 <div ref={companiesRef} className="mb-6 scroll-mt-8">
-//                   <h3 className={`${textPrimary} font-bold text-sm mb-3 flex items-center gap-1.5`}>
-//                     <Building className="w-3.5 h-3.5" />
-//                     Companies
-//                   </h3>
-//                   <div className={`${darkMode ? "bg-zinc-800/20" : "bg-gray-50"} border ${borderColor} rounded-lg p-4`}>
-//                     <div className="flex flex-wrap gap-2">
-//                       {problem.companies.map((company, index) => (
-//                         <span key={index} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${darkMode ? "bg-zinc-800 text-zinc-300 hover:bg-zinc-700" : "bg-gray-100 text-gray-700 hover:bg-gray-200"} transition-colors cursor-pointer flex items-center gap-1.5`}>
-//                           <Building className="w-3 h-3" />
-//                           {company}
-//                         </span>
-//                       ))}
-//                     </div>
-//                   </div>
-//                 </div>
-//               )}
-
-//               {/* Hints Section */}
-//               {problem.hints.length > 0 && (
-//                 <div ref={hintsRef} className="mb-6 scroll-mt-8">
-//                   <h3 className={`${textPrimary} font-bold text-sm mb-3 flex items-center gap-1.5`}>
-//                     <HelpCircle className="w-3.5 h-3.5" />
-//                     Hints
-//                   </h3>
-//                   <div className="space-y-2">
-//                     {problem.hints.map((hint, index) => (
-//                       <div key={index} className={`border ${borderColor} rounded-lg overflow-hidden ${darkMode ? "bg-zinc-800/20" : "bg-gray-50"}`}>
-//                         <button
-//                           onClick={() => setOpenHintIndex(openHintIndex === index ? null : index)}
-//                           className={`cursor-pointer w-full flex justify-between items-center px-4 py-3 ${textPrimary} ${darkMode ? "hover:bg-zinc-800/40" : "hover:bg-gray-100"} transition-colors`}
-//                         >
-//                           <div className="flex items-center gap-3">
-//                             <div className={`w-6 h-6 rounded ${darkMode ? "bg-amber-500/10" : "bg-amber-100"} flex items-center justify-center`}>
-//                               <span className="text-xs">💡</span>
-//                             </div>
-//                             <span className="font-medium text-sm">Hint {index + 1}</span>
-//                           </div>
-//                           <ChevronDown className={`w-4 h-4 ${textTertiary} transition-transform ${openHintIndex === index ? "rotate-180" : ""}`} />
-//                         </button>
-//                         {openHintIndex === index && (
-//                           <div className={`px-4 py-3 border-t ${borderColor} ${darkMode ? "bg-zinc-900/20" : "bg-white"}`}>
-//                             <p className={`${textSecondary} text-sm`}>{hint}</p>
-//                           </div>
-//                         )}
-//                       </div>
-//                     ))}
-//                   </div>
-//                 </div>
-//               )}
-//             </>
-//           ) : leftPanelTab === "submissions" ? (
-//             /* ===== SUBMISSIONS TAB ===== */
-//             <div>
-//               <div className="mb-6">
-//                 <h1 className={`text-xl font-bold ${textPrimary} mb-2`}>My Submissions</h1>
-//                 <p className={`${textSecondary} text-sm`}>View your previous submissions for this problem</p>
-//               </div>
-
-//               {isLoadingSubmissions ? (
-//                 <div className="flex items-center justify-center h-64">
-//                   <div className="text-center space-y-4">
-//                     <div className="relative">
-//                       <div className="w-12 h-12 border-3 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto"></div>
-//                       <ListChecks className="w-6 h-6 text-blue-400 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
-//                     </div>
-//                     <p className="text-zinc-400 font-medium">Loading submissions...</p>
-//                   </div>
-//                 </div>
-//               ) : submissions.length === 0 ? (
-//                 <div className={`flex flex-col items-center justify-center h-64 ${darkMode ? "bg-zinc-800/20" : "bg-gray-50"} rounded-lg border ${borderColor}`}>
-//                   <Send className="w-12 h-12 text-zinc-500 mb-4" />
-//                   <h3 className={`${textPrimary} font-medium mb-2`}>No submissions yet</h3>
-//                   <p className={`${textSecondary} text-sm text-center max-w-md`}>Submit your solution to see it appear here</p>
-//                 </div>
-//               ) : (
-//                 <div className="space-y-4">
-//                   <div className={`${darkMode ? "bg-zinc-800/30" : "bg-gray-50"} border ${borderColor} rounded-lg overflow-hidden`}>
-//                     <div className={`grid grid-cols-12 px-4 py-3 ${darkMode ? "bg-zinc-800/40" : "bg-gray-100"} border-b ${borderColor} text-xs font-medium ${textTertiary}`}>
-//                       <div className="col-span-3">Date</div>
-//                       <div className="col-span-2">Language</div>
-//                       <div className="col-span-2">Status</div>
-//                       <div className="col-span-2">Runtime</div>
-//                       <div className="col-span-2">Memory</div>
-//                     </div>
-//                     <div className="cursor-pointer divide-y divide-zinc-800">
-//                       {submissions.map((sub) => {
-//                         const statusColors = getStatusColor(sub.status);
-//                         return (
-//                           <div
-//                             key={sub.id}
-//                             className={`grid grid-cols-12 px-4 py-3 items-center hover:${darkMode ? "bg-zinc-800/20" : "bg-gray-50"} transition-colors`}
-//                             onClick={() => {
-//                               setSelectedCode(sub.code);
-//                               setSeletcedsubLanguage(sub.language);
-//                             }}
-//                           >
-//                             <div className={`col-span-3 text-xs ${textSecondary}`}>{sub.date}</div>
-//                             <div className={`col-span-2 text-xs ${textSecondary}`}>{sub.language}</div>
-//                             <div className="col-span-2">
-//                               <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium border ${statusColors.bg} ${statusColors.text} ${statusColors.border}`}>
-//                                 {sub.status === "Accepted" && <Check className="w-3 h-3 mr-1" />}
-//                                 {sub.status === "Wrong Answer" && <AlertIcon className="w-3 h-3 mr-1" />}
-//                                 {sub.status === "Wrong Answer" ? "Wrong" : sub.status === "Time Limit Exceeded" ? (
-//                                   <span className="inline-flex items-center gap-1">
-//                                     <Clock className="w-3 h-3 text-amber-600" />
-//                                     TLE
-//                                   </span>
-//                                 ) : sub.status}
-//                               </span>
-//                             </div>
-//                             <div className={`col-span-2 text-xs font-mono ${textPrimary}`}>{sub.runtime}</div>
-//                             <div className={`col-span-2 text-xs font-mono ${textPrimary}`}>{sub.memory}</div>
-//                           </div>
-//                         );
-//                       })}
-//                     </div>
-//                   </div>
-
-//                   {/* Most Recent Submission Details */}
-//                   {selectedcode && (
-//                     <div className={`border ${borderColor} rounded-lg overflow-hidden ${darkMode ? "bg-zinc-800/20" : "bg-gray-50"}`}>
-//                       <div className={`px-4 py-3 ${darkMode ? "bg-zinc-800/40" : "bg-gray-100"} border-b ${borderColor}`}>
-//                         <h3 className={`${textPrimary} font-medium text-sm`}>Selected Submission Code</h3>
-//                         <p className={`${textTertiary} text-xs mt-1`}>{selectedsubLanguage}</p>
-//                       </div>
-//                       <div className="p-4">
-//                         <pre className={`text-xs font-mono p-4 rounded ${darkMode ? "bg-zinc-900 text-zinc-300" : "bg-white text-gray-800"} overflow-x-auto border ${borderColor}`}>
-//                           {selectedcode}
-//                         </pre>
-//                       </div>
-//                     </div>
-//                   )}
-
-//                   {/* Submission Stats */}
-//                   <div className="grid grid-cols-3 gap-3">
-//                     <div className={`p-4 rounded-lg ${darkMode ? "bg-emerald-500/10 border-emerald-500/20" : "bg-emerald-100 border-emerald-200"} border`}>
-//                       <div className={`text-xs ${darkMode ? "text-emerald-300" : "text-emerald-700"} mb-1`}>Accepted</div>
-//                       <div className={`text-xl font-bold ${darkMode ? "text-emerald-300" : "text-emerald-700"}`}>
-//                         {submissions.filter((s) => s.status === "Accepted").length}
-//                       </div>
-//                     </div>
-//                     <div className={`p-4 rounded-lg ${darkMode ? "bg-amber-500/10 border-amber-500/20" : "bg-amber-100 border-amber-200"} border`}>
-//                       <div className={`text-xs ${darkMode ? "text-amber-300" : "text-amber-700"} mb-1`}>Wrong Answer</div>
-//                       <div className={`text-xl font-bold ${darkMode ? "text-amber-300" : "text-amber-700"}`}>
-//                         {submissions.filter((s) => s.status === "Wrong Answer").length}
-//                       </div>
-//                     </div>
-//                     <div className={`p-4 rounded-lg ${darkMode ? "bg-zinc-800/30 border-zinc-800" : "bg-gray-100 border-gray-200"} border`}>
-//                       <div className={`text-xs ${textTertiary} mb-1`}>Total Attempts</div>
-//                       <div className={`text-xl font-bold ${textPrimary}`}>{submissions.length}</div>
-//                     </div>
-//                   </div>
-//                 </div>
-//               )}
-//             </div>
-//           ) : leftPanelTab === "solutions" ? (
-//             /* ===== SOLUTIONS TAB ===== */
-//             <div>
-//               <div className="mb-6">
-//                 <div className="flex items-center justify-between mb-4">
-//                   <div>
-//                     <h1 className={`text-xl font-bold ${textPrimary} mb-2`}>Solutions</h1>
-//                     <p className={`${textSecondary} text-sm`}>Browse solutions submitted by other users</p>
-//                   </div>
-
-//                   {/* Language Filter Dropdown */}
-//                   <div className="relative">
-//                     <button
-//                       onClick={() => setShowLanguageFilter(!showLanguageFilter)}
-//                       className={`cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg ${darkMode ? "bg-zinc-800 hover:bg-zinc-700" : "bg-gray-100 hover:bg-gray-200"} border ${borderColor} text-sm font-medium ${textPrimary} transition-colors`}
-//                     >
-//                       <Filter className="w-4 h-4" />
-//                       {solutionsFilter === "all" ? "All Languages" : solutionsFilter === "verified" ? "Verified Only" : solutionsFilter.charAt(0).toUpperCase() + solutionsFilter.slice(1)}
-//                       <ChevronDown className={`w-4 h-4 ${textTertiary} transition-transform ${showLanguageFilter ? "rotate-180" : ""}`} />
-//                     </button>
-
-//                     {showLanguageFilter && (
-//                       <div className={`absolute right-0 mt-2 w-56 ${bgSecondary} ${borderColor} border rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto`}>
-//                         <div className="p-2">
-//                           {languageFilterOptions.map((option) => (
-//                             <button
-//                               key={option.value}
-//                               onClick={() => {
-//                                 setSolutionsFilter(option.value);
-//                                 setShowLanguageFilter(false);
-//                               }}
-//                               className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded ${solutionsFilter === option.value ? `${darkMode ? "bg-blue-500/20 text-blue-400" : "bg-blue-100 text-blue-600"}` : `${textSecondary} ${darkMode ? "hover:bg-zinc-800" : "hover:bg-gray-100"}`} transition-colors`}
-//                             >
-//                               <span className="flex-1 text-left">{option.label}</span>
-//                               {solutionsFilter === option.value && <Check className="w-4 h-4" />}
-//                             </button>
-//                           ))}
-//                         </div>
-//                       </div>
-//                     )}
-//                   </div>
-//                 </div>
-
-//                 {/* Filter Status */}
-//                 <div className="flex items-center justify-between mb-6">
-//                   <div className={`text-sm ${textSecondary}`}>
-//                     Showing <span className={`font-bold ${textPrimary}`}>{solutions.length}</span> solution{solutions.length !== 1 ? "s" : ""}
-//                     {solutionsFilter !== "all" && (
-//                       <span className="ml-2">
-//                         filtered by:{" "}
-//                         <span className={`font-medium ${darkMode ? "text-blue-400" : "text-blue-600"}`}>
-//                           {solutionsFilter === "verified" ? "Verified Only" : solutionsFilter.charAt(0).toUpperCase() + solutionsFilter.slice(1)}
-//                         </span>
-//                       </span>
-//                     )}
-//                   </div>
-
-//                   {solutionsFilter !== "all" && (
-//                     <button
-//                       onClick={() => setSolutionsFilter("all")}
-//                       className={`cursor-pointer text-xs px-3 py-1.5 rounded ${darkMode ? "bg-zinc-800 hover:bg-zinc-700" : "bg-gray-100 hover:bg-gray-200"} ${textSecondary} transition-colors flex items-center gap-1.5`}
-//                     >
-//                       <X className="w-3 h-3" />
-//                       Clear Filter
-//                     </button>
-//                   )}
-//                 </div>
-//               </div>
-
-//               {/* Loading State */}
-//               {isLoadingSolutions ? (
-//                 <div className="flex items-center justify-center h-64">
-//                   <div className="text-center space-y-4">
-//                     <div className="relative">
-//                       <div className="w-12 h-12 border-3 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto"></div>
-//                       <Code className="w-6 h-6 text-blue-400 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
-//                     </div>
-//                     <p className="text-zinc-400 font-medium">Loading solutions...</p>
-//                   </div>
-//                 </div>
-//               ) : !filteredSolutions ? (
-//                 <div className={`flex flex-col items-center justify-center h-64 ${darkMode ? "bg-zinc-800/20" : "bg-gray-50"} rounded-lg border ${borderColor}`}>
-//                   <Code className="w-12 h-12 text-zinc-500 mb-4" />
-//                   <h3 className={`${textPrimary} font-medium mb-2`}>{solutionsFilter === "all" ? "No solutions yet" : "No matching solutions"}</h3>
-//                   <p className={`${textSecondary} text-sm text-center max-w-md`}>
-//                     {solutionsFilter === "all" ? "Be the first to submit a solution for this problem!" : `No ${solutionsFilter === "verified" ? "verified" : solutionsFilter} solutions found. Try a different filter.`}
-//                   </p>
-//                   {solutionsFilter !== "all" && (
-//                     <button
-//                       onClick={() => setSolutionsFilter("all")}
-//                       className="mt-4 cursor-pointer px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
-//                     >
-//                       Show All Solutions
-//                     </button>
-//                   )}
-//                 </div>
-//               ) : (
-//                 <div className="space-y-4">
-//                   {/* Solutions List */}
-//                   <div className={`${darkMode ? "bg-zinc-800/30" : "bg-gray-50"} border ${borderColor} rounded-lg overflow-hidden`}>
-//                     <div className={`grid grid-cols-12 px-4 py-3 ${darkMode ? "bg-zinc-800/40" : "bg-gray-100"} border-b ${borderColor} text-xs font-medium ${textTertiary}`}>
-//                       <div className="col-span-1">Votes</div>
-//                       <div className="col-span-4">Solution</div>
-//                       <div className="col-span-2">Language</div>
-//                       <div className="col-span-3">User</div>
-//                       <div className="col-span-2">Date</div>
-//                     </div>
-
-//                     <div className="divide-y divide-zinc-800">
-//                       {filteredSolutions &&
-//                         filteredSolutions.map((solution) => (
-//                           <div
-//                             key={solution._id}
-//                             className={`grid grid-cols-12 px-4 py-3 items-center hover:${darkMode ? "bg-zinc-800/20" : "bg-gray-50"} transition-colors cursor-pointer ${selectedSolution?._id === solution._id ? darkMode ? "bg-zinc-800/40" : "bg-blue-50/50" : ""}`}
-//                             onClick={() => setSelectedSolutionId(solution._id)}
-//                           >
-//                             {/* Votes */}
-//                             <div className="col-span-1">
-//                               <div className="flex flex-col items-center">
-//                                 <div className="flex items-center gap-1">
-//                                   <ThumbsUp className="w-3 h-3 text-emerald-500" />
-//                                   <span className={`text-xs font-bold ${textPrimary}`}>{solution.upvotes || 0}</span>
-//                                 </div>
-//                                 {solution.is_verified && (
-//                                   <div className="mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-//                                     Verified
-//                                   </div>
-//                                 )}
-//                               </div>
-//                             </div>
-
-//                             {/* Solution Preview */}
-//                             <div className="col-span-4">
-//                               <div className="flex flex-col">
-//                                 <span className={`text-sm font-medium ${textPrimary} truncate`}>
-//                                   {solution.title || "Untitled Solution"}
-//                                 </span>
-//                               </div>
-//                             </div>
-
-//                             {/* Language */}
-//                             <div className="col-span-2">
-//                               <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${darkMode ? "bg-zinc-800 text-zinc-300" : "bg-gray-200 text-gray-700"}`}>
-//                                 {solution.language}
-//                               </span>
-//                             </div>
-
-//                             {/* User */}
-//                             <div className="col-span-3">
-//                               <div className="flex items-center gap-2">
-//                                 <div className={`w-6 h-6 rounded-full ${darkMode ? "bg-zinc-700" : "bg-gray-300"} flex items-center justify-center`}>
-//                                   <User className="w-3 h-3 text-zinc-400" />
-//                                 </div>
-//                                 <span className={`text-xs ${textSecondary} truncate`}>
-//                                   {solution.username}
-//                                 </span>
-//                               </div>
-//                             </div>
-
-//                             {/* Date */}
-//                             <div className={`col-span-2 text-xs ${textSecondary}`}>
-//                               {new Date(solution.created_at).toLocaleDateString()}
-//                             </div>
-//                           </div>
-//                         ))}
-//                     </div>
-//                   </div>
-
-//                   {/* Selected Solution Details */}
-//                   {selectedSolution && (
-//                     <div className={`border ${borderColor} rounded-lg overflow-hidden ${darkMode ? "bg-zinc-800/20" : "bg-gray-50"}`}>
-//                       <div className={`px-4 py-3 ${darkMode ? "bg-zinc-800/40" : "bg-gray-100"} border-b ${borderColor}`}>
-//                         <div className="flex items-center justify-between">
-//                           <div>
-//                             <h3 className={`${textPrimary} font-medium text-sm`}>
-//                               {selectedSolution.title || "Solution Details"}
-//                             </h3>
-//                             <div className="flex items-center gap-3 mt-1">
-//                               <div className="flex items-center gap-1">
-//                                 <User className="w-3 h-3 text-zinc-400" />
-//                                 <span className={`text-xs ${textTertiary}`}>{selectedSolution.username}</span>
-//                               </div>
-//                               <span className={`text-xs px-2 py-0.5 rounded ${darkMode ? "bg-zinc-800 text-zinc-300" : "bg-gray-200 text-gray-700"}`}>
-//                                 {selectedSolution.language}
-//                               </span>
-//                               {selectedSolution.is_verified && (
-//                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-//                                   <Check className="w-3 h-3" />
-//                                   Verified
-//                                 </span>
-//                               )}
-//                               <span className={`text-xs ${textTertiary}`}>
-//                                 {new Date(selectedSolution.created_at).toLocaleString()}
-//                               </span>
-//                             </div>
-//                           </div>
-//                           <div className="flex items-center gap-2">
-//                             <button
-//                               onClick={() => {
-//                                 setExpandedSolutionId(expandedSolutionId === selectedSolution._id ? null : selectedSolution._id);
-//                               }}
-//                               className={`cursor-pointer p-1.5 rounded ${darkMode ? "hover:bg-zinc-700" : "hover:bg-gray-200"}`}
-//                             >
-//                               {expandedSolutionId === selectedSolution._id ? (
-//                                 <ChevronUp className="w-4 h-4 text-zinc-400" />
-//                               ) : (
-//                                 <ChevronDown className="w-4 h-4 text-zinc-400" />
-//                               )}
-//                             </button>
-//                             <button
-//                               onClick={() => {
-//                                 navigator.clipboard.writeText(selectedSolution.code);
-//                                 setCopied(true);
-//                                 setTimeout(() => setCopied(false), 2000);
-//                               }}
-//                               className={`cursor-pointer p-1.5 rounded ${darkMode ? "hover:bg-zinc-700" : "hover:bg-gray-200"}`}
-//                               title="Copy code"
-//                             >
-//                               <Copy className={`w-4 h-4 ${textTertiary}`} />
-//                             </button>
-//                           </div>
-//                         </div>
-//                       </div>
-
-//                       {/* Solution Code */}
-//                       <div className="p-4">
-//                         {selectedSolution.description && (
-//                           <div className="mb-4">
-//                             <h4 className={`text-sm font-medium ${textPrimary} mb-2`}>Description</h4>
-//                             <p className={`text-sm ${textSecondary}`}>{selectedSolution.description}</p>
-//                           </div>
-//                         )}
-
-//                         <div className="mb-4">
-//                           <div className="flex items-center justify-between mb-2">
-//                             <h4 className={`text-sm font-medium ${textPrimary}`}>Code</h4>
-//                             <div className="flex items-center gap-2">
-//                               <button
-//                                 onClick={() => handlevote("upvote", selectedSolution._id)}
-//                                 className={`cursor-pointer flex items-center gap-1 px-2 py-1 rounded text-xs ${darkMode ? "hover:bg-zinc-800" : "hover:bg-gray-100"}`}
-//                               >
-//                                 <ThumbsUp className="w-3 h-3 text-emerald-500" />
-//                                 <span className={textSecondary}>{selectedSolution.upvotes || 0}</span>
-//                               </button>
-//                               <button
-//                                 onClick={() => handlevote("downvote", selectedSolution._id)}
-//                                 className={`cursor-pointer flex items-center gap-1 px-2 py-1 rounded text-xs ${darkMode ? "hover:bg-zinc-800" : "hover:bg-gray-100"}`}
-//                               >
-//                                 <ThumbsDown className="w-3 h-3 text-rose-500" />
-//                               </button>
-//                             </div>
-//                           </div>
-
-//                           <div className={expandedSolutionId === selectedSolution._id ? "" : "max-h-96 overflow-hidden"}>
-//                             <pre className={`text-xs font-mono p-4 rounded ${darkMode ? "bg-zinc-900 text-zinc-300" : "bg-white text-gray-800"} overflow-x-auto border ${borderColor}`}>
-//                               {selectedSolution.code}
-//                             </pre>
-
-//                             {expandedSolutionId !== selectedSolution._id && (
-//                               <div className="relative">
-//                                 <div className={`absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t ${darkMode ? "from-zinc-800" : "from-gray-50"} to-transparent`}></div>
-//                                 <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2">
-//                                   <button
-//                                     onClick={() => setExpandedSolutionId(selectedSolution._id)}
-//                                     className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs font-medium ${darkMode ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-300" : "bg-gray-200 hover:bg-gray-300 text-gray-700"} flex items-center gap-1`}
-//                                   >
-//                                     <ChevronDown className="w-3 h-3" />
-//                                     Show Full Code
-//                                   </button>
-//                                 </div>
-//                               </div>
-//                             )}
-//                           </div>
-//                         </div>
-
-//                         {/* Solution Stats */}
-//                         <div className="grid grid-cols-2 gap-3">
-//                           <div className={`p-3 rounded-lg ${darkMode ? "bg-zinc-800/30" : "bg-gray-100"} border ${borderColor}`}>
-//                             <div className={`text-xs ${textTertiary} mb-1`}>Time Complexity</div>
-//                             <div className={`text-sm font-medium ${textPrimary}`}>{selectedSolution.time_complexity || "Not specified"}</div>
-//                           </div>
-//                           <div className={`p-3 rounded-lg ${darkMode ? "bg-zinc-800/30" : "bg-gray-100"} border ${borderColor}`}>
-//                             <div className={`text-xs ${textTertiary} mb-1`}>Space Complexity</div>
-//                             <div className={`text-sm font-medium ${textPrimary}`}>{selectedSolution.space_complexity || "Not specified"}</div>
-//                           </div>
-//                         </div>
-//                       </div>
-//                     </div>
-//                   )}
-
-//                   {/* Solutions Stats */}
-//                   <div className="grid grid-cols-4 gap-3">
-//                     <div className={`p-4 rounded-lg ${darkMode ? "bg-blue-500/10 border-blue-500/20" : "bg-blue-100 border-blue-200"} border`}>
-//                       <div className={`text-xs ${darkMode ? "text-blue-300" : "text-blue-700"} mb-1`}>Total Solutions</div>
-//                       <div className={`text-xl font-bold ${darkMode ? "text-blue-300" : "text-blue-700"}`}>{solutions.length}</div>
-//                     </div>
-//                     <div className={`p-4 rounded-lg ${darkMode ? "bg-emerald-500/10 border-emerald-500/20" : "bg-emerald-100 border-emerald-200"} border`}>
-//                       <div className={`text-xs ${darkMode ? "text-emerald-300" : "text-emerald-700"} mb-1`}>Verified</div>
-//                       <div className={`text-xl font-bold ${darkMode ? "text-emerald-300" : "text-emerald-700"}`}>
-//                         {solutions.filter((s) => s.is_verified).length}
-//                       </div>
-//                     </div>
-//                     <div className={`p-4 rounded-lg ${darkMode ? "bg-amber-500/10 border-amber-500/20" : "bg-amber-100 border-amber-200"} border`}>
-//                       <div className="flex items-center justify-between">
-//                         <div>
-//                           <div className={`text-xs ${darkMode ? "text-amber-300" : "text-amber-700"} mb-1`}>Top Language</div>
-//                           <div className={`text-xl font-bold ${darkMode ? "text-amber-300" : "text-amber-700"}`}>
-//                             {(() => {
-//                               const langCount = {};
-//                               solutions.forEach((s) => {
-//                                 langCount[s.language] = (langCount[s.language] || 0) + 1;
-//                               });
-//                               const topLang = Object.entries(langCount).sort((a, b) => b[1] - a[1])[0];
-//                               return topLang ? topLang[0] : "-";
-//                             })()}
-//                           </div>
-//                         </div>
-//                         <Code className={`w-8 h-8 ${darkMode ? "text-amber-300/40" : "text-amber-700/40"}`} />
-//                       </div>
-//                     </div>
-//                     <div className={`p-4 rounded-lg ${darkMode ? "bg-purple-500/10 border-purple-500/20" : "bg-purple-100 border-purple-200"} border`}>
-//                       <div className="flex items-center justify-between">
-//                         <div>
-//                           <div className={`text-xs ${darkMode ? "text-purple-300" : "text-purple-700"} mb-1`}>Most Upvoted</div>
-//                           <div className={`text-xl font-bold ${darkMode ? "text-purple-300" : "text-purple-700"}`}>
-//                             {solutions.length > 0 ? Math.max(...solutions.map((s) => s.upvotes || 0)) : "-"}
-//                           </div>
-//                         </div>
-//                         <ThumbsUp className={`w-8 h-8 ${darkMode ? "text-purple-300/40" : "text-purple-700/40"}`} />
-//                       </div>
-//                     </div>
-//                   </div>
-//                 </div>
-//               )}
-//             </div>
-//           ) : null}
-//         </div>
-
-//         {/* ===== RESIZER HANDLE ===== */}
-//         <div
-//           onMouseDown={() => setIsResizing(true)}
-//           className={`w-1 cursor-col-resize ${darkMode ? "bg-zinc-800 hover:bg-blue-500" : "bg-gray-300 hover:bg-blue-400"} transition-colors mobile-hide`}
-//         />
-
-//         {/* ===== RIGHT PANEL - EDITOR ===== */}
-//         <div style={{ width: `${100 - leftWidth}%` }} className={`flex flex-col ${bgPrimary} mobile-hide`}>
-//           {/* Editor Header */}
-//           <div className={`${bgSecondary} border-b ${borderColor} px-4 py-3`}>
-//             <div className="flex items-center justify-between mb-3">
-//               <div className="flex items-center gap-3">
-//                 {/* Language Selection */}
-//                 <div className="relative">
-//                   <button
-//                     onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
-//                     className={`cursor-pointer flex items-center gap-2 px-3 py-1.5 rounded ${darkMode ? "bg-zinc-800 hover:bg-zinc-700" : "bg-gray-100 hover:bg-gray-200"} border ${borderColor} text-sm font-medium ${textPrimary} transition-colors`}
-//                   >
-//                     <Code className="w-3.5 h-3.5" />
-//                     {selectedLanguage.charAt(0).toUpperCase() + selectedLanguage.slice(1)}
-//                     <ChevronDown className={`w-3.5 h-3.5 ${textTertiary} transition-transform ${showLanguageDropdown ? "rotate-180" : ""}`} />
-//                   </button>
-
-//                   {showLanguageDropdown && (
-//                     <div className={`absolute top-full mt-1 min-w-[160px] ${bgSecondary} ${borderColor} border rounded-lg shadow-lg z-50`}>
-//                       <div className="p-1">
-//                         {languageOptions.map((option) => (
-//                           <button
-//                             key={option.value}
-//                             onClick={() => {
-//                               setSelectedLanguage(option.value);
-//                               setCode(problem?.starter_code?.[option.value] || "");
-//                               setShowLanguageDropdown(false);
-//                             }}
-//                             className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded ${selectedLanguage === option.value ? `${darkMode ? "bg-blue-500/20 text-blue-400" : "bg-blue-100 text-blue-600"}` : `${textSecondary} ${darkMode ? "hover:bg-zinc-800" : "hover:bg-gray-100"}`} transition-colors`}
-//                           >
-//                             <span>{option.label}</span>
-//                             {selectedLanguage === option.value && <Check className="w-3.5 h-3.5" />}
-//                           </button>
-//                         ))}
-//                       </div>
-//                     </div>
-//                   )}
-//                 </div>
-
-//                 {/* Copy Button */}
-//                 <button
-//                   onClick={handleCopyCode}
-//                   className={`cursor-pointer p-1.5 rounded ${darkMode ? "hover:bg-zinc-800" : "hover:bg-gray-100"} transition-colors relative`}
-//                   title="Copy code"
-//                 >
-//                   <Copy className={`w-4 h-4 ${textTertiary}`} />
-//                   {copied && (
-//                     <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 bg-zinc-800 text-white text-xs rounded border border-zinc-700">
-//                       Copied!
-//                     </div>
-//                   )}
-//                 </button>
-//               </div>
-
-//               {/* Run and Submit Buttons */}
-//               <div className="flex items-center gap-2">
-//                 <div className="flex items-center gap-2 text-xs mr-4">
-//                   <div className={`flex items-center gap-1 px-2 py-1 rounded ${darkMode ? "bg-zinc-800" : "bg-gray-100"} border ${borderColor}`}>
-//                     <Clock className="w-3 h-3 text-blue-500" />
-//                     <span className={textSecondary}>Time Limit: {problem.time_limit / 1000}s</span>
-//                   </div>
-//                 </div>
-
-//                 <button
-//                   onClick={handleRun}
-//                   disabled={isRunning}
-//                   className={`cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors ${isRunning ? "bg-zinc-600 cursor-not-allowed" : `${darkMode ? "bg-zinc-800 hover:bg-zinc-700" : "bg-gray-200 hover:bg-gray-300"}`} ${textSecondary}`}
-//                 >
-//                   {isRunning ? (
-//                     <>
-//                       <div className="w-3 h-3 border-2 border-zinc-400/30 border-t-zinc-400 rounded-full animate-spin"></div>
-//                       Running...
-//                     </>
-//                   ) : (
-//                     <>
-//                       <Play className="w-3.5 h-3.5" />
-//                       Run
-//                     </>
-//                   )}
-//                 </button>
-
-//                 <button
-//                   onClick={handleSubmit}
-//                   disabled={isRunning}
-//                   className={`cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors ${isSubmitted ? `${darkMode ? "bg-emerald-600 hover:bg-emerald-700" : "bg-emerald-500 hover:bg-emerald-600"}` : `${darkMode ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-500 hover:bg-blue-600"}`} text-white`}
-//                 >
-//                   {isSubmitted ? (
-//                     <>
-//                       <Check className="w-3.5 h-3.5" />
-//                       Submitted
-//                     </>
-//                   ) : (
-//                     <>
-//                       <CheckCircle className="w-3.5 h-3.5" />
-//                       Submit
-//                     </>
-//                   )}
-//                 </button>
-//               </div>
-//             </div>
-//           </div>
-
-//           {/* Code Editor */}
-//           <div className="flex-1 min-h-0">
-//             <Editor
-//               height="100%"
-//               language={MONACO_LANG_MAP[selectedLanguage] || "plaintext"}
-//               value={code}
-//               onChange={(value) => setCode(value || "")}
-//               theme={darkMode ? "vs-dark" : "light"}
-//               options={{
-//                 fontSize,
-//                 minimap: { enabled: false },
-//                 lineNumbers: "on",
-//                 scrollBeyondLastLine: false,
-//                 wordWrap: "on",
-//                 automaticLayout: true,
-//                 tabSize: 2,
-//                 renderLineHighlight: "all",
-//                 padding: { top: 16 },
-//                 fontFamily: "'JetBrains Mono', monospace",
-//                 lineHeight: 1.6,
-//                 cursorBlinking: "smooth",
-//                 scrollbar: {
-//                   verticalScrollbarSize: 8,
-//                   horizontalScrollbarSize: 8,
-//                   useShadows: false,
-//                 },
-//               }}
-//             />
-//           </div>
-
-//           {/* Test Cases & Results Panel */}
-//           <div className={`border-t ${borderColor} ${bgSecondary} ${scrollbarStyles}`} style={{ height: testCaseHeight }}>
-//             {/* Resize Handle */}
-//             <div
-//               onMouseDown={() => setIsResizingTestCase(true)}
-//               className={`h-1.5 cursor-row-resize ${darkMode ? "bg-zinc-800 hover:bg-blue-500" : "bg-gray-300 hover:bg-blue-400"} transition-colors`}
-//             />
-
-//             <div className="h-full overflow-hidden flex flex-col">
-//               {/* Tabs */}
-//               <div className={`border-b ${borderColor} flex items-center`}>
-//                 <button
-//                   onClick={() => setActiveTab("testcases")}
-//                   className={`px-4 py-2.5 text-xs font-medium relative transition-colors ${activeTab === "testcases" ? `${textPrimary} after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 ${darkMode ? "after:bg-blue-500" : "after:bg-blue-600"}` : `${textTertiary} ${darkMode ? "hover:bg-zinc-800" : "hover:bg-gray-100"}`}`}
-//                 >
-//                   Test Cases
-//                 </button>
-//                 <button
-//                   onClick={() => setActiveTab("results")}
-//                   className={`px-4 py-2.5 text-xs font-medium relative transition-colors ${activeTab === "results" ? `${textPrimary} after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 ${darkMode ? "after:bg-blue-500" : "after:bg-blue-600"}` : `${textTertiary} ${darkMode ? "hover:bg-zinc-800" : "hover:bg-gray-100"}`}`}
-//                 >
-//                   Results
-//                 </button>
-//               </div>
-
-//               {/* Content */}
-//               <div className="flex-1 overflow-auto p-4">
-//                 {activeTab === "testcases" ? (
-//                   <div>
-//                     <div className="flex items-center justify-between mb-4">
-//                       <h4 className={`font-bold ${textPrimary} text-sm`}>Test Cases</h4>
-//                       <div className={`text-xs ${textTertiary}`}>{problem.testCases?.length || 0} test cases</div>
-//                     </div>
-
-//                     <div className="flex flex-wrap gap-2 mb-4">
-//                       {problem.testCases?.map((_, index) => (
-//                         <button
-//                           key={index}
-//                           onClick={() => setActiveTestCase(index)}
-//                           className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${activeTestCase === index ? `${darkMode ? "bg-blue-600 text-white" : "bg-blue-500 text-white"}` : `${darkMode ? "bg-zinc-800 text-zinc-300 hover:bg-zinc-700" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}`}
-//                         >
-//                           Case {index + 1}
-//                         </button>
-//                       ))}
-//                     </div>
-
-//                     {problem.testCases?.[activeTestCase] && (
-//                       <div className="space-y-4">
-//                         <div>
-//                           <div className={`text-xs ${textTertiary} mb-2`}>Input</div>
-//                           <pre className={`text-xs font-mono p-3 rounded ${darkMode ? "bg-zinc-900 text-zinc-300" : "bg-white text-gray-800"} overflow-x-auto border ${borderColor}`}>
-//                             {problem.testCases[activeTestCase].input}
-//                           </pre>
-//                         </div>
-//                         <div>
-//                           <div className={`text-xs ${textTertiary} mb-2`}>Expected Output</div>
-//                           <pre className={`text-xs font-mono p-3 rounded ${darkMode ? "bg-zinc-900 text-zinc-300" : "bg-white text-gray-800"} overflow-x-auto border ${borderColor}`}>
-//                             {problem.testCases[activeTestCase].expected}
-//                           </pre>
-//                         </div>
-//                       </div>
-//                     )}
-//                   </div>
-//                 ) : (
-//                   <div>
-//                     {/* Header */}
-//                     <div className="flex items-center justify-between mb-4">
-//                       <h4 className={`font-bold ${textPrimary} text-sm`}>Results</h4>
-
-//                       {output && (
-//                         <div className="flex items-center gap-1.5">
-//                           <div className={`w-2 h-2 rounded-full ${output.status === "Accepted" ? "bg-emerald-500" : "bg-rose-500"}`}></div>
-//                           <span className={`text-xs ${output.status === "Accepted" ? "text-emerald-400" : "text-rose-400"}`}>
-//                             {output.status}
-//                           </span>
-//                         </div>
-//                       )}
-//                     </div>
-
-//                     {/* Output Box */}
-//                     <div className={`rounded-lg p-4 border ${borderColor} ${darkMode ? "bg-zinc-900/60" : "bg-gray-100"}`}>
-//                       {!output ? (
-//                         <p className={`text-sm ${textSecondary}`}>▶ Run your code to see results here</p>
-//                       ) : output.status === "Error" ? (
-//                         <div className="space-y-2">
-//                           <div className="text-sm font-semibold text-rose-400 flex items-center gap-2">❌ Runtime Error</div>
-//                           <pre className="text-xs font-mono bg-rose-500/5 border border-rose-500/20 rounded p-3 text-rose-300 whitespace-pre-wrap">
-//                             {output.error}
-//                           </pre>
-//                         </div>
-//                       ) : (
-//                         <div className="space-y-4">
-//                           {/* Status Header */}
-//                           <div className={`flex items-center gap-2 text-sm font-semibold ${output.status === "Accepted" ? "text-emerald-400" : "text-rose-400"}`}>
-//                             {output.status === "Accepted" ? "✅ Accepted" : "❌ Wrong Answer"}
-//                             <span className="text-xs font-normal text-zinc-400">— Code executed</span>
-//                           </div>
-
-//                           {/* Run Output */}
-//                           {output.actualOutput !== null && (
-//                             <div>
-//                               <p className="text-xs uppercase tracking-wide text-zinc-400 mb-1">Your Output</p>
-//                               <pre className={`text-xs font-mono rounded p-3 whitespace-pre-wrap border ${darkMode ? "bg-zinc-950 text-zinc-200 border-zinc-800" : "bg-white text-gray-800 border-gray-200"}`}>
-//                                 {output.actualOutput || "-"}
-//                               </pre>
-//                             </div>
-//                           )}
-
-//                           {/* Expected Output (only for wrong answer) */}
-//                           {output.status === "Wrong Answer" && output.expectedOutput && (
-//                             <div>
-//                               <p className="text-xs uppercase tracking-wide text-zinc-400 mb-1">Expected Output</p>
-//                               <pre className={`text-xs font-mono rounded p-3 whitespace-pre-wrap border ${darkMode ? "bg-zinc-950 text-emerald-300 border-zinc-800" : "bg-white text-emerald-700 border-gray-200"}`}>
-//                                 {output.expectedOutput}
-//                               </pre>
-//                             </div>
-//                           )}
-
-//                           {/* Submit Summary */}
-//                           {output.passedTests !== null && (
-//                             <div className="grid grid-cols-3 gap-3 text-xs">
-//                               <div className="p-3 rounded border bg-black/20">
-//                                 <p className="text-zinc-400">Tests</p>
-//                                 <p className="font-bold text-white">
-//                                   {output.passedTests != null ? `${output.passedTests}/${output.totalTests}` : "Submit Code to Run all Cases"}
-//                                 </p>
-//                               </div>
-
-//                               <div className="p-3 rounded border bg-black/20">
-//                                 <p className="text-zinc-400">Runtime</p>
-//                                 <p className="font-bold text-white">{output.executionTime ?? output.runtimeMs} ms</p>
-//                               </div>
-
-//                               <div className="p-3 rounded border bg-black/20">
-//                                 <p className="text-zinc-400">Points</p>
-//                                 <p className="font-bold text-white">{output.points ?? "Submit Code to Get Points"}</p>
-//                               </div>
-//                             </div>
-//                           )}
-//                         </div>
-//                       )}
-//                     </div>
-
-//                     {/* Stats */}
-//                     {output && output.status !== "Error" && (
-//                       <div className="mt-4 grid grid-cols-3 gap-2">
-//                         <div className={`p-2 rounded ${darkMode ? "bg-zinc-800/30" : "bg-gray-50"} border ${borderColor} text-center`}>
-//                           <div className={`text-xs ${textTertiary} mb-0.5`}>Status</div>
-//                           <div className={`text-xs font-bold ${output.status === "Accepted" ? "text-emerald-400" : "text-rose-400"}`}>
-//                             {output.status}
-//                           </div>
-//                         </div>
-
-//                         <div className={`p-2 rounded ${darkMode ? "bg-zinc-800/30" : "bg-gray-50"} border ${borderColor} text-center`}>
-//                           <div className={`text-xs ${textTertiary} mb-0.5`}>Runtime</div>
-//                           <div className={`text-xs font-bold ${textPrimary}`}>{output.executionTime ?? "N/A"} ms</div>
-//                         </div>
-
-//                         <div className={`p-2 rounded ${darkMode ? "bg-zinc-800/30" : "bg-gray-50"} border ${borderColor} text-center`}>
-//                           <div className={`text-xs ${textTertiary} mb-0.5`}>Memory</div>
-//                           <div className={`text-xs font-bold ${textPrimary}`}>N/A</div>
-//                         </div>
-//                       </div>
-//                     )}
-//                   </div>
-//                 )}
-//               </div>
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-//   );
-
-//   // Return appropriate layout based on screen size
-//   return isMobile ? <MobileLayout /> : <DesktopLayout />;
-// };
-
-// export default Problem;
