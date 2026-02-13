@@ -24,7 +24,7 @@ const QuickActions = () => {
 
         {/* Weekly Contests */}
         <NavLink
-          to="/contests"
+          to="/weekly-challenges"
           className="flex flex-col p-5 bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl 
           hover:shadow-md hover:-translate-y-1 transition-all group"
         >
@@ -52,7 +52,7 @@ const QuickActions = () => {
 
         {/* Interview Prep */}
         <NavLink
-          to="/interview"
+          to="/interview-experiences"
           className="flex flex-col p-5 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl 
           hover:shadow-md hover:-translate-y-1 transition-all group"
         >
@@ -60,8 +60,8 @@ const QuickActions = () => {
             group-hover:scale-110 transition-transform">
             <BookOpen size={26} />
           </div>
-          <p className="mt-4 font-semibold text-gray-900">Interview Prep</p>
-          <p className="text-sm text-gray-600">Get ready</p>
+          <p className="mt-4 font-semibold text-gray-900">Interview Experience</p>
+          <p className="text-sm text-gray-600">Learn from others</p>
         </NavLink>
 
       </div>

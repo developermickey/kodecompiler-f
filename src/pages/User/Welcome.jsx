@@ -14,7 +14,9 @@ import {
 } from "lucide-react";
 import QuickActions from "./QuickActions";
 import { useDispatch } from "react-redux";
-
+import { fetchUserProgress } from "../../redux/slices/userprogressSlice";
+import { fetchuserchallengeprogress } from "../../redux/slices/userchallengesprogressSlice";
+import {fetchGlobalLeaderboard} from "../../redux/slices/challengesGlobalLeaderboardSlice"
 const Welcome = () => {
   const user = useSelector((state) => state.auth.user);
   const navigate = useNavigate();
@@ -25,32 +27,51 @@ const Welcome = () => {
 
   if (!user) return null;
 
+  const dispatch = useDispatch();
+
+  useEffect(()=>
+  {
+    dispatch(fetchUserProgress());
+    dispatch(fetchuserchallengeprogress());
+    dispatch(fetchGlobalLeaderboard());
+
+  },[user])
+
+  const problemSolved = useSelector((state)=> state.userProgress.solvedCount);
+  const challengesprogress = useSelector((state)=>state.userChallengesprogress.streak);
+  const rank = useSelector((state)=>state.globalLeaderboard.myRank);
+
+  const percentage = 
+  challengesprogress.longest_streak > 0
+    ? (challengesprogress.current_streak / challengesprogress.longest_streak) * 100
+    : 0;
+
   // Real Data Mapping
   const stats = [
     {
       label: "Solved",
-      value: user.problemsSolved || 0,
+      value: problemSolved|| 0,
       icon: Code,
       color: "text-blue-200",
       bg: "bg-white/10",
     },
     {
       label: "Contests",
-      value: user.contestsWon || 0,
+      value: challengesprogress.weeks_participated || 0,
       icon: Trophy,
       color: "text-yellow-200",
       bg: "bg-white/10",
     },
     {
       label: "Streak",
-      value: user.streak || 0,
+      value: challengesprogress.current_streak || 0,
       icon: Target,
       color: "text-green-200",
       bg: "bg-white/10",
     },
     {
       label: "Rank",
-      value: user.rank || "N/A",
+      value: rank || "N/A",
       icon: Award,
       color: "text-purple-200",
       bg: "bg-white/10",
@@ -217,28 +238,35 @@ const Welcome = () => {
               <div className="absolute top-0 right-0 w-20 h-20 bg-blue-50 rounded-bl-full -mr-4 -mt-4 z-0"></div>
 
               <div className="relative z-10">
-                <h3 className="font-bold text-gray-900 mb-1">Weekly Goal</h3>
+                <h3 className="font-bold text-gray-900 mb-1">Contest Goal</h3>
                 <p className="text-xs text-gray-500 mb-6">
-                  Keep your streak alive!
+                  You are {challengesprogress.longest_streak - challengesprogress.current_streak} contest behind to create a new longest streak!!
                 </p>
 
                 <div className="flex justify-between items-end mb-2">
                   <span className="text-3xl font-extrabold text-[#0652e9]">
-                    3
+                    {challengesprogress.current_streak}
                     <span className="text-lg text-gray-400 font-medium">
-                      /5
+                      /{challengesprogress.longest_streak}
                     </span>
                   </span>
                   <Trophy className="w-6 h-6 text-yellow-500 mb-1" />
                 </div>
 
                 <div className="w-full bg-gray-100 rounded-full h-2 mb-4">
-                  <div className="bg-[#0652e9] h-2 rounded-full w-[60%] shadow-[0_0_10px_rgba(6,82,233,0.5)]"></div>
+                <div
+                  className="bg-[#0652e9] h-2 rounded-full shadow-[0_0_10px_rgba(6,82,233,0.5)] transition-all duration-500"
+                  style={{ width: `${percentage}%` }}
+                ></div>
                 </div>
 
-                <button className="w-full py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-black transition-colors flex items-center justify-center gap-2">
-                  View Leaderboard <ArrowRight className="w-4 h-4" />
-                </button>
+                <button
+                onClick={() => navigate("/weekly-challenges")}
+                className="cursor-pointer w-full py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-black transition-colors flex items-center justify-center gap-2"
+              >
+               Go to Contest <ArrowRight className="w-4 h-4" />
+              </button>
+
               </div>
             </div>
 
