@@ -396,6 +396,31 @@ const Problem = () => {
           setSelectedLanguage(languages[0]);
           setCode(formattedProblem.starter_code[languages[0]] || "");
         }
+
+       const itemStr = localStorage.getItem("latest-submission");
+
+        let latestsubmission = null;
+
+        if (itemStr) {
+          const item = JSON.parse(itemStr);
+
+          if (new Date().getTime() > item.expiry) {
+            localStorage.removeItem("latest-submission"); // expired
+          } else {
+            latestsubmission = item.value;
+          }
+       }
+
+
+
+
+        if(latestsubmission?.problemId == problemId)
+        {
+          setCode(latestsubmission.code);
+          setSelectedLanguage(latestsubmission.selectedLanguage);
+        }
+
+
       } catch (err) {
         console.error("Error fetching problem:", err);
       }
@@ -654,6 +679,22 @@ const Problem = () => {
       });
 
       const data = await response.json();
+
+      const latestsubmission = {
+      code: code,
+      problemId: problemId,
+      selectedLanguage: selectedLanguage
+    };
+
+    const item = {
+      value: latestsubmission,
+      expiry: new Date().getTime() + 7 * 24 * 60 * 60 * 1000
+    };
+
+    localStorage.setItem("latest-submission", JSON.stringify(item));
+
+      
+
 
       // 🔴 Submission / execution error
       if (data.status === "Error") {
