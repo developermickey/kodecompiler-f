@@ -24,7 +24,7 @@ const QuickActions = () => {
 
         {/* Weekly Contests */}
         <NavLink
-          to="/contests"
+          to="/weekly-challenges"
           className="flex flex-col p-5 bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl 
           hover:shadow-md hover:-translate-y-1 transition-all group"
         >
@@ -52,7 +52,7 @@ const QuickActions = () => {
 
         {/* Interview Prep */}
         <NavLink
-          to="/interview"
+          to="/interview-experiences"
           className="flex flex-col p-5 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl 
           hover:shadow-md hover:-translate-y-1 transition-all group"
         >

@@ -2532,19 +2532,11 @@ const Problem = () => {
 export default Problem;
 
 
-
-
-
-
-
-// import React, { useState, useEffect, useRef, useMemo } from "react";
-// import { useParams } from "react-router-dom";
-// import {
 //   Settings,
 //   History,
 //   Moon,
 //   Sun,
-//   Type,
+//  
 //   X,
 //   Loader,
 //   Play,
