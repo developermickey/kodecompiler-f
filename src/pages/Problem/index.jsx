@@ -120,6 +120,9 @@ const Problem = () => {
   const [mobileActiveTab, setMobileActiveTab] = useState("problem"); // "problem" or "editor"
   const [showMobileLeftPanel, setShowMobileLeftPanel] = useState(false);
   const [mobileView, setMobileView] = useState("vertical"); // "vertical" or "horizontal"
+  const editorRef = useRef(null);
+  const codeRef = useRef("");
+
 
   const MONACO_LANG_MAP = {
     python: "python",
@@ -417,6 +420,7 @@ const Problem = () => {
         if(latestsubmission?.problemId == problemId)
         {
           setCode(latestsubmission.code);
+          codeRef.current  = latestsubmission.code
           setSelectedLanguage(latestsubmission.selectedLanguage);
         }
 
@@ -609,6 +613,7 @@ const Problem = () => {
     try {
       setIsRunning(true);
       setOutput(null);
+      console.log(codeRef.current)
 
       const response = await fetch(`${API_BASE_URL}/problems/run`, {
         method: "POST",
@@ -617,7 +622,7 @@ const Problem = () => {
         body: JSON.stringify({
           problem_id: problemId,
           language: selectedLanguage,
-          code: code,
+          code: codeRef.current,
         }),
       });
 
@@ -674,14 +679,15 @@ const Problem = () => {
         body: JSON.stringify({
           problem_id: problemId,
           language: selectedLanguage,
-          code: code,
+          code: codeRef.current,
+
         }),
       });
 
       const data = await response.json();
 
       const latestsubmission = {
-      code: code,
+      code: codeRef.current,
       problemId: problemId,
       selectedLanguage: selectedLanguage
     };
@@ -1196,7 +1202,7 @@ const Problem = () => {
                         title: "",
                         explanation: "",
                         language: selectedLanguage,
-                        code: code, // 🔥 auto-fill current editor code
+                     code: codeRef.current, // 🔥 auto-fill current editor code
                         time_complexity: "",
                         space_complexity: ""
                       });
@@ -1288,6 +1294,7 @@ const Problem = () => {
                             key={option.value}
                             onClick={() => {
                               setSelectedLanguage(option.value);
+                              codeRef.current = problem?.starter_code?.[option.value] || ""
                               setCode(problem?.starter_code?.[option.value] || "");
                               setShowLanguageDropdown(false);
                             }}
@@ -1359,27 +1366,23 @@ const Problem = () => {
                 </div>
               </div>
 
-              {/* Code Editor */}
-              <div className="flex-1 min-h-0 relative">
-                <Editor
-                  height="100%"
-                  language={MONACO_LANG_MAP[selectedLanguage] || "plaintext"}
-                  value={code}
-                  onChange={(value) => setCode(value || "")}
-                  theme={darkMode ? "vs-dark" : "light"}
-                  options={{
-                    fontSize: isMobile ? 13 : fontSize, // Slightly larger for mobile readability
-                    minimap: { enabled: false },
-                    lineNumbers: "on",
-                    scrollBeyondLastLine: false,
-                    wordWrap: "on",
-                    automaticLayout: true,
-                    tabSize: 2,
-                    padding: { top: 12, bottom: 12 },
-                    fontFamily: "'JetBrains Mono', monospace",
-                    lineHeight: 1.5,
-                  }}
-                />
+              {/* Code Editor */}<div className="flex-1 min-h-0 overflow-hidden">
+
+             <div className="h-full min-h-0">
+
+  <SharedEditor
+    selectedLanguage={selectedLanguage}
+    darkMode={darkMode}
+    fontSize={fontSize}
+    editorRef={editorRef}
+    codeRef={codeRef}
+    initialCode={codeRef}
+    MONACO_LANG_MAP={MONACO_LANG_MAP}
+  />
+</div>
+
+
+
               </div>
             </div>
 
@@ -2044,7 +2047,7 @@ const Problem = () => {
                           title: "",
                           explanation: "",
                           language: selectedLanguage,
-                          code: code,
+                          code: codeRef.current,
                           time_complexity: "",
                           space_complexity: ""
                         });
@@ -2458,6 +2461,7 @@ const Problem = () => {
                             onClick={() => {
                               setSelectedLanguage(option.value);
                               setCode(problem?.starter_code?.[option.value] || "");
+                              codeRef.current = problem?.starter_code?.[option.value] || ""
                               setShowLanguageDropdown(false);
                             }}
                             className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded ${selectedLanguage === option.value ? `${darkMode ? "bg-blue-500/20 text-blue-400" : "bg-blue-100 text-blue-600"}` : `${textSecondary} ${darkMode ? "hover:bg-zinc-800" : "hover:bg-gray-100"}`} transition-colors`}
@@ -2536,32 +2540,20 @@ const Problem = () => {
 
           {/* Code Editor */}
           <div className="flex-1 min-h-0">
-            <Editor
-              height="100%"
-              language={MONACO_LANG_MAP[selectedLanguage] || "plaintext"}
-              value={code}
-              onChange={(value) => setCode(value || "")}
-              theme={darkMode ? "vs-dark" : "light"}
-              options={{
-                fontSize,
-                minimap: { enabled: false },
-                lineNumbers: "on",
-                scrollBeyondLastLine: false,
-                wordWrap: "on",
-                automaticLayout: true,
-                tabSize: 2,
-                renderLineHighlight: "all",
-                padding: { top: 16 },
-                fontFamily: "'JetBrains Mono', monospace",
-                lineHeight: 1.6,
-                cursorBlinking: "smooth",
-                scrollbar: {
-                  verticalScrollbarSize: 8,
-                  horizontalScrollbarSize: 8,
-                  useShadows: false,
-                },
-              }}
-            />
+      <div className="h-full min-h-0">
+
+  <SharedEditor
+    selectedLanguage={selectedLanguage}
+    darkMode={darkMode}
+    fontSize={fontSize}
+    editorRef={editorRef}
+    codeRef={codeRef}
+    initialCode={codeRef}
+    MONACO_LANG_MAP={MONACO_LANG_MAP}
+  />
+</div>
+
+
           </div>
 
           {/* Test Cases & Results Panel */}
@@ -2746,8 +2738,59 @@ const Problem = () => {
   // Return appropriate layout based on screen size
  return (
   <>
-    {isMobile ? <MobileLayout /> : <DesktopLayout />}
+    <div className={isMobile ? "block" : "hidden"}>
+      <MobileLayout
+        problem={problem}
+        problemId={problemId}
+        selectedLanguage={selectedLanguage}
+        setSelectedLanguage={setSelectedLanguage}
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+        fontSize={fontSize}
+        setFontSize={setFontSize}
+        handleRun={handleRun}
+        handleSubmit={handleSubmit}
+        resetcode={resetcode}
+        codeRef={codeRef}
+        editorRef={editorRef}
+        output={output}
+        isRunning={isRunning}
+        isSubmitted={isSubmitted}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        leftPanelTab={leftPanelTab}
+        setLeftPanelTab={setLeftPanelTab}
+        timer={timer}
+        formatTime={formatTime}
+      />
+    </div>
 
+    <div className={isMobile ? "hidden" : "block"}>
+      <DesktopLayout
+        problem={problem}
+        problemId={problemId}
+        selectedLanguage={selectedLanguage}
+        setSelectedLanguage={setSelectedLanguage}
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+        fontSize={fontSize}
+        setFontSize={setFontSize}
+        handleRun={handleRun}
+        handleSubmit={handleSubmit}
+        resetcode={resetcode}
+        codeRef={codeRef}
+        editorRef={editorRef}
+        output={output}
+        isRunning={isRunning}
+        isSubmitted={isSubmitted}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        leftPanelTab={leftPanelTab}
+        setLeftPanelTab={setLeftPanelTab}
+        timer={timer}
+        formatTime={formatTime}
+      />
+    </div>
     {showAddSolutionModal && (
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         <div
@@ -2880,6 +2923,46 @@ const Problem = () => {
 );
 
 };
+
+
+const SharedEditor = React.memo(({
+  selectedLanguage,
+  darkMode,
+  fontSize,
+  editorRef,
+  codeRef,
+  initialCode,
+  MONACO_LANG_MAP
+}) =>
+{
+  return (
+    <Editor
+      height="100%"
+      language={MONACO_LANG_MAP[selectedLanguage] || "plaintext"}
+      defaultValue={codeRef.current}
+      onMount={(editor) =>
+      {
+        if (!editorRef.current)
+        {
+         
+          editorRef.current = editor;
+          codeRef.current = editor.getValue();
+        }
+      }}
+      onChange={(value) =>
+      {
+        codeRef.current = value || "";
+      }}
+      theme={darkMode ? "vs-dark" : "light"}
+      options={{
+        fontSize,
+        minimap: { enabled: false },
+        automaticLayout: true,
+      }}
+    />
+  );
+});
+
 
 export default Problem;
 
