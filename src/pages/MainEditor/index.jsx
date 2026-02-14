@@ -117,8 +117,6 @@ const MainCompilerLight = () => {
     dispatch(runCode({ language, code, input }));
   };
 
-
-  
   useEffect(() => {
     if (status === "completed" && window.innerWidth < 768) {
       setMobileTab("output");
@@ -722,7 +720,15 @@ const SidebarContent = ({
   };
 
   const handleModalSave = () => {
-    console.log(codeName, language, code, input, folderPath);
+    // 1. Check if the folder path already exists in your current list
+    const folderExists = folders?.some((f) => f.path === folderPath);
+
+    // 2. Only dispatch creation if it does NOT exist
+    if (!folderExists && folderPath) {
+      dispatch(createFolder(folderPath));
+    }
+
+    // 3. Proceed to create the code file
     dispatch(
       createCode({
         title: codeName,
@@ -737,11 +743,130 @@ const SidebarContent = ({
       .then(() => showNotification("Created successfully."))
       .catch((err) => showNotification("Failed to save."));
   };
+
   const handleCreateFile = (data) => {
     setContextMenu({ ...contextMenu, show: false });
     setFolderPath(data.path);
     // console.log("Creating file in folder:", data);
     setSaveModalOpen(true);
+  };
+
+  // Helper to turn flat paths (e.g. "parent/child") into a tree structure
+  const buildFolderTree = (folders) => {
+    const root = {};
+
+    folders.forEach((folder) => {
+      // Split path by "/" (e.g., "Projects/Web/V1" -> ["Projects", "Web", "V1"])
+      const parts = folder.path.split("/").filter(Boolean);
+      let currentLevel = root;
+
+      parts.forEach((part, index) => {
+        // If path part doesn't exist in tree, create it
+        if (!currentLevel[part]) {
+          currentLevel[part] = {
+            name: part,
+            // Reconstruct the full path for this specific node
+            fullPath: parts.slice(0, index + 1).join("/"),
+            children: {},
+            // Only mark as "real" folder if it matches a path from DB
+            // (Handles cases where "Parent/Child" exists but "Parent" wasn't explicitly created)
+            originalData: index === parts.length - 1 ? folder : null,
+          };
+        }
+        currentLevel = currentLevel[part].children;
+      });
+    });
+
+    return root;
+  };
+
+  const FolderTreeItem = ({ node, level = 0 }) => {
+    // Use the full path as the key for opening/closing
+    const isOpen = openFolders[node.fullPath];
+    const hasChildren = Object.keys(node.children).length > 0;
+
+    // Filter files that belong EXACTLY to this folder path
+    const filesInFolder = userCodes?.filter(
+      (code) => code?.folderPath === node.fullPath,
+    );
+
+    return (
+      <div className="select-none">
+        {/* 1. RENDER THE FOLDER ROW */}
+        <div
+          style={{ paddingLeft: `${level * 12 + 12}px` }} // Indentation math
+          onClick={() => toggleFolder(node.fullPath)}
+          onContextMenu={(e) =>
+            handleContextMenu(
+              e,
+              "folder",
+              node.originalData || { path: node.fullPath },
+            )
+          }
+          className={`
+          group flex items-center gap-1.5 py-1.5 cursor-pointer transition-all duration-200 border-l-2 border-transparent pr-2
+          ${isOpen ? "bg-gray-50" : "hover:bg-gray-50"}
+        `}
+        >
+          {/* Arrow Icon */}
+          <span
+            className={`text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-0" : "-rotate-90"} ${!hasChildren && !filesInFolder?.length ? "opacity-0" : ""}`}
+          >
+            <ChevronDown size={14} />
+          </span>
+
+          {/* Folder Icon */}
+          <span
+            className={`${isOpen ? "text-blue-600" : "text-blue-400 group-hover:text-blue-500"}`}
+          >
+            {isOpen ? <FolderOpen size={16} /> : <Folder size={16} />}
+          </span>
+
+          {/* Folder Name */}
+          <span className="truncate text-sm font-medium text-gray-700">
+            {node.name}
+          </span>
+        </div>
+
+        {/* 2. RENDER CHILDREN (Files & Sub-folders) */}
+        {isOpen && (
+          <div className="animate-in slide-in-from-top-2 fade-in duration-200">
+            {/* A. RECURSIVE SUB-FOLDERS */}
+            {Object.values(node.children).map((childNode) => (
+              <FolderTreeItem
+                key={childNode.fullPath}
+                node={childNode}
+                level={level + 1}
+              />
+            ))}
+
+            {/* B. FILES IN THIS FOLDER */}
+            {filesInFolder?.map((code) => (
+              <div
+                key={code._id}
+                style={{ paddingLeft: `${(level + 1) * 12 + 28}px` }} // Extra indent for files
+                onClick={() => handleCodeClick(code._id)}
+                onContextMenu={(e) => handleContextMenu(e, "file", code)}
+                className={`
+                  group/file flex items-center gap-2 pr-3 py-1.5 cursor-pointer text-sm border-l-2 transition-all
+                  ${activeCodeId === code._id ? "bg-blue-50/80 text-blue-700 border-blue-600 font-medium" : "text-gray-600 border-transparent hover:bg-gray-100"}
+                `}
+              >
+                <FileCode
+                  size={14}
+                  className={
+                    activeCodeId === code._id
+                      ? "text-blue-600"
+                      : "text-gray-400"
+                  }
+                />
+                <span className="truncate">{code.title || "Untitled"}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   const handleContextMenu = (e, type, data) => {
@@ -807,6 +932,8 @@ const SidebarContent = ({
     if (e.key === "Escape") setRenamingId(null);
   };
 
+  const folderTree = folders ? buildFolderTree(folders) : {};
+
   return (
     <>
       <div
@@ -839,127 +966,23 @@ const SidebarContent = ({
         <div className="flex-1 overflow-y-auto py-2 custom-scrollbar">
           {activeTab === "My Codes" ? (
             <div className="space-y-0.5">
-              {folders?.map((item) => {
-                const isOpen = openFolders[item.path];
-                const folderFiles = userCodes?.filter(
-                  (code) => code?.folderPath === item.path,
-                );
+              {/* Iterate over ROOT folders only */}
+              {Object.values(folderTree).map((rootNode) => (
+                <FolderTreeItem key={rootNode.fullPath} node={rootNode} />
+              ))}
 
-                return (
-                  <div key={item._id} className="select-none">
-                    {/* Folder Row */}
-                    <div
-                      onClick={() => {
-                        toggleFolder(item.path);
-                      }}
-                      onContextMenu={(e) =>
-                        handleContextMenu(e, "folder", item)
-                      }
-                      className={`
-                      group flex items-center gap-1.5 px-3 py-1.5 cursor-pointer transition-all duration-200 border-l-2 border-transparent
-                      ${isOpen ? "bg-gray-50" : "hover:bg-gray-50"}
-                    `}
-                    >
-                      <span
-                        className={`text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-0" : "-rotate-90"}`}
-                      >
-                        <ChevronDown size={14} />
-                      </span>
-
-                      <span
-                        className={`transition-colors ${isOpen ? "text-blue-600" : "text-blue-400 group-hover:text-blue-500"}`}
-                      >
-                        {isOpen ? (
-                          <FolderOpen size={16} />
-                        ) : (
-                          <Folder size={16} />
-                        )}
-                      </span>
-
-                      {/* FOLDER RENAME INPUT OR TEXT */}
-                      {renamingId === item._id ? (
-                        <input
-                          autoFocus
-                          type="text"
-                          value={renameValue}
-                          onChange={(e) => setRenameValue(e.target.value)}
-                          onBlur={handleRenameSubmit}
-                          onKeyDown={handleRenameKeyDown}
-                          onClick={(e) => e.stopPropagation()} // Prevent folder toggle when clicking input
-                          className="flex-1 min-w-0 bg-white border border-blue-500 rounded px-1 py-0.5 text-sm outline-none"
-                        />
-                      ) : (
-                        <span
-                          className={`truncate text-sm font-medium transition-colors ${isOpen ? "text-gray-900" : "text-gray-600 group-hover:text-gray-900"}`}
-                        >
-                          {item.path || "Untitled"}
-                        </span>
-                      )}
-
-                      <span className="ml-auto text-[10px] text-gray-300 group-hover:text-gray-400">
-                        {folderFiles?.length || 0}
-                      </span>
-                    </div>
-
-                    {/* Files inside folder */}
-                    {isOpen && (
-                      <div className="relative animate-in slide-in-from-top-2 fade-in duration-200 origin-top">
-                        <div className="absolute left-[19px] top-0 bottom-0 w-px bg-gray-200" />
-
-                        {folderFiles && folderFiles.length > 0 ? (
-                          folderFiles.map((code) => (
-                            <div
-                              key={code._id}
-                              onClick={() => handleCodeClick(code._id)}
-                              onContextMenu={(e) =>
-                                handleContextMenu(e, "file", code)
-                              }
-                              className={`
-                              group/file flex items-center gap-2 pl-9 pr-3 py-1.5 cursor-pointer text-sm border-l-2 transition-all
-                              ${
-                                activeCodeId === code._id
-                                  ? "bg-blue-50/80 text-blue-700 border-blue-600 font-medium"
-                                  : "text-gray-600 border-transparent hover:bg-gray-100 hover:text-gray-900 hover:border-gray-300"
-                              }
-                            `}
-                            >
-                              <FileCode
-                                size={14}
-                                className={`shrink-0 transition-colors ${activeCodeId === code._id ? "text-blue-600" : "text-gray-400 group-hover/file:text-gray-600"}`}
-                              />
-
-                              {/* FILE RENAME INPUT OR TEXT */}
-                              {renamingId === code._id ? (
-                                <input
-                                  autoFocus
-                                  type="text"
-                                  value={renameValue}
-                                  onChange={(e) =>
-                                    setRenameValue(e.target.value)
-                                  }
-                                  onBlur={handleRenameSubmit}
-                                  onKeyDown={handleRenameKeyDown}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="flex-1 min-w-0 bg-white border border-blue-500 rounded px-1 py-0 text-sm outline-none"
-                                />
-                              ) : (
-                                <span className="truncate">
-                                  {code.title || "Untitled"}
-                                </span>
-                              )}
-                            </div>
-                          ))
-                        ) : (
-                          <div className="pl-9 py-2 text-xs text-gray-400 flex items-center gap-2 italic">
-                            <span className="w-1 h-1 rounded-full bg-gray-300"></span>{" "}
-                            Empty
-                          </div>
-                        )}
-                      </div>
-                    )}
+              {/* Handle files that have NO folder (root level files) */}
+              {userCodes
+                ?.filter((c) => !c.folderPath)
+                .map((code) => (
+                  /* Render root files here (reuse the file div style from above) */
+                  <div
+                    onClick={() => handleCodeClick(code._id)}
+                    className="..."
+                  >
+                    <FileCode size={14} /> {code.title}
                   </div>
-                );
-              })}
+                ))}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-64 text-gray-400">
@@ -970,13 +993,13 @@ const SidebarContent = ({
             </div>
           )}
         </div>
-
         {/* --- Custom Context Menu --- */}
         {contextMenu.show && (
           <div
             ref={contextMenuRef}
             className="fixed z-50 w-48 bg-white rounded-lg shadow-xl border border-gray-100 py-1 text-sm text-gray-700 animate-in fade-in zoom-in-95 duration-100"
             style={{ top: contextMenu.y, left: contextMenu.x }}
+            value={renameValue || ""}
           >
             <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 border-b border-gray-100 bg-gray-50 rounded-t-lg">
               {contextMenu.type === "folder"
@@ -1130,7 +1153,7 @@ const SaveModal = ({
               <input
                 type="text"
                 placeholder="e.g. Algorithms/Python"
-                value={folderPath}
+                value={folderPath || ""}
                 onChange={(e) => setFolderPath(e.target.value)}
                 onKeyDown={handleKeyDown}
                 className="w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 

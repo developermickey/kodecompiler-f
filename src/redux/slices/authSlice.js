@@ -2,20 +2,22 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 import { API_BASE_URL } from "../../config/api";
 
-
-
 /* ========================= LOGIN ========================= */
 export const loginUser = createAsyncThunk(
   "auth/login",
   async (credentials, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/login`, credentials, {
-        headers: {
-          accept: "application/json",
-          "Content-Type": "application/json",
+      const response = await axios.post(
+        `${API_BASE_URL}/auth/login`,
+        credentials,
+        {
+          headers: {
+            accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          withCredentials: true, // 🔑 httpOnly cookie
         },
-        withCredentials: true, // 🔑 httpOnly cookie
-      });
+      );
 
       localStorage.setItem(
         "user",
@@ -23,7 +25,7 @@ export const loginUser = createAsyncThunk(
           _id: response.data._id,
           username: response.data.username,
           email: response.data.email,
-        })
+        }),
       );
 
       return response.data;
@@ -33,7 +35,7 @@ export const loginUser = createAsyncThunk(
       }
       return rejectWithValue({ detail: "Network error. Please try again." });
     }
-  }
+  },
 );
 
 /* ========================= REGISTER ========================= */
@@ -41,13 +43,17 @@ export const registerUser = createAsyncThunk(
   "auth/register",
   async (userData, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/register`, userData, {
-        headers: {
-          accept: "application/json",
-          "Content-Type": "application/json",
+      const response = await axios.post(
+        `${API_BASE_URL}/auth/register`,
+        userData,
+        {
+          headers: {
+            accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          withCredentials: true,
         },
-        withCredentials: true,
-      });
+      );
 
       localStorage.setItem(
         "user",
@@ -55,7 +61,7 @@ export const registerUser = createAsyncThunk(
           _id: response.data._id,
           username: response.data.username,
           email: response.data.email,
-        })
+        }),
       );
 
       return response.data;
@@ -65,7 +71,7 @@ export const registerUser = createAsyncThunk(
       }
       return rejectWithValue({ detail: "Network error. Please try again." });
     }
-  }
+  },
 );
 
 /* ========================= OTP ========================= */
@@ -73,33 +79,41 @@ export const getOTP = createAsyncThunk(
   "auth/getOTP",
   async (payload, { rejectWithValue }) => {
     try {
-      const res = await axios.post(`${API_BASE_URL}/auth/login/otp/request`, payload, {
-        headers: {
-          accept: "application/json",
-          "Content-Type": "application/json",
+      const res = await axios.post(
+        `${API_BASE_URL}/auth/login/otp/request`,
+        payload,
+        {
+          headers: {
+            accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          withCredentials: true,
         },
-        withCredentials: true,
-      });
+      );
       return res.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || { detail: "OTP can't be sent." }
+        error.response?.data || { detail: "OTP can't be sent." },
       );
     }
-  }
+  },
 );
 
 export const verifyOTP = createAsyncThunk(
   "auth/verifyOTP",
   async (payload, { rejectWithValue }) => {
     try {
-      const res = await axios.post(`${API_BASE_URL}/auth/login/otp/verify`, payload, {
-        headers: {
-          accept: "application/json",
-          "Content-Type": "application/json",
+      const res = await axios.post(
+        `${API_BASE_URL}/auth/login/otp/verify`,
+        payload,
+        {
+          headers: {
+            accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          withCredentials: true,
         },
-        withCredentials: true,
-      });
+      );
 
       localStorage.setItem(
         "user",
@@ -107,16 +121,35 @@ export const verifyOTP = createAsyncThunk(
           _id: res.data._id,
           username: res.data.username,
           email: res.data.email,
-        })
+        }),
       );
 
       return res.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || { detail: "OTP verification failed" }
+        error.response?.data || { detail: "OTP verification failed" },
       );
     }
-  }
+  },
+);
+
+export const registerWithOTP = createAsyncThunk(
+  "auth/registerWithOTP",
+  async (payload, { rejectWithValue }) => {
+    try {
+      const res = await axios.post(
+        `${API_BASE_URL}/auth/verify-email-otp`,
+        payload,
+        { withCredentials: true },
+      );
+
+      return res.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data || { detail: "OTP registration failed" },
+      );
+    }
+  },
 );
 
 /* ========================= GOOGLE LOGIN ========================= */
@@ -131,7 +164,7 @@ export const googleLogin = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.response?.data);
     }
-  }
+  },
 );
 
 /* ========================= LOGOUT (COOKIE CLEAR) ========================= */
@@ -142,13 +175,13 @@ export const logoutUser = createAsyncThunk(
       await axios.post(
         `${API_BASE_URL}/auth/logout`,
         {},
-        { withCredentials: true } // 🔑 clears httpOnly cookie
+        { withCredentials: true }, // 🔑 clears httpOnly cookie
       );
       return true;
     } catch (error) {
       return rejectWithValue("Logout failed");
     }
-  }
+  },
 );
 
 /* ========================= SLICE ========================= */
@@ -163,6 +196,9 @@ const authSlice = createSlice({
 
     otpSent: false,
     verifyingOTP: false,
+
+    registerOtpSent: false,
+    verified: false,
   },
 
   reducers: {
@@ -191,14 +227,18 @@ const authSlice = createSlice({
       /* REGISTER */
       .addCase(registerUser.pending, (state) => {
         state.isLoading = true;
+        state.registerOtpSent = false;
       })
       .addCase(registerUser.fulfilled, (state, action) => {
         state.isLoading = false;
         state.user = action.payload;
         state.success = true;
+        state.registerOtpSent = true;
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.isLoading = false;
+        state.registerOtpSent = false;
+
         state.error = action.payload;
       })
 
@@ -233,6 +273,22 @@ const authSlice = createSlice({
         state.error = null;
         state.success = false;
         localStorage.removeItem("user");
+      })
+      .addCase(logoutUser.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+
+      // Register with OTP
+      .addCase(registerWithOTP.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(registerWithOTP.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.verified = true;
+      })
+      .addCase(registerWithOTP.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
       });
   },
 });
