@@ -60,8 +60,8 @@ const QuickActions = () => {
             group-hover:scale-110 transition-transform">
             <BookOpen size={26} />
           </div>
-          <p className="mt-4 font-semibold text-gray-900">Interview Prep</p>
-          <p className="text-sm text-gray-600">Get ready</p>
+          <p className="mt-4 font-semibold text-gray-900">Interview Experience</p>
+          <p className="text-sm text-gray-600">Learn from others</p>
         </NavLink>
 
       </div>

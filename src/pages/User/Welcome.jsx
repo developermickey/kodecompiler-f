@@ -1,7 +1,14 @@
 import React, { useEffect } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { Code, Trophy, Zap, BookOpen, ArrowRight, Activity } from "lucide-react";
+import {
+  Code,
+  Trophy,
+  Zap,
+  BookOpen,
+  ArrowRight,
+  Activity,
+} from "lucide-react";
 
 const Welcome = () => {
   const user = useSelector((state) => state.auth.user);
@@ -56,7 +63,6 @@ const Welcome = () => {
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-white p-6 md:p-12 font-sans text-slate-900">
-      
       {/* --- GREETING SECTION --- */}
       <div className="max-w-6xl mx-auto mb-12 flex flex-col md:flex-row justify-between items-end gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
         <div>
@@ -67,25 +73,32 @@ const Welcome = () => {
             Your command center is ready. What's the focus today?
           </p>
         </div>
-        
+
         {/* Subtle User Stats - Kept minimal */}
         <div className="flex items-center gap-4 bg-gray-50 px-5 py-3 rounded-2xl border border-gray-100">
           <Activity className="w-5 h-5 text-[#0652e9]" />
           <div className="text-right">
-             <p className="text-[10px] uppercase font-bold text-gray-400">Solved</p>
-             <p className="text-lg font-bold leading-none">{user.problemsSolved || 0}</p>
+            <p className="text-[10px] uppercase font-bold text-gray-400">
+              Solved
+            </p>
+            <p className="text-lg font-bold leading-none">
+              {user.problemsSolved || 0}
+            </p>
           </div>
           <div className="w-px h-8 bg-gray-200 mx-2"></div>
           <div className="text-right">
-             <p className="text-[10px] uppercase font-bold text-gray-400">Rank</p>
-             <p className="text-lg font-bold leading-none">#{user.rank || "-"}</p>
+            <p className="text-[10px] uppercase font-bold text-gray-400">
+              Rank
+            </p>
+            <p className="text-lg font-bold leading-none">
+              #{user.rank || "-"}
+            </p>
           </div>
         </div>
       </div>
 
       {/* --- THE SPICY GRID (Your 4 Actions Reimagined) --- */}
       <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
-        
         {actions.map((action, index) => (
           <div
             key={action.id}
@@ -102,13 +115,12 @@ const Welcome = () => {
             <div className="absolute inset-0 bg-[#0652e9] translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] z-0"></div>
 
             <div className="relative z-10 p-8 h-full flex flex-col justify-between">
-              
               {/* Top Row: Icon & Arrow */}
               <div className="flex justify-between items-start mb-8">
                 <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center group-hover:bg-white/20 transition-colors duration-500">
                   <action.icon className="w-7 h-7 text-[#0652e9] group-hover:text-white transition-colors duration-500" />
                 </div>
-                
+
                 <div className="w-10 h-10 rounded-full border border-gray-100 flex items-center justify-center group-hover:border-white/30 group-hover:rotate-[-45deg] transition-all duration-500">
                   <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors duration-500" />
                 </div>
@@ -130,11 +142,10 @@ const Welcome = () => {
 
             {/* Decorative Background Pattern (Visible on hover) */}
             <div className="absolute top-0 right-0 p-8 opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none">
-               <action.icon className="w-32 h-32 text-white transform rotate-12 translate-x-12 -translate-y-12" />
+              <action.icon className="w-32 h-32 text-white transform rotate-12 translate-x-12 -translate-y-12" />
             </div>
           </div>
         ))}
-
       </div>
     </div>
   );
