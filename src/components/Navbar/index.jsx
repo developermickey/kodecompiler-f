@@ -12,7 +12,7 @@ import {
   LogOut,
   Rocket,
 } from "lucide-react";
-import LOGO from "../../assets/logo.png";
+import LOGO from "../../assets/logo.svg";
 import { NavLink } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logoutUser } from "../../redux/slices/authSlice";
@@ -48,7 +48,7 @@ const Navbar = () => {
           >
             <img
               src={LOGO}
-              alt="KodeCompiler"
+              alt="Logo"
               className="w-10 h-10 object-contain"
             />
             <span>KodeCompiler</span>
