@@ -2965,6 +2965,3 @@ const SharedEditor = React.memo(({
 
 
 export default Problem;
-
-
-

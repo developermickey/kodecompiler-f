@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Lock, AlertCircle, CheckCircle, Eye, EyeOff, Loader2, ArrowRight, Star, ShieldCheck } from 'lucide-react';
+import { User, Mail, Lock, AlertCircle, CheckCircle, Eye, EyeOff, Loader2, ArrowRight, Star, ShieldCheck, Edit2, KeyRound } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { registerUser, googleLogin, clearMessages } from '../../redux/slices/authSlice';
+import { registerUser, registerWithOTP, googleLogin, clearMessages } from '../../redux/slices/authSlice';
 
 const Register = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   // Redux state
-  const { isLoading, error, success } = useSelector((state) => state.auth);
+  // distinct 'verified' state comes from your slice for the final step
+  const { isLoading, error, success, registerOtpSent, verified } = useSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({
     username: '',
@@ -22,6 +23,8 @@ const Register = () => {
   const [passwordError, setPasswordError] = useState('');
   const [passwordStrength, setPasswordStrength] = useState(0);
 
+  const [verificationCode, setVerificationCode] = useState('');
+
   // Clear Redux messages when component unmounts
   useEffect(() => {
     return () => {
@@ -29,13 +32,13 @@ const Register = () => {
     };
   }, [dispatch]);
 
-  // Redirect after successful registration
+  // Redirect after successful registration (Step 2)
   useEffect(() => {
-    if (success) {
+    if (verified) {
       const timer = setTimeout(() => navigate('/login'), 1500);
       return () => clearTimeout(timer);
     }
-  }, [success, navigate]);
+  }, [verified, navigate]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -58,10 +61,12 @@ const Register = () => {
     setPasswordStrength(score);
   };
 
+  // Unified Handler: Decides whether to Register (Send OTP) or Verify (Finalize)
   const handleSubmit = (e) => {
     e.preventDefault();
     setPasswordError('');
 
+    // Common Validation
     if (formData.password.length < 8) {
       setPasswordError('Password must be at least 8 characters long');
       return;
@@ -72,11 +77,31 @@ const Register = () => {
       return;
     }
 
-    dispatch(registerUser(formData));
+    // Logic Flow based on Redux state
+    if (!registerOtpSent) {
+      // Step 1: Send Data to get OTP
+      dispatch(registerUser(formData));
+    } else {
+      // Step 2: Verify OTP
+      if(!verificationCode || verificationCode.length < 6) {
+        setPasswordError('Please enter a valid 6-digit code');
+        return;
+      }
+      
+      dispatch(registerWithOTP({
+        email: formData.email,
+        otp: verificationCode
+      }));
+    }
   };
 
   const handleGoogleSignup = () => {
     dispatch(googleLogin());
+  };
+
+  const handleEditOtpEmail = () => {
+    // Reloads page to reset state, as requested in original logic
+    window.location.reload();
   };
 
   const getErrorMessage = () => {
@@ -93,7 +118,7 @@ const Register = () => {
   return (
     <div className="min-h-screen flex bg-white">
       
-      {/* --- LEFT SIDE: Feature/Marketing (Hidden on Mobile) --- */}
+      {/* --- LEFT SIDE: Feature/Marketing (Exact Original UI) --- */}
       <div className="hidden lg:flex w-1/2 bg-[#0f172a] relative overflow-hidden flex-col justify-between p-12 text-white">
         {/* Background Patterns */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
@@ -142,7 +167,7 @@ const Register = () => {
         </div>
       </div>
 
-      {/* --- RIGHT SIDE: Form --- */}
+      {/* --- RIGHT SIDE: Form (Exact Original UI) --- */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-12">
         <div className="w-full max-w-[400px]">
           
@@ -160,10 +185,10 @@ const Register = () => {
              </div>
           )}
 
-          {success && (
+          {verified && (
             <div className="mb-6 p-3 bg-green-50 border border-green-100 rounded-lg flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
               <CheckCircle className="w-5 h-5 text-green-500" />
-              <p className="text-sm text-green-700 font-medium">Account created! Redirecting...</p>
+              <p className="text-sm text-green-700 font-medium">Account verified! Redirecting...</p>
             </div>
           )}
 
@@ -180,6 +205,8 @@ const Register = () => {
                   required
                   value={formData.username}
                   onChange={handleChange}
+                  // Added disabled state for logic safety, but keeping generic styling
+                  disabled={registerOtpSent || isLoading}
                   className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#0652e9]/20 focus:border-[#0652e9] outline-none transition-all text-sm font-medium"
                   placeholder="johndoe"
                 />
@@ -197,9 +224,43 @@ const Register = () => {
                   required
                   value={formData.email}
                   onChange={handleChange}
+                  disabled={registerOtpSent || isLoading}
                   className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#0652e9]/20 focus:border-[#0652e9] outline-none transition-all text-sm font-medium"
                   placeholder="name@example.com"
                 />
+                {/* Edit Button: Only shows if OTP sent, per original logic */}
+                {registerOtpSent && (
+                  <button
+                    type="button"
+                    onClick={handleEditOtpEmail}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#0652e9] hover:text-blue-700 bg-white rounded p-1 shadow-sm border border-gray-100"
+                  >
+                    <Edit2 className="h-3 w-3" />
+                  </button>
+                )}
+                
+              </div>
+              <p className="text-xs text-gray-500 mt-1">We'll send you a verification code to confirm your email.</p>
+            </div>
+          
+            {/* OTP Section: Animation logic preserved exactly */}
+            <div
+              className={`transition-all duration-500 ease-in-out overflow-hidden ${registerOtpSent ? "max-h-32 opacity-100" : "max-h-0 opacity-0"}`}
+            >
+              <div className="space-y-1 pt-2">
+                <label className="text-sm font-medium text-gray-900">
+                  Verification Code
+                </label>
+                <div className="relative group">
+                  <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-[#0652e9] transition-colors" />
+                  <input
+                    type="text"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value)}
+                    placeholder="Enter 6-digit code"
+                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#0652e9]/20 focus:border-[#0652e9] outline-none transition-all text-sm font-mono tracking-widest font-medium"
+                  />
+                </div>
               </div>
             </div>
 
@@ -271,7 +332,8 @@ const Register = () => {
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
                 <>
-                  Create Account <ArrowRight className="w-4 h-4" />
+                  {/* Dynamic Text change only to make flow logical, style remains identical */}
+                  {registerOtpSent ? "Verify & Register" : "Create Account"} <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
