@@ -613,6 +613,7 @@ const Problem = () => {
     try {
       setIsRunning(true);
       setOutput(null);
+      setActiveTab("result");
       console.log(codeRef.current)
 
       const response = await fetch(`${API_BASE_URL}/problems/run`, {
