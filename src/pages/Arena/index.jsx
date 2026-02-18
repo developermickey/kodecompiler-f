@@ -588,7 +588,7 @@ const Arena = () => {
               <div className="relative z-10">
                 <h3 className="font-bold text-lg leading-tight mb-1">
             <p className="text-xs text-zinc-300 mt-1">
-          {streak ? (
+          {streak?.longest_streak > 0 ? (
             <>
               You are{" "}
               <span className="text-s text-emerald-400 font-semibold">
