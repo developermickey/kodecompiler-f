@@ -21,6 +21,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const RefundPolicy = lazy(() => import("./pages/RefundPolicy"));
 const Disclaimer = lazy(() => import("./pages/Disclaimer"));
+const Careers = lazy(() => import("./pages/Careers"));
 
 const WeeklyChallenges = lazy(()=>import("./pages/WeeklyChallenges"))
 const ContestStartPage = lazy(() =>import("./pages/WeeklyChallenges/ContestStartPage"));
@@ -72,7 +73,10 @@ const App = () => {
         <Route path="/terms-of-service" element={<TermsOfService />} />
         <Route path="/refund-policy" element={<RefundPolicy />} />
         <Route path="/disclaimer" element={<Disclaimer />} />
-    
+        <Route path="/careers" element={<Careers />} />
+
+
+
         {/* 1. User Dashboard / Welcome */}
         <Route path="/welcome" element={<Welcome />} />
         <Route path="/account" element={<ProfileComponent />} />
