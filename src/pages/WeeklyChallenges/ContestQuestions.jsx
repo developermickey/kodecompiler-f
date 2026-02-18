@@ -1016,14 +1016,7 @@ const ContestQuestion = () => {
                       darkMode ? "bg-zinc-800/20" : "bg-gray-50"
                     } border ${borderColor} rounded-lg p-4`}
                   >
-                    <ul className={`space-y-2 text-xs ${textSecondary}`}>
-                      {problem.constraints.map((c, i) => (
-                        <li key={i} className="flex items-start">
-                          <span className="mr-2 mt-0.5 text-zinc-500">•</span>
-                          <span className="font-mono">{c}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    
                   </div>
                 </div>
               )}

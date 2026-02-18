@@ -9,6 +9,7 @@ import {
   X,
   Filter,
   Building2,
+  Goal,
   Calendar,
   ArrowRight,
 } from "lucide-react";
@@ -16,6 +17,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { fetchProblems } from "../../redux/slices/problemSlice";
 import { fetchUserProgress } from "../../redux/slices/userprogressSlice";
 import { useNavigate } from "react-router-dom";
+import { fetchuserchallengeprogress } from "../../redux/slices/userchallengesprogressSlice";
 
 // --- SUB-COMPONENT: Difficulty Badge ---
 const DifficultyBadge = ({ difficulty }) => {
@@ -274,11 +276,24 @@ const Arena = () => {
   const { solvedProblemIds, solvedCount } = useSelector(
     (state) => state.userProgress,
   );
+  const {streak} = useSelector((state)=> state.userChallengesprogress);
 
   useEffect(() => {
     dispatch(fetchProblems());
-    if (user) dispatch(fetchUserProgress());
+    if (user) 
+      {
+        dispatch(fetchUserProgress());
+        dispatch(fetchuserchallengeprogress());
+      }
+    
   }, [dispatch, user]);
+
+  const progressPercent = streak?.longest_streak
+  ? Math.min(
+      (streak.current_streak / streak.longest_streak) * 100,
+      100
+    )
+  : 0;
 
   // Derived State
   const allTopics = useMemo(() => {
@@ -564,22 +579,56 @@ const Arena = () => {
               <div className="absolute -right-6 -top-6 bg-white/5 w-24 h-24 rounded-full blur-xl group-hover:bg-white/10 transition-all"></div>
               <div className="flex items-center justify-between mb-3 relative z-10">
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-emerald-400" />
+                  <Goal className="w-4 h-4 text-emerald-400" />
                   <span className="text-xs font-bold uppercase tracking-wider text-zinc-300">
-                    Daily Challenge
+                    Create a New Record
                   </span>
                 </div>
               </div>
               <div className="relative z-10">
                 <h3 className="font-bold text-lg leading-tight mb-1">
-                  Merge k Sorted Lists
-                </h3>
-                <div className="flex items-center gap-2 mt-3 text-xs">
-                  <span className="px-2 py-0.5 rounded bg-white/10 text-white border border-white/10">
-                    Hard
-                  </span>
-                  <span className="text-emerald-400 font-medium">+10 XP</span>
-                </div>
+            <p className="text-xs text-zinc-300 mt-1">
+          {streak ? (
+            <>
+              You are{" "}
+              <span className="text-s text-emerald-400 font-semibold">
+                {Math.max(
+                  streak.longest_streak - streak.current_streak,
+                  0
+                )}
+              </span>{" "}
+              days away from breaking your longest streak.
+            </>
+          ) : (
+            "Keep solving daily to build your streak!"
+          )}
+        </p>
+
+          </h3>
+           <div className="flex flex-col gap-2 mt-3 text-xs">
+
+
+          {/* Progress Info */}
+          {streak && (
+            <div className="w-full">
+              <div className="flex justify-between text-[10px] text-zinc-400 mb-1">
+                <span>Current: {streak.current_streak}</span>
+                <span>Best: {streak.longest_streak}</span>
+              </div>
+
+              {/* Progress Bar Background */}
+              <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                {/* Progress Fill */}
+                <div
+                  className="h-full bg-emerald-400 transition-all duration-500 ease-out"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+        </div>
+
               </div>
             </div>
 
