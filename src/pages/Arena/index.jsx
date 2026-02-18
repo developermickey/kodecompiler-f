@@ -574,8 +574,8 @@ const Arena = () => {
 
           {/* --- RIGHT COLUMN (Sidebar) --- */}
           <div className="lg:col-span-1 space-y-6">
-            {/* 1. Daily Challenge Card */}
-            <div className="bg-gradient-to-br from-zinc-800 to-zinc-900 rounded-xl p-5 text-white shadow-md relative overflow-hidden group cursor-pointer">
+            {/* 1. Contest Goal Card*/}
+            <div className="bg-gradient-to-br from-zinc-800 to-zinc-900 rounded-xl p-5 text-white shadow-md relative overflow-hidden group cursor-pointer" onClick={()=>{navigate("/weekly-challenges")}}>
               <div className="absolute -right-6 -top-6 bg-white/5 w-24 h-24 rounded-full blur-xl group-hover:bg-white/10 transition-all"></div>
               <div className="flex items-center justify-between mb-3 relative z-10">
                 <div className="flex items-center gap-2">
