@@ -80,6 +80,8 @@ const MainCompilerLight = () => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [folderPath, setFolderPath] = useState();
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [extension, setExtension] = useState("");
+
 
   // --- Refs ---
   const containerRef = useRef(null);
@@ -184,9 +186,11 @@ const MainCompilerLight = () => {
         { withCredentials: true },
       );
       const fetchedTitle = res.data.title || "Untitled";
+      
       setCodeName(fetchedTitle);
       setCode(res.data.code);
       setActiveCodeId(code_id);
+
       const detectedLang = detectLanguageFromExtension(fetchedTitle);
       if (detectedLang) setLanguage(detectedLang);
 
@@ -255,7 +259,9 @@ const MainCompilerLight = () => {
     dispatch(createFolder(folderPath));
     dispatch(
       createCode({
-        title: codeName,
+    title: extension
+  ? `${codeName}${extension}`
+  : codeName,
         language,
         code,
         description: "",
@@ -655,6 +661,8 @@ const MainCompilerLight = () => {
           handleModalSave={handleModalSave}
           setCodeName={setCodeName}
           codeName={codeName}
+          extension={extension}          
+          setExtension={setExtension}
         />
       )}
     </div>
@@ -1046,6 +1054,8 @@ const SidebarContent = ({
           handleModalSave={handleModalSave}
           setCodeName={setCodeName}
           codeName={codeName}
+          extension={extension}           
+    setExtension={setExtension}
         />
       )}
     </>
@@ -1084,6 +1094,8 @@ const SaveModal = ({
   handleModalSave,
   setCodeName,
   codeName,
+  extension,
+  setExtension
 }) => {
   // Handle "Enter" key to submit
   const handleKeyDown = (e) => {
@@ -1160,6 +1172,55 @@ const SaveModal = ({
                          focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-gray-400"
               />
             </div>
+
+             <div className="space-y-1.5">
+  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
+    File Extension
+  </label>
+
+  <div className="relative group">
+    {/* Icon */}
+    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors">
+      <FileCode size={16} />
+    </div>
+
+    {/* Select */}
+    <select
+      value={extension}
+      onChange={(e) => setExtension(e.target.value)}
+      className="
+        w-full pl-10 pr-10 py-2.5 
+        bg-gray-50 border border-gray-200 
+        rounded-lg text-sm text-gray-700 
+        appearance-none
+        focus:bg-white focus:outline-none 
+        focus:ring-2 focus:ring-blue-500/20 
+        focus:border-blue-500 
+        transition-all
+        cursor-pointer
+      "
+    >
+      <option value="" disabled>
+        Select Extension
+      </option>
+      <option value=".js">JavaScript (.js)</option>
+      <option value=".py">Python (.py)</option>
+      <option value=".java">Java (.java)</option>
+      <option value=".cpp">C++ (.cpp)</option>
+      <option value=".c">C (.c)</option>
+      <option value=".go">Go (.go)</option>
+      <option value=".rs">Rust (.rs)</option>
+    </select>
+
+    {/* Custom Dropdown Arrow */}
+    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 group-focus-within:text-blue-500 transition-colors">
+      <ChevronDown size={16} />
+    </div>
+  </div>
+</div>
+
+
+            
           </div>
         </div>
 
