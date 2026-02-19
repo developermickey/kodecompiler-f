@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 import { fetchinterviewbyid } from "../../redux/slices/interviewExperienceSlice";
 import { API_BASE_URL } from "../../config/api";
+import Loader from "../../components/Loader";
 
 export default function SelectedExperience() {
   const { experienceId } = useParams();
@@ -69,10 +70,7 @@ export default function SelectedExperience() {
 
   if (experienceloading) return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-gray-50 flex items-center justify-center">
-      <div className="text-center">
-        <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
-        <p className="mt-3 text-gray-600 text-xs">Loading experience details...</p>
-      </div>
+     <Loader/>
     </div>
   );
 
