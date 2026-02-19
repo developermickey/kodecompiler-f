@@ -74,6 +74,8 @@ const App = () => {
         <Route path="/refund-policy" element={<RefundPolicy />} />
         <Route path="/disclaimer" element={<Disclaimer />} />
         <Route path="/careers" element={<Careers />} />
+                <Route path="/loader" element={<Loader />} />
+
 
 
 
