@@ -84,26 +84,32 @@ const Welcome = () => {
         </div>
 
         {/* Subtle User Stats - Kept minimal */}
-        <div className="flex items-center gap-4 bg-gray-50 px-5 py-3 rounded-2xl border border-gray-100">
-          <Activity className="w-5 h-5 text-[#0652e9]" />
+        <div className="group flex items-center gap-4 bg-gray-50 px-5 py-3 rounded-2xl border border-gray-100
+                transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:bg-white">
+  
+          <Activity className="w-5 h-5 text-[#0652e9]   transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6" />
+
           <div className="text-right">
-            <p className="text-[10px] uppercase font-bold text-gray-400">
+            <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">
               Solved
             </p>
-            <p className="text-lg font-bold leading-none">
+            <p className="text-lg font-bold leading-none transition-all duration-300 group-hover:text-[#0652e9]">
               {solvedCount || 0}
             </p>
           </div>
+
           <div className="w-px h-8 bg-gray-200 mx-2"></div>
+
           <div className="text-right">
-            <p className="text-[10px] uppercase font-bold text-gray-400">
+            <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">
               Rank
             </p>
-            <p className="text-lg font-bold leading-none">
+            <p className="text-lg font-bold leading-none transition-all duration-300 group-hover:text-[#0652e9]">
               #{myRank || "-"}
             </p>
           </div>
         </div>
+
       </div>
 
       {/* --- THE SPICY GRID (Your 4 Actions Reimagined) --- */}

@@ -8,7 +8,7 @@ import {
 } from "../../redux/slices/challengesSlice";
 import { fetchuserchallengeprogress } from "../../redux/slices/userchallengesprogressSlice";
 import { fetchGlobalLeaderboard } from "../../redux/slices/challengesGlobalLeaderboardSlice";
-import { Loader } from "lucide-react";
+import Loader from "../../components/Loader";
 import React from "react";
 import {
   Flame,
@@ -79,10 +79,13 @@ const ContestHero = ({ active, upcoming }) => {
 
   // --- EMPTY STATE: System Standby ---
   if (!contest) {
+
     return (
+    
       <div className="bg-white border border-dashed border-gray-200 rounded-2xl p-8 mb-8 flex flex-col md:flex-row items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2 duration-500">
         <div className="flex items-center gap-5">
            <div className="p-3.5 bg-slate-50 rounded-xl text-slate-400 border border-slate-100">
+           
               <Activity className="w-6 h-6" />
            </div>
            <div>
@@ -942,23 +945,7 @@ const WeeklyChallenges = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center relative overflow-hidden font-sans">
-        {/* Subtle Grid Background */}
-        <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:20px_20px] opacity-50"></div>
-        
-        <div className="relative z-10 flex flex-col items-center gap-6">
-          <div className="relative">
-            <div className="w-16 h-16 border-4 border-slate-100 border-t-[#0652e9] rounded-full animate-spin"></div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-3 h-3 bg-[#0652e9] rounded-full shadow-lg shadow-blue-500/50"></div>
-            </div>
-          </div>
-          <div className="text-center space-y-1">
-            <h3 className="text-slate-900 font-bold text-lg tracking-tight">KodeCompiler</h3>
-            <p className="text-slate-400 text-xs font-mono uppercase tracking-widest animate-pulse">
-              Initializing Command Center...
-            </p>
-          </div>
-        </div>
+      <Loader/>
       </div>
     );
   }

@@ -3,7 +3,6 @@ import {
   Search,
   CheckCircle,
   Circle,
-  Loader,
   Trophy,
   ChevronDown,
   X,
@@ -18,6 +17,7 @@ import { fetchProblems } from "../../redux/slices/problemSlice";
 import { fetchUserProgress } from "../../redux/slices/userprogressSlice";
 import { useNavigate } from "react-router-dom";
 import { fetchuserchallengeprogress } from "../../redux/slices/userchallengesprogressSlice";
+import Loader from "../../components/Loader";
 
 // --- SUB-COMPONENT: Difficulty Badge ---
 const DifficultyBadge = ({ difficulty }) => {
@@ -357,8 +357,8 @@ const Arena = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <Loader className="w-8 h-8 text-zinc-900 animate-spin" />
+       <div className="min-h-screen bg-white flex items-center justify-center">
+        <Loader/>
       </div>
     );
   }
@@ -465,7 +465,8 @@ const Arena = () => {
                           onClick={() => toggleTopic(topic)}
                           className="flex-shrink-0 px-3 py-1 bg-zinc-100 text-zinc-500 rounded-full text-xs font-medium hover:bg-zinc-200 hover:text-zinc-900 transition-colors"
                         >
-                          {topic}
+                          {topic?.charAt(0).toUpperCase() + topic?.slice(1)}
+
                         </button>
                       );
                     })}
@@ -551,7 +552,7 @@ const Arena = () => {
                           <DifficultyBadge difficulty={problem.difficulty} />
 
                           {/* Mobile Acc */}
-                          <span className="text-xs text-zinc-400 font-mono md:hidden">
+                          <span className="text-xs text-zinc-400 font-semibold md:hidden">
                             {problem.total_submissions > 0
                               ? `${((problem.accepted_submissions / problem.total_submissions) * 100).toFixed(0)}%`
                               : "-"}
@@ -559,7 +560,7 @@ const Arena = () => {
                         </div>
 
                         {/* Desktop Acc */}
-                        <div className="hidden md:block col-span-1 text-right text-xs text-zinc-500 font-mono">
+                        <div className="hidden md:block col-span-1 text-right text-xs text-zinc-500 font-semibold">
                           {problem.total_submissions > 0
                             ? `${((problem.accepted_submissions / problem.total_submissions) * 100).toFixed(1)}%`
                             : "-"}
