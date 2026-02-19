@@ -203,7 +203,7 @@ const Navbar = () => {
                       >
                         <User size={18} /> Account
                       </NavLink>
-                      <NavLink
+                      {/* <NavLink
                         to="/settings"
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                       >
@@ -220,16 +220,16 @@ const Navbar = () => {
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                       >
                         <Bell size={18} /> Notifications
-                      </NavLink>
-                      <NavLink
+                      </NavLink> */
+                      /* <NavLink
                         to="/help"
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                       >
                         <HelpCircle size={18} /> Help Center
-                      </NavLink>
+                      </NavLink> */}
 
                       {/* DARK MODE TOGGLE */}
-                      <div className="flex items-center justify-between px-4 py-2.5 text-sm text-gray-700">
+                      {/* <div className="flex items-center justify-between px-4 py-2.5 text-sm text-gray-700">
                         <div className="flex items-center gap-3">
                           <Moon size={18} /> Dark Mode
                         </div>
@@ -238,7 +238,7 @@ const Navbar = () => {
                           <div className="w-10 h-5 bg-gray-300 rounded-full peer-checked:bg-[#0652e9] transition-all"></div>
                           <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full peer-checked:translate-x-5 transition-all"></div>
                         </label>
-                      </div>
+                      </div> */}
 
                       <hr className="border-gray-200 my-2" />
 

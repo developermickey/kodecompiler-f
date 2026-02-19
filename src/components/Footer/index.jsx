@@ -77,8 +77,10 @@ const Footer = () => {
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-24 mb-20">
           <div className="space-y-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-900/20">
-                {/* Use Image if available, else fallback to icon */}
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center
+                              shadow-[0_0_10px_rgba(255,255,255,0.9)]">
+
+             {/* Use Image if available, else fallback to icon */}
                 <img src={LOGO} alt="Kode" className="w-6 h-6 object-contain brightness-0 invert" onError={(e) => e.target.style.display='none'} />
                 <Command className="w-5 h-5 text-white" style={{ display: 'none' }} /> 
               </div>
@@ -90,11 +92,11 @@ const Footer = () => {
             <div className="flex gap-4 pt-2">
                <div className="flex items-center gap-2 text-sm text-slate-500 border border-white/10 px-3 py-1.5 rounded-lg bg-white/5">
                   <MapPin className="w-4 h-4 text-blue-500" />
-                  San Francisco, CA
+                  India
                </div>
                <div className="flex items-center gap-2 text-sm text-slate-500 border border-white/10 px-3 py-1.5 rounded-lg bg-white/5">
                   <Mail className="w-4 h-4 text-purple-500" />
-                  hello@kodecompiler.com
+                  info@kodecompiler.com
                </div>
             </div>
           </div>
