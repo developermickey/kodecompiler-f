@@ -66,21 +66,30 @@ const HeroSection = () => {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-5 mb-16">
+            {user? <a
+              href="/editor"
+              className="group relative w-full sm:w-auto px-8 py-4 bg-[#0652e9] text-white text-lg font-bold rounded-2xl hover:bg-[#0547d1] transition-all duration-300 shadow-[0_10px_40px_-10px_rgba(6,82,233,0.5)] hover:shadow-[0_20px_40px_-10px_rgba(6,82,233,0.6)] hover:-translate-y-1 flex items-center justify-center gap-2 overflow-hidden"
+            >
+              <span className="relative z-10">Start Practicing Free</span>
+              <ArrowRight className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-transform" />
+              <div className="absolute inset-0 h-full w-full scale-0 rounded-2xl transition-all duration-300 group-hover:scale-100 group-hover:bg-[#0547d1]/50"></div>
+            </a>:
             <a
               href="/register"
               className="group relative w-full sm:w-auto px-8 py-4 bg-[#0652e9] text-white text-lg font-bold rounded-2xl hover:bg-[#0547d1] transition-all duration-300 shadow-[0_10px_40px_-10px_rgba(6,82,233,0.5)] hover:shadow-[0_20px_40px_-10px_rgba(6,82,233,0.6)] hover:-translate-y-1 flex items-center justify-center gap-2 overflow-hidden"
             >
-              <span className="relative z-10">Start practicing free</span>
+              <span className="relative z-10">Start Practicing Free</span>
               <ArrowRight className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-transform" />
               <div className="absolute inset-0 h-full w-full scale-0 rounded-2xl transition-all duration-300 group-hover:scale-100 group-hover:bg-[#0547d1]/50"></div>
-            </a>
+            </a>}
             
-            <a
+            {user?<></>:<a
               href="/guest-editor"
               className="w-full sm:w-auto px-8 py-4 bg-white/80 backdrop-blur-sm text-gray-800 text-lg font-semibold rounded-2xl border border-gray-200 hover:border-blue-200 hover:text-[#0652e9] hover:bg-white transition-all duration-300 shadow-sm hover:shadow-lg hover:-translate-y-1"
             >
               Try guest compiler
-            </a>
+            </a>}
+            
           </div>
 
           {/* Trust Indicators (Redesigned) */}
