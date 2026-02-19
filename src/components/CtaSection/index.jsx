@@ -1,8 +1,15 @@
 import { ArrowRight } from 'lucide-react';
 import CTAIMG from "../../assets/img-cta-option-bgr.png"
 import { NavLink } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+
 
 const CTASection = ({title, para}) => {
+
+
+  const user = useSelector((state)=>state.auth.user)
+
+
   return (
     <div className="relative bg-gradient-to-br from-[#0652e9] via-[#0547d1] to-[#0652e9] overflow-hidden">
       {/* Background Pattern */}
@@ -31,12 +38,21 @@ const CTASection = ({title, para}) => {
                 <span>Start Free Trial</span>
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </NavLink>
+
+              {user?
               <NavLink
-                to="/guest-editor"
+               to="/editor" 
+                className="inline-flex items-center justify-center px-8 py-4 bg-transparent text-white border-2 border-white rounded-xl font-semibold text-lg hover:bg-white hover:text-[#0652e9] transition-all duration-200"
+              >
+                Start Developing
+              </NavLink>
+              :<NavLink
+               to="/guest-editor" 
                 className="inline-flex items-center justify-center px-8 py-4 bg-transparent text-white border-2 border-white rounded-xl font-semibold text-lg hover:bg-white hover:text-[#0652e9] transition-all duration-200"
               >
                 Try Guest Compiler
-              </NavLink>
+              </NavLink>}
+             
             </div>
           </div>
 

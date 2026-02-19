@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import {
   Code,
@@ -9,16 +9,25 @@ import {
   ArrowRight,
   Activity,
 } from "lucide-react";
+import { fetchUserProgress } from "../../redux/slices/userprogressSlice";
+import { fetchGlobalLeaderboard } from "../../redux/slices/challengesGlobalLeaderboardSlice";
 
 const Welcome = () => {
   const user = useSelector((state) => state.auth.user);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   useEffect(() => {
     if (!user) navigate("/login");
+    dispatch(fetchUserProgress());
+    dispatch(fetchGlobalLeaderboard());
+    
   }, [user, navigate]);
 
   if (!user) return null;
+
+  const {solvedCount} = useSelector((state)=>state.userProgress);
+  const {myRank} = useSelector((state)=>state.globalLeaderboard)
 
   // Configuration for your 4 specific actions
   // Note: I converted colors to Blue/White/Slate to match your theme request
@@ -67,7 +76,7 @@ const Welcome = () => {
       <div className="max-w-6xl mx-auto mb-12 flex flex-col md:flex-row justify-between items-end gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
         <div>
           <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-slate-900">
-            Hello, <span className="text-[#0652e9]">{user.username}</span>.
+            Hello, <span className="text-[#0652e9]">{user.username}</span>
           </h1>
           <p className="mt-2 text-xl text-slate-500 font-medium">
             Your command center is ready. What's the focus today?
@@ -82,7 +91,7 @@ const Welcome = () => {
               Solved
             </p>
             <p className="text-lg font-bold leading-none">
-              {user.problemsSolved || 0}
+              {solvedCount || 0}
             </p>
           </div>
           <div className="w-px h-8 bg-gray-200 mx-2"></div>
@@ -91,7 +100,7 @@ const Welcome = () => {
               Rank
             </p>
             <p className="text-lg font-bold leading-none">
-              #{user.rank || "-"}
+              #{myRank || "-"}
             </p>
           </div>
         </div>

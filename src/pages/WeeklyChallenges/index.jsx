@@ -504,7 +504,13 @@ const TopRankersList = ({ leaderboard = [], myRank }) => {
 
                 {/* Score */}
                 <div className="text-xs font-mono font-bold text-gray-400 group-hover:text-[#0652e9] transition-colors">
-                  {user.total_points || 0} pts
+                <span className="flex items-center gap-1">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-50 text-orange-600 border border-orange-100 text-xs font-bold">
+                    <Flame className="w-3.5 h-3.5 fill-orange-600" />
+                     {user?.current_streak || 0}
+                  </div>
+                  
+                </span>              
                 </div>
               </div>
             );
@@ -813,7 +819,7 @@ const GlobalLeaderboardTable = ({ data, currentUser }) => {
               <th className="px-6 py-4">Participant</th>
               <th className="px-6 py-4 text-center">Streak</th>
               <th className="px-6 py-4 text-center">Solved</th>
-              <th className="px-6 py-4 text-right">Total Score</th>
+             
             </tr>
           </thead>
 
@@ -881,17 +887,13 @@ const GlobalLeaderboardTable = ({ data, currentUser }) => {
 
                   {/* Solved Count */}
                   <td className="px-6 py-4 text-center">
-                    <span className="text-sm font-semibold text-slate-600 group-hover:text-slate-900">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-50 text-green-600 border border-green-300 text-xs font-bold">
+                      <CheckCircle className="w-3.5 h-3.5 fill-green-100" />
                       {user.total_challenges_completed || 0}
-                    </span>
+                    </div>
                   </td>
 
-                  {/* Score */}
-                  <td className="px-6 py-4 text-right">
-                    <span className="font-mono text-base font-bold text-[#0652e9] tabular-nums">
-                      {user.total_points ? user.total_points.toLocaleString() : 0}
-                    </span>
-                  </td>
+                  
                 </tr>
               );
             })}

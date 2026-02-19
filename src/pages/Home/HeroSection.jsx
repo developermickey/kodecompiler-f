@@ -7,6 +7,7 @@ import UBER from "../../assets/uber.png";
 import ATLASSIAN from "../../assets/atlassian.png";
 import AMAZON from "../../assets/amazon.png";
 import ADOBE from "../../assets/adobe.png";
+import { useSelector } from 'react-redux';
 
 const HeroSection = () => {
   const features = [
@@ -15,6 +16,8 @@ const HeroSection = () => {
     { icon: Users, text: '100K+ Developers' },
     { icon: Zap, text: 'Real Interview Questions' },
   ];
+
+  const user = useSelector((state)=>state.auth.user);
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-white selection:bg-blue-100 selection:text-blue-900">
