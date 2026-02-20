@@ -93,7 +93,7 @@ const PlatformSection = () => {
             </div>
 
             <NavLink
-              to="/learn-more"
+              to="/welcome"
               className="inline-flex items-center gap-2 px-8 py-4 bg-[#0652e9] text-white text-lg font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-blue-900/20 hover:shadow-blue-900/40 hover:-translate-y-1"
             >
               Explore Platform
