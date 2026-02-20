@@ -62,9 +62,11 @@ import {
 import Editor from "@monaco-editor/react";
 import NotFound from "../NotFound";
 import { API_BASE_URL } from "../../config/api";
+import { useSelector } from "react-redux";
 
 const Problem = () => {
 
+  const user = useSelector((state)=> state.auth.user);
 
   const { problemId } = useParams();
   const [problem, setProblem] = useState(null);
@@ -103,6 +105,7 @@ const Problem = () => {
   const [solutionLanguages, setSolutionLanguages] = useState([]);
   const [showLanguageFilter, setShowLanguageFilter] = useState(false);
   const [votechange, setvotechange] = useState(true);
+  
   
   const [showAddSolutionModal, setShowAddSolutionModal] = useState(false);
   const [newSolution, setNewSolution] = useState({
@@ -403,6 +406,7 @@ const Problem = () => {
        const itemStr = localStorage.getItem("latest-submission");
 
         let latestsubmission = null;
+        let tempuser = null;
 
         if (itemStr) {
           const item = JSON.parse(itemStr);
@@ -411,13 +415,14 @@ const Problem = () => {
             localStorage.removeItem("latest-submission"); // expired
           } else {
             latestsubmission = item.value;
+            tempuser = item.user;
           }
        }
 
 
 
 
-        if(latestsubmission?.problemId == problemId)
+        if(tempuser._id.toString() === user._id.toString() && latestsubmission?.problemId == problemId)
         {
           setCode(latestsubmission.code);
           codeRef.current  = latestsubmission.code
@@ -694,6 +699,7 @@ const Problem = () => {
     };
 
     const item = {
+      user:user,
       value: latestsubmission,
       expiry: new Date().getTime() + 7 * 24 * 60 * 60 * 1000
     };
