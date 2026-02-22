@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import {
@@ -62,18 +61,18 @@ import {
 import Editor from "@monaco-editor/react";
 import NotFound from "../NotFound";
 import { API_BASE_URL } from "../../config/api";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import { getResult, runCode, resetCodeState } from "../../redux/slices/codeSlice";
+import apiClient from "../../redux/api/axios";
 
 const Problem = () => {
-
-  const user = useSelector((state)=> state.auth.user);
+  const user = useSelector((state) => state.auth.user);
+  const dispatch = useDispatch();
 
   const { problemId } = useParams();
   const [problem, setProblem] = useState(null);
   const [selectedLanguage, setSelectedLanguage] = useState("python");
   const [code, setCode] = useState("");
-  const [isRunning, setIsRunning] = useState(false);
-  const [output, setOutput] = useState(null);
   const [openHintIndex, setOpenHintIndex] = useState(null);
   const [darkMode, setDarkMode] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -85,7 +84,6 @@ const Problem = () => {
   const [timer, setTimer] = useState(1800);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [activeTestCase, setActiveTestCase] = useState(0);
-  const [isSubmitted, setIsSubmitted] = useState(false);
   const [activeTab, setActiveTab] = useState("testcases");
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
@@ -105,19 +103,26 @@ const Problem = () => {
   const [solutionLanguages, setSolutionLanguages] = useState([]);
   const [showLanguageFilter, setShowLanguageFilter] = useState(false);
   const [votechange, setvotechange] = useState(true);
-  
-  
+  const [editedTestCases, setEditedTestCases] = useState([]);
+  const [activeResultTestCase, setActiveResultTestCase] = useState(0);
+
   const [showAddSolutionModal, setShowAddSolutionModal] = useState(false);
   const [newSolution, setNewSolution] = useState({
-   title: "",
-  explanation: "",
-  language: selectedLanguage,
-  code: "",
-  time_complexity: "",
-  space_complexity: ""
+    title: "",
+    explanation: "",
+    language: selectedLanguage,
+    code: "",
+    time_complexity: "",
+    space_complexity: "",
   });
   const [isSubmittingSolution, setIsSubmittingSolution] = useState(false);
-  
+
+  // Redux Execution States
+  const { output: runOutput, status, error: runError, jobId } = useSelector((store) => store?.code || {});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitResult, setSubmitResult] = useState(null);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
   // Mobile-specific states
   const [isMobile, setIsMobile] = useState(false);
   const [mobileActiveTab, setMobileActiveTab] = useState("problem"); // "problem" or "editor"
@@ -125,7 +130,6 @@ const Problem = () => {
   const [mobileView, setMobileView] = useState("vertical"); // "vertical" or "horizontal"
   const editorRef = useRef(null);
   const codeRef = useRef("");
-
 
   const MONACO_LANG_MAP = {
     python: "python",
@@ -144,15 +148,23 @@ const Problem = () => {
   const hintsRef = useRef(null);
   const companiesRef = useRef(null);
 
+  // Reset Code Redux State on Unmount
+  useEffect(() => {
+    dispatch(resetCodeState());
+    return () => {
+      dispatch(resetCodeState());
+    };
+  }, [dispatch]);
+
   // Check if mobile on mount and resize
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024); // Changed from 768 to 1024 for better tablet support
+      setIsMobile(window.innerWidth < 1024);
     };
-    
+
     checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   // Timer functionality
@@ -182,83 +194,74 @@ const Problem = () => {
   };
 
   const handleCopyCode = () => {
-    navigator.clipboard.writeText(code).then(() => {
+    navigator.clipboard.writeText(codeRef.current).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
   };
 
   const handleAddSolution = async () => {
-  // 🔒 Validation FIRST
-  if (!newSolution.title.trim()) {
-    alert("Title is required");
-    return;
-  }
-
-  if (!newSolution.explanation.trim()) {
-    alert("Explanation is required");
-    return;
-  }
-
-  if (!newSolution.code.trim()) {
-    alert("Code is required");
-    return;
-  }
-
-  try {
-    setIsSubmittingSolution(true);
-
-    const response = await fetch(`${API_BASE_URL}/solutions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-      body: JSON.stringify({
-        problem_id: Number(problemId),
-        title: newSolution.title,
-        explanation: newSolution.explanation,
-        language: newSolution.language,
-        code: newSolution.code,
-        time_complexity: newSolution.time_complexity,
-        space_complexity: newSolution.space_complexity,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error(data);
-      throw new Error("Failed to add solution");
+    if (!newSolution.title.trim()) {
+      alert("Title is required");
+      return;
     }
 
-    // ✅ Close modal
-    setShowAddSolutionModal(false);
+    if (!newSolution.explanation.trim()) {
+      alert("Explanation is required");
+      return;
+    }
 
-    // ✅ Reset form
-    setNewSolution({
-      title: "",
-      explanation: "",
-      language: selectedLanguage,
-      code: "",
-      time_complexity: "",
-      space_complexity: ""
-    });
+    if (!newSolution.code.trim()) {
+      alert("Code is required");
+      return;
+    }
 
-    // ✅ Refresh solutions
-    setvotechange(!votechange);
+    try {
+      setIsSubmittingSolution(true);
 
-  } catch (err) {
-    console.error("Add solution error:", err);
-   
-  } finally {
-    setIsSubmittingSolution(false);
-  }
-};
+      const response = await fetch(`${API_BASE_URL}/solutions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          problem_id: Number(problemId),
+          title: newSolution.title,
+          explanation: newSolution.explanation,
+          language: newSolution.language,
+          code: newSolution.code,
+          time_complexity: newSolution.time_complexity,
+          space_complexity: newSolution.space_complexity,
+        }),
+      });
 
+      const data = await response.json();
 
+      if (!response.ok) {
+        console.error(data);
+        throw new Error("Failed to add solution");
+      }
+
+      setShowAddSolutionModal(false);
+      setNewSolution({
+        title: "",
+        explanation: "",
+        language: selectedLanguage,
+        code: "",
+        time_complexity: "",
+        space_complexity: "",
+      });
+      setvotechange(!votechange);
+    } catch (err) {
+      console.error("Add solution error:", err);
+    } finally {
+      setIsSubmittingSolution(false);
+    }
+  };
+
+  //ScrollBar Styling
   useEffect(() => {
-    // remove old scrollbar style if exists
     const oldStyle = document.getElementById("custom-scrollbar-style");
     if (oldStyle) {
       oldStyle.remove();
@@ -270,7 +273,6 @@ const Problem = () => {
     style.innerHTML = `
     /* ===== NORMAL SCROLLBAR ONLY ===== */
 
-    /* Chrome, Edge, Safari */
     ::-webkit-scrollbar {
       width: 8px;
       height: 8px;
@@ -289,65 +291,27 @@ const Problem = () => {
       background-color: ${darkMode ? "#52525b" : "#71717a"};
     }
 
-    /* Firefox */
     * {
       scrollbar-width: thin;
       scrollbar-color: ${darkMode ? "#3f3f46 #09090b" : "#a1a1aa #f4f4f5"};
     }
 
-    /* Mobile optimizations */
     @media (max-width: 1024px) {
-      .mobile-hide {
-        display: none !important;
-      }
-      
-      .mobile-only {
-        display: block !important;
-      }
-      
-      .mobile-flex-col {
-        flex-direction: column !important;
-      }
-      
-      .mobile-w-full {
-        width: 100% !important;
-      }
-      
-      .mobile-text-sm {
-        font-size: 0.875rem !important;
-        line-height: 1.25rem !important;
-      }
-      
-      .mobile-text-xs {
-        font-size: 0.75rem !important;
-        line-height: 1rem !important;
-      }
-      
-      .mobile-p-3 {
-        padding: 0.75rem !important;
-      }
-      
-      .mobile-p-2 {
-        padding: 0.5rem !important;
-      }
-      
-      .mobile-gap-2 {
-        gap: 0.5rem !important;
-      }
-      
-      .mobile-overflow-auto {
-        overflow: auto !important;
-      }
-      
-      .mobile-max-h-64 {
-        max-height: 16rem !important;
-      }
+      .mobile-hide { display: none !important; }
+      .mobile-only { display: block !important; }
+      .mobile-flex-col { flex-direction: column !important; }
+      .mobile-w-full { width: 100% !important; }
+      .mobile-text-sm { font-size: 0.875rem !important; line-height: 1.25rem !important; }
+      .mobile-text-xs { font-size: 0.75rem !important; line-height: 1rem !important; }
+      .mobile-p-3 { padding: 0.75rem !important; }
+      .mobile-p-2 { padding: 0.5rem !important; }
+      .mobile-gap-2 { gap: 0.5rem !important; }
+      .mobile-overflow-auto { overflow: auto !important; }
+      .mobile-max-h-64 { max-height: 16rem !important; }
     }
     
     @media (min-width: 1025px) {
-      .mobile-only {
-        display: none !important;
-      }
+      .mobile-only { display: none !important; }
     }
   `;
 
@@ -362,10 +326,9 @@ const Problem = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch(
-          `${API_BASE_URL}/problems/${problemId}`,
-          { credentials: "include" }
-        );
+        const res = await fetch(`${API_BASE_URL}/problems/${problemId}`, {
+          credentials: "include",
+        });
         const data = await res.json();
 
         const acceptanceRate =
@@ -401,9 +364,10 @@ const Problem = () => {
         if (languages.length > 0) {
           setSelectedLanguage(languages[0]);
           setCode(formattedProblem.starter_code[languages[0]] || "");
+          codeRef.current = formattedProblem.starter_code[languages[0]] || "";
         }
 
-       const itemStr = localStorage.getItem("latest-submission");
+        const itemStr = localStorage.getItem("latest-submission");
 
         let latestsubmission = null;
         let tempuser = null;
@@ -417,42 +381,38 @@ const Problem = () => {
             latestsubmission = item.value;
             tempuser = item.user;
           }
-       }
-
-
-
-
-        if(tempuser._id.toString() === user._id.toString() && latestsubmission?.problemId == problemId)
-        {
-          setCode(latestsubmission.code);
-          codeRef.current  = latestsubmission.code
-          setSelectedLanguage(latestsubmission.selectedLanguage);
         }
 
-
+        if (
+          tempuser?._id?.toString() === user?._id?.toString() &&
+          latestsubmission?.problemId == problemId
+        ) {
+          setCode(latestsubmission.code);
+          codeRef.current = latestsubmission.code;
+          setSelectedLanguage(latestsubmission.selectedLanguage);
+        }
       } catch (err) {
         console.error("Error fetching problem:", err);
       }
     };
 
     fetchData();
-  }, [problemId]);
+  }, [problemId, user]);
 
   // Fetch submissions
   useEffect(() => {
-    
     const fetchSubmissions = async () => {
       setIsLoadingSubmissions(true);
 
       try {
         const res = await fetch(
-         `${API_BASE_URL}/problems/submissions/my?problem_id=${Number(
-            problemId
+          `${API_BASE_URL}/problems/submissions/my?problem_id=${Number(
+            problemId,
           )}`,
           {
             method: "GET",
             credentials: "include",
-          }
+          },
         );
 
         if (!res.ok) {
@@ -490,9 +450,7 @@ const Problem = () => {
     const fetchSolutions = async () => {
       setIsLoadingSolutions(true);
       try {
-        const url = new URL(
-          `${API_BASE_URL}/solutions/problem/${problemId}`
-        );
+        const url = new URL(`${API_BASE_URL}/solutions/problem/${problemId}`);
 
         const res = await fetch(url, {
           method: "GET",
@@ -505,13 +463,11 @@ const Problem = () => {
 
         const data = await res.json();
 
-        // Extract unique languages from solutions
         const languages = [...new Set(data.map((sol) => sol.language))];
         setSolutionLanguages(languages);
 
         setSolutions(data);
 
-        // Auto-select first solution
         if (!selectedSolutionId && data.length > 0) {
           setSelectedSolutionId(data[0]._id);
         }
@@ -524,7 +480,7 @@ const Problem = () => {
     };
 
     fetchSolutions();
-  }, [leftPanelTab, problemId, votechange]);
+  }, [leftPanelTab, problemId, votechange, selectedSolutionId]);
 
   const selectedSolution = useMemo(() => {
     return solutions.find((s) => s._id === selectedSolutionId) || null;
@@ -558,8 +514,6 @@ const Problem = () => {
       }
     };
 
-
-
     const handleMouseUp = () => {
       setIsResizing(false);
       setIsResizingTestCase(false);
@@ -579,7 +533,6 @@ const Problem = () => {
     return solutions.filter((s) => s.language === solutionsFilter);
   }, [solutionsFilter, solutions]);
 
-  // Scroll to section
   const scrollToSection = (ref) => {
     if (ref.current) {
       ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -587,167 +540,144 @@ const Problem = () => {
   };
 
   const handlevote = async (vote, solutionId) => {
-    const res = await fetch(
-      `${API_BASE_URL}/solutions/${solutionId}/vote`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          solution_id: solutionId, // ✅ ADD THIS
-          vote_type: vote, // "upvote" or "downvote"
-        }),
-      }
-    );
+    const res = await fetch(`${API_BASE_URL}/solutions/${solutionId}/vote`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        solution_id: solutionId,
+        vote_type: vote, 
+      }),
+    });
 
     if (!res.ok) {
       const err = await res.json();
       console.error("422 error details:", err);
       throw new Error("Vote failed");
-      return;
     }
 
     setvotechange(!votechange);
-
     return res.json();
   };
 
-  const handleRun = async () => {
-    try {
-      setIsRunning(true);
-      setOutput(null);
-      setActiveTab("result");
-      console.log(codeRef.current)
-
-      const response = await fetch(`${API_BASE_URL}/problems/run`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          problem_id: problemId,
-          language: selectedLanguage,
-          code: codeRef.current,
-        }),
-      });
-
-      const data = await response.json();
-
-      // 1️⃣ Execution / timeout / runtime error
-      if (data.status !== "Success") {
-        setOutput({
-          status: "Error",
-          error: data.error || "Execution failed",
-          executionTime: data.execution_time ?? 0,
-          input: data.test_case_used?.input ?? "",
-        });
-        return;
-      }
-
-      // 2️⃣ Frontend judging (because backend doesn't)
-      const actualOutput = (data.output || "").trim();
-      const expectedOutput = (data.test_case_used?.expected || "").trim();
-
-      const isCorrect = actualOutput === expectedOutput;
-
-      // 3️⃣ Unified output object
-      setOutput({
-        status: isCorrect ? "Accepted" : "Wrong Answer",
-        input: data.test_case_used.input,
-        actualOutput,
-        expectedOutput,
-        executionTime: data.execution_time,
-      });
-
-    } catch (err) {
-      console.error(err);
-      setOutput({
-        status: "Error",
-        error: "Unable to connect to server",
-      });
-    } finally {
-      setIsRunning(false);
+  // Initialize editable test cases when problem loads
+  useEffect(() => {
+    if (problem?.testCases) {
+      setEditedTestCases(problem.testCases.map((tc) => ({ ...tc })));
     }
+  }, [problem]);
+
+  const handleTestCaseChange = (index, partIndex, newValue) => {
+    const newTestCases = [...editedTestCases];
+    const parts = newTestCases[index].input.replace(/\\n/g, "\n").split("\n");
+    parts[partIndex] = newValue;
+    newTestCases[index].input = parts.join("\n");
+    setEditedTestCases(newTestCases);
   };
 
+  // Poll for run results using Redux logic
+  useEffect(() => {
+    if (!jobId) return;
+    const interval = setInterval(() => {
+      dispatch(getResult(jobId));
+    }, 2000);
+    if (status === "completed" || status === "failed") {
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [jobId, dispatch, status]);
+
+  // REDUX BASED RUN
+  const handleRun = () => {
+    if (status === "running" || status === "submitting" || isSubmitting) return;
+
+    setSubmitResult(null);
+    setActiveTab("results");
+
+    const currentTestCase = editedTestCases[activeTestCase];
+    const rawInput = currentTestCase ? currentTestCase.input : problem.testCases[0].input;
+    const sanitizedInput = rawInput.replace(/\\n/g, "\n");
+
+    dispatch(
+      runCode({ language: selectedLanguage, code: codeRef.current, input: sanitizedInput })
+    );
+  };
+
+  // REDUX ALIGNED SUBMIT
   const handleSubmit = async () => {
+    if (isSubmitting || status === "running" || status === "submitting") return;
+
+    setIsSubmitting(true);
+    setSubmitResult(null);
+    setActiveTab("results");
+    setActiveResultTestCase(0); // Reset to first pill tab
+
     try {
-      setIsRunning(true);
-      setIsSubmitted(false);
-      setActiveTab("results");
-      setOutput(null);
-
-      const response = await fetch(`${API_BASE_URL}/problems/submit`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          problem_id: problemId,
-          language: selectedLanguage,
-          code: codeRef.current,
-
-        }),
+      const response = await apiClient.post(`/problems/submit`, {
+        problem_id: problemId,
+        language: selectedLanguage,
+        code: codeRef.current,
       });
 
-      const data = await response.json();
+      const data = response.data;
+      const isSuccess = data?.status === "Accepted" || data?.status?.toLowerCase() === "accepted";
 
-      const latestsubmission = {
-      code: codeRef.current,
-      problemId: problemId,
-      selectedLanguage: selectedLanguage
-    };
+      setSubmitResult({
+        success: isSuccess,
+        message: data?.status || data?.message || (isSuccess ? "Accepted" : "Wrong Answer"),
+        passed: data?.passed_tests,
+        total: data?.total_tests,
+        details: data?.test_results || data?.details,
+        execution_time: data?.runtime_ms || data?.execution_time,
+        points: data?.points,
+      });
 
-    const item = {
-      user:user,
-      value: latestsubmission,
-      expiry: new Date().getTime() + 7 * 24 * 60 * 60 * 1000
-    };
-
-    localStorage.setItem("latest-submission", JSON.stringify(item));
-
-      
-
-
-      // 🔴 Submission / execution error
-      if (data.status === "Error") {
-        setOutput({
-          status: "Error",
-          error:
-            data.test_results?.[0]?.error ||
-            "Submission failed",
-        });
-        return;
+      if (isSuccess) {
+        setIsSubmitted(true);
+      } else {
+        setIsSubmitted(false);
       }
 
-      // ✅ Accepted / ❌ Wrong Answer
-      setOutput({
-        status: data.status, // Accepted | Wrong Answer
-        passedTests: data.passed_tests,
-        totalTests: data.total_tests,
-        runtimeMs: data.runtime_ms,
-        points: data.points,
-        testResults: data.test_results,
-      });
+      const latestsubmission = {
+        code: codeRef.current,
+        problemId: problemId,
+        selectedLanguage: selectedLanguage,
+      };
 
-      if (data.status === "Accepted") {
-        setIsSubmitted(true);
+      const item = {
+        user: user,
+        value: latestsubmission,
+        expiry: new Date().getTime() + 7 * 24 * 60 * 60 * 1000,
+      };
+
+      localStorage.setItem("latest-submission", JSON.stringify(item));
+      
+      // Auto refresh submissions if that's the open tab
+      if (leftPanelTab === "submissions") {
+        setLeftPanelTab("description"); // trigger re-render cycle to fetch latest
+        setTimeout(() => setLeftPanelTab("submissions"), 50);
       }
 
     } catch (err) {
       console.error(err);
-      setOutput({
-        status: "Error",
-        error: "Unable to connect to server",
+      setSubmitResult({
+        success: false,
+        message: err.response?.data?.error || "Submission failed. Please try again.",
+        error: true,
       });
     } finally {
-      setIsRunning(false);
+      setIsSubmitting(false);
     }
   };
 
   const resetcode = () => {
-    setCode(problem.starter_code[selectedLanguage])
-  }
+    const defaultCode = problem.starter_code[selectedLanguage] || "";
+    setCode(defaultCode);
+    codeRef.current = defaultCode;
+    editorRef.current?.setValue(defaultCode); 
+  };
 
   if (!problem) {
     return (
@@ -767,7 +697,6 @@ const Problem = () => {
     return <NotFound />;
   }
 
-  // Color schemes with smaller text
   const difficultyColors = {
     Easy: {
       bg: "bg-emerald-500/15",
@@ -791,7 +720,6 @@ const Problem = () => {
 
   const diff = difficultyColors[problem.difficulty] || difficultyColors.Medium;
 
-  // Zinc-based dark theme colors
   const bgPrimary = darkMode ? "bg-zinc-950" : "bg-gray-50";
   const bgSecondary = darkMode ? "bg-zinc-900" : "bg-white";
   const bgTertiary = darkMode ? "bg-zinc-800" : "bg-gray-100";
@@ -802,22 +730,19 @@ const Problem = () => {
   const hoverBg = darkMode ? "hover:bg-zinc-800" : "hover:bg-gray-100";
   const activeBg = darkMode ? "bg-zinc-800" : "bg-gray-200";
 
-  // Language options
   const languageOptions = Object.keys(problem.starter_code || {}).map(
     (lang) => ({
       value: lang,
       label: lang.charAt(0).toUpperCase() + lang.slice(1),
-    })
+    }),
   );
 
-  // Custom scrollbar styles
   const scrollbarStyles = darkMode
     ? "scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-zinc-900"
     : "scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100";
 
-  // Status badge colors
-  const getStatusColor = (status) => {
-    switch (status) {
+  const getStatusColor = (statusText) => {
+    switch (statusText) {
       case "Accepted":
         return {
           bg: "bg-emerald-500/10",
@@ -851,7 +776,6 @@ const Problem = () => {
     }
   };
 
-  // Language filter options for solutions
   const languageFilterOptions = [
     { value: "all", label: "All Languages" },
     { value: "verified", label: "Verified Only" },
@@ -861,10 +785,251 @@ const Problem = () => {
     })),
   ];
 
+  const isRunDisabled = status === "running" || status === "submitting" || isSubmitting;
+
+  // Reusable Results Rendering Block (Shared for Mobile and Desktop layouts)
+  const renderResultsTab = () => (
+    <div className="h-full">
+      {/* 1. LOADING */}
+      {status === "running" || status === "submitting" || isSubmitting ? (
+        <div className="h-full flex flex-col items-center justify-center space-y-4 py-8">
+          <div className="w-8 h-8 border-4 border-zinc-700 border-t-blue-500 rounded-full animate-spin" />
+          <p className={`text-sm font-medium ${textSecondary} animate-pulse`}>
+            Processing...
+          </p>
+        </div>
+      ) : submitResult ? (
+        /* 2. SUBMIT MODE */
+        <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="flex items-center gap-3 mb-4">
+            <h2
+              className={`text-xl font-bold ${
+                submitResult.success ? "text-emerald-500" : "text-rose-500"
+              }`}
+            >
+              {submitResult.message ||
+                (submitResult.success ? "Accepted" : "Wrong Answer")}
+            </h2>
+            {submitResult.execution_time !== undefined && (
+              <span
+                className={`text-sm font-medium px-2 py-1 rounded-md ${
+                  darkMode
+                    ? "bg-zinc-800 text-zinc-400"
+                    : "bg-gray-100 text-gray-500"
+                }`}
+              >
+                Runtime: {submitResult.execution_time} ms
+              </span>
+            )}
+          </div>
+
+          {/* Pill Tabs for Batch Submissions */}
+          {Array.isArray(submitResult.details) && submitResult.details.length > 0 && (
+            <>
+              <div className="flex flex-wrap items-center gap-2 mb-2 overflow-x-auto pb-1">
+                {submitResult.details.map((res, idx) => {
+                  const isActive = activeResultTestCase === idx;
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setActiveResultTestCase(idx)}
+                      className={`relative px-4 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+                        isActive
+                          ? darkMode
+                            ? "bg-zinc-800 border-zinc-600 text-white"
+                            : "bg-gray-200 border-gray-300 text-gray-900"
+                          : "border-transparent text-zinc-500 hover:bg-zinc-800/50"
+                      }`}
+                    >
+                      Case {idx + 1}
+                      <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-2 w-2">
+                        <span
+                          className={`relative inline-flex rounded-full h-2 w-2 ${
+                            res.passed || res.status === "Accepted"
+                              ? "bg-emerald-500"
+                              : "bg-rose-500"
+                          }`}
+                        ></span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Detail View */}
+              {(() => {
+                const detail = submitResult.details[activeResultTestCase] || submitResult.details[0];
+                if (!detail) return null;
+                return (
+                  <div className="space-y-4">
+                    {detail.error && (
+                      <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 font-mono text-xs whitespace-pre-wrap">
+                        {detail.error}
+                      </div>
+                    )}
+                    <div className="group">
+                      <div className={`text-xs font-medium ${textTertiary} mb-1 uppercase`}>
+                        Input
+                      </div>
+                      <div
+                        className={`p-3 rounded-lg font-mono text-sm ${
+                          darkMode ? "bg-zinc-800/50" : "bg-gray-100"
+                        }`}
+                      >
+                        {detail.input}
+                      </div>
+                    </div>
+                    <div className="group">
+                      <div className={`text-xs font-medium ${textTertiary} mb-1 uppercase`}>
+                        Output
+                      </div>
+                      <div
+                        className={`p-3 rounded-lg font-mono text-sm border ${
+                          detail.passed || detail.status === "Accepted"
+                            ? "bg-zinc-800/50 border-transparent"
+                            : "bg-rose-900/10 border-rose-500/20 text-rose-400"
+                        }`}
+                      >
+                        {detail.actual || detail.actualOutput || "-"}
+                      </div>
+                    </div>
+                    <div className="group">
+                      <div className={`text-xs font-medium ${textTertiary} mb-1 uppercase`}>
+                        Expected
+                      </div>
+                      <div
+                        className={`p-3 rounded-lg font-mono text-sm ${
+                          darkMode
+                            ? "bg-zinc-800/50 text-emerald-400"
+                            : "bg-gray-100 text-emerald-600"
+                        }`}
+                      >
+                        {detail.expected || detail.expectedOutput || "-"}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </>
+          )}
+
+          {/* Batch Stats */}
+          {submitResult.total !== undefined && submitResult.total !== null && (
+            <div className={`flex gap-6 mt-8 pt-6 border-t ${borderColor}`}>
+              <div className="flex flex-col">
+                <span
+                  className={`text-xs mb-1 ${darkMode ? "text-zinc-500" : "text-gray-500"}`}
+                >
+                  Passed Tests
+                </span>
+                <span className={`text-xl font-bold ${textPrimary}`}>
+                  {submitResult.passed} / {submitResult.total}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : runOutput || runError ? (
+        /* 3. RUN MODE */
+        <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          {(() => {
+            const currentTestCase = editedTestCases[activeTestCase];
+            let expected = currentTestCase ? currentTestCase.expected : null;
+
+            const cleanOutput = runOutput ? String(runOutput).trim() : "";
+            const cleanExpected = expected ? String(expected).trim() : "";
+
+            const isCorrect =
+              !runError &&
+              (expected !== null && expected !== undefined
+                ? cleanOutput === cleanExpected
+                : true);
+
+            return (
+              <>
+                <div className="flex items-center gap-3 mb-4">
+                  <h2
+                    className={`text-xl font-bold ${
+                      isCorrect ? "text-emerald-500" : "text-rose-500"
+                    }`}
+                  >
+                    {runError
+                      ? "Runtime Error"
+                      : expected !== null && expected !== undefined
+                      ? isCorrect
+                        ? "Accepted"
+                        : "Wrong Answer"
+                      : "Finished"}
+                  </h2>
+                </div>
+
+                {runError && (
+                  <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 font-mono text-xs whitespace-pre-wrap">
+                    {runError}
+                  </div>
+                )}
+
+                <div className="group">
+                  <div className={`text-xs font-medium ${textTertiary} mb-1 uppercase`}>
+                    Input
+                  </div>
+                  <div
+                    className={`p-3 rounded-lg font-mono text-sm ${
+                      darkMode ? "bg-zinc-800/50" : "bg-gray-100"
+                    }`}
+                  >
+                    {currentTestCase ? currentTestCase.input : "-"}
+                  </div>
+                </div>
+
+                <div className="group">
+                  <div className={`text-xs font-medium ${textTertiary} mb-1 uppercase`}>
+                    Output
+                  </div>
+                  <div
+                    className={`p-3 rounded-lg font-mono text-sm border ${
+                      isCorrect
+                        ? "bg-zinc-800/50 border-transparent"
+                        : "bg-rose-900/10 border-rose-500/20 text-rose-400"
+                    } whitespace-pre-wrap`}
+                  >
+                    {runOutput || "No output"}
+                  </div>
+                </div>
+
+                {expected !== null && expected !== undefined && (
+                  <div className="group">
+                    <div className={`text-xs font-medium ${textTertiary} mb-1 uppercase`}>
+                      Expected
+                    </div>
+                    <div
+                      className={`p-3 rounded-lg font-mono text-sm ${
+                        darkMode
+                          ? "bg-zinc-800/50 text-emerald-400"
+                          : "bg-gray-100 text-emerald-600"
+                      }`}
+                    >
+                      {expected}
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
+        </div>
+      ) : (
+        /* 4. EMPTY */
+        <div className="flex flex-col items-center justify-center mt-12 text-zinc-500 gap-3">
+          <PlayCircle className="w-10 h-10 opacity-40" />
+          <p className="text-sm font-medium">Run your code to see results</p>
+        </div>
+      )}
+    </div>
+  );
+
   // ========== Mobile Layout ==========
- const MobileLayout = () => (
+  const MobileLayout = () => (
     <div className={`h-screen flex flex-col ${bgPrimary} overflow-hidden`}>
-      {/* Timer Modal (Mobile Optimized) - No Logic Changes */}
       {showTimerModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
@@ -880,7 +1045,9 @@ const Problem = () => {
                   ⏱️
                 </div>
                 <div>
-                  <h3 className={`${textPrimary} font-semibold text-base mobile-text-sm`}>
+                  <h3
+                    className={`${textPrimary} font-semibold text-base mobile-text-sm`}
+                  >
                     Timer Settings
                   </h3>
                 </div>
@@ -894,7 +1061,9 @@ const Problem = () => {
             </div>
             <div className="space-y-4">
               <div>
-                <label className={`${textSecondary} text-sm mb-2 block mobile-text-xs`}>
+                <label
+                  className={`${textSecondary} text-sm mb-2 block mobile-text-xs`}
+                >
                   Duration (minutes)
                 </label>
                 <div className="relative">
@@ -905,17 +1074,20 @@ const Problem = () => {
                     value={customTimerMinutes}
                     onChange={(e) =>
                       setCustomTimerMinutes(
-                        Math.max(1, Math.min(180, Number(e.target.value) || 1))
+                        Math.max(1, Math.min(180, Number(e.target.value) || 1)),
                       )
                     }
                     className={`w-full pl-4 pr-12 py-3 rounded-lg text-sm border ${borderColor}
-                      ${darkMode
-                        ? "bg-zinc-900 text-zinc-100 focus:ring-blue-500"
-                        : "bg-gray-50 text-gray-900 focus:ring-blue-500"
+                      ${
+                        darkMode
+                          ? "bg-zinc-900 text-zinc-100 focus:ring-blue-500"
+                          : "bg-gray-50 text-gray-900 focus:ring-blue-500"
                       }
                       focus:outline-none focus:ring-2`}
                   />
-                  <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs ${textTertiary}`}>
+                  <span
+                    className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs ${textTertiary}`}
+                  >
                     min
                   </span>
                 </div>
@@ -934,9 +1106,10 @@ const Problem = () => {
                 <button
                   onClick={resetTimer}
                   className={`cursor-pointer flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-semibold text-sm border ${borderColor}
-                    ${darkMode
-                      ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
-                      : "bg-white hover:bg-gray-100 text-gray-700"
+                    ${
+                      darkMode
+                        ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
+                        : "bg-white hover:bg-gray-100 text-gray-700"
                     } transition-colors`}
                 >
                   ↺ Reset
@@ -947,8 +1120,10 @@ const Problem = () => {
         </div>
       )}
 
-      {/* Mobile Header - Kept compact */}
-      <div className={`${bgSecondary} border-b ${borderColor} px-3 py-2 flex items-center justify-between shrink-0`}>
+      {/* Mobile Header */}
+      <div
+        className={`${bgSecondary} border-b ${borderColor} px-3 py-2 flex items-center justify-between shrink-0`}
+      >
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowMobileLeftPanel(!showMobileLeftPanel)}
@@ -956,9 +1131,11 @@ const Problem = () => {
           >
             <Menu className="w-5 h-5 text-zinc-300" />
           </button>
-          
+
           <div className="flex items-center gap-2 overflow-hidden">
-            <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border shrink-0 ${diff.bg} ${diff.text} ${diff.border}`}>
+            <span
+              className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border shrink-0 ${diff.bg} ${diff.text} ${diff.border}`}
+            >
               {problem.difficulty}
             </span>
             <div className="flex flex-col overflow-hidden">
@@ -971,9 +1148,15 @@ const Problem = () => {
 
         <div className="flex items-center gap-2 shrink-0">
           <button
-            onClick={() => setMobileView(mobileView === "vertical" ? "horizontal" : "vertical")}
+            onClick={() =>
+              setMobileView(
+                mobileView === "vertical" ? "horizontal" : "vertical",
+              )
+            }
             className="cursor-pointer p-2 rounded-lg hover:bg-zinc-800 transition-colors hidden sm:block"
-            title={mobileView === "vertical" ? "Horizontal View" : "Vertical View"}
+            title={
+              mobileView === "vertical" ? "Horizontal View" : "Vertical View"
+            }
           >
             {mobileView === "vertical" ? (
               <Smartphone className="w-4 h-4 text-zinc-300" />
@@ -981,13 +1164,8 @@ const Problem = () => {
               <Monitor className="w-4 h-4 text-zinc-300" />
             )}
           </button>
-          
-          <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-800/70 border border-zinc-700">
-            <Clock className={`w-3 h-3 ${timer < 300 ? "text-rose-500" : "text-blue-500"}`} />
-            <span className={`font-mono text-xs ${timer < 300 ? "text-rose-500" : textPrimary}`}>
-              {formatTime(timer)}
-            </span>
-          </div>
+
+         
         </div>
       </div>
 
@@ -1013,79 +1191,96 @@ const Problem = () => {
         </button>
       </div>
 
-      {/* Main Mobile Content Area */}
       <div className="flex-1 overflow-hidden relative">
         {mobileActiveTab === "problem" ? (
           <div className="h-full overflow-hidden flex flex-col">
-            {/* Mobile Left Panel Dropdown Navigation */}
             {showMobileLeftPanel && (
-              <div className={`${bgSecondary} border-b ${borderColor} p-2 grid grid-cols-3 gap-2 shrink-0 z-20`}>
-                  <button
-                    onClick={() => {
-                      setLeftPanelTab("description");
-                      setShowMobileLeftPanel(false);
-                    }}
-                    className={`px-2 py-2 text-xs font-medium rounded flex flex-col items-center justify-center gap-1 ${leftPanelTab === "description" ? `${activeBg} ${textPrimary}` : `${textTertiary} ${hoverBg}`}`}
-                  >
-                    <FileText className="w-4 h-4" />
-                    Desc
-                  </button>
-                  <button
-                    onClick={() => {
-                      setLeftPanelTab("submissions");
-                      setShowMobileLeftPanel(false);
-                    }}
-                    className={`px-2 py-2 text-xs font-medium rounded flex flex-col items-center justify-center gap-1 ${leftPanelTab === "submissions" ? `${activeBg} ${textPrimary}` : `${textTertiary} ${hoverBg}`}`}
-                  >
-                    <ListChecks className="w-4 h-4" />
-                    Subs
-                  </button>
-                  <button
-                    onClick={() => {
-                      setLeftPanelTab("solutions");
-                      setShowMobileLeftPanel(false);
-                    }}
-                    className={`px-2 py-2 text-xs font-medium rounded flex flex-col items-center justify-center gap-1 ${leftPanelTab === "solutions" ? `${activeBg} ${textPrimary}` : `${textTertiary} ${hoverBg}`}`}
-                  >
-                    <Code className="w-4 h-4" />
-                    Sol
-                  </button>
+              <div
+                className={`${bgSecondary} border-b ${borderColor} p-2 grid grid-cols-3 gap-2 shrink-0 z-20`}
+              >
+                <button
+                  onClick={() => {
+                    setLeftPanelTab("description");
+                    setShowMobileLeftPanel(false);
+                  }}
+                  className={`px-2 py-2 text-xs font-medium rounded flex flex-col items-center justify-center gap-1 ${leftPanelTab === "description" ? `${activeBg} ${textPrimary}` : `${textTertiary} ${hoverBg}`}`}
+                >
+                  <FileText className="w-4 h-4" />
+                  Desc
+                </button>
+                <button
+                  onClick={() => {
+                    setLeftPanelTab("submissions");
+                    setShowMobileLeftPanel(false);
+                  }}
+                  className={`px-2 py-2 text-xs font-medium rounded flex flex-col items-center justify-center gap-1 ${leftPanelTab === "submissions" ? `${activeBg} ${textPrimary}` : `${textTertiary} ${hoverBg}`}`}
+                >
+                  <ListChecks className="w-4 h-4" />
+                  Subs
+                </button>
+                <button
+                  onClick={() => {
+                    setLeftPanelTab("solutions");
+                    setShowMobileLeftPanel(false);
+                  }}
+                  className={`px-2 py-2 text-xs font-medium rounded flex flex-col items-center justify-center gap-1 ${leftPanelTab === "solutions" ? `${activeBg} ${textPrimary}` : `${textTertiary} ${hoverBg}`}`}
+                >
+                  <Code className="w-4 h-4" />
+                  Sol
+                </button>
               </div>
             )}
 
-            {/* Problem Details Scroll Area */}
-            <div className={`flex-1 overflow-y-auto p-4 ${scrollbarStyles} mobile-p-3`}>
+            <div
+              className={`flex-1 overflow-y-auto p-4 ${scrollbarStyles} mobile-p-3`}
+            >
               {leftPanelTab === "description" && (
                 <div className="space-y-6 pb-10">
-                  {/* Problem Header */}
                   <div>
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
-                        <h1 className={`text-xl font-bold ${textPrimary} mb-2 mobile-text-lg`}>
+                        <h1
+                          className={`text-xl font-bold ${textPrimary} mb-2 mobile-text-lg`}
+                        >
                           {problemId}. {problem.title}
                         </h1>
-                        <p className={`${textSecondary} text-sm leading-relaxed`}>
+                        <p
+                          className={`${textSecondary} text-sm leading-relaxed`}
+                        >
                           {problem.description}
                         </p>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 mb-4">
-                      <div className={`p-3 rounded-lg ${darkMode ? "bg-zinc-800/30" : "bg-gray-50"} border ${borderColor}`}>
-                        <div className={`text-xs ${textTertiary} mb-1`}>Acceptance</div>
-                        <div className={`font-bold ${textPrimary}`}>{problem.acceptanceRate}%</div>
+                      <div
+                        className={`p-3 rounded-lg ${darkMode ? "bg-zinc-800/30" : "bg-gray-50"} border ${borderColor}`}
+                      >
+                        <div className={`text-xs ${textTertiary} mb-1`}>
+                          Acceptance
+                        </div>
+                        <div className={`font-bold ${textPrimary}`}>
+                          {problem.acceptanceRate}%
+                        </div>
                       </div>
-                      <div className={`p-3 rounded-lg ${darkMode ? "bg-zinc-800/30" : "bg-gray-50"} border ${borderColor}`}>
-                        <div className={`text-xs ${textTertiary} mb-1`}>Points</div>
-                        <div className={`font-bold ${textPrimary}`}>{problem.points}</div>
+                      <div
+                        className={`p-3 rounded-lg ${darkMode ? "bg-zinc-800/30" : "bg-gray-50"} border ${borderColor}`}
+                      >
+                        <div className={`text-xs ${textTertiary} mb-1`}>
+                          Points
+                        </div>
+                        <div className={`font-bold ${textPrimary}`}>
+                          {problem.points}
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Examples Section */}
                   {problem.examples.length > 0 && (
                     <div className="mb-6">
-                      <h3 className={`${textPrimary} font-bold text-sm mb-3 flex items-center gap-1.5`}>
+                      <h3
+                        className={`${textPrimary} font-bold text-sm mb-3 flex items-center gap-1.5`}
+                      >
                         <Terminal className="w-3.5 h-3.5" />
                         Examples
                       </h3>
@@ -1095,21 +1290,33 @@ const Problem = () => {
                             key={idx}
                             className={`border ${borderColor} rounded-lg overflow-hidden ${darkMode ? "bg-zinc-800/20" : "bg-gray-50"}`}
                           >
-                            <div className={`px-3 py-2 ${darkMode ? "bg-zinc-800/40" : "bg-gray-100"} border-b ${borderColor}`}>
-                              <span className={`text-xs font-semibold ${darkMode ? "text-blue-400" : "text-blue-600"}`}>
+                            <div
+                              className={`px-3 py-2 ${darkMode ? "bg-zinc-800/40" : "bg-gray-100"} border-b ${borderColor}`}
+                            >
+                              <span
+                                className={`text-xs font-semibold ${darkMode ? "text-blue-400" : "text-blue-600"}`}
+                              >
                                 Example {idx + 1}
                               </span>
                             </div>
                             <div className="p-3 space-y-3">
                               <div>
-                                <div className={`text-xs ${textTertiary} mb-1`}>Input</div>
-                                <pre className={`text-xs font-mono p-2 rounded ${darkMode ? "bg-zinc-900 text-zinc-300" : "bg-white text-gray-800"} overflow-x-auto border ${borderColor}`}>
+                                <div className={`text-xs ${textTertiary} mb-1`}>
+                                  Input
+                                </div>
+                                <pre
+                                  className={`text-xs font-mono p-2 rounded ${darkMode ? "bg-zinc-900 text-zinc-300" : "bg-white text-gray-800"} overflow-x-auto border ${borderColor}`}
+                                >
                                   {ex.input}
                                 </pre>
                               </div>
                               <div>
-                                <div className={`text-xs ${textTertiary} mb-1`}>Output</div>
-                                <pre className={`text-xs font-mono p-2 rounded ${darkMode ? "bg-zinc-900 text-zinc-300" : "bg-white text-gray-800"} overflow-x-auto border ${borderColor}`}>
+                                <div className={`text-xs ${textTertiary} mb-1`}>
+                                  Output
+                                </div>
+                                <pre
+                                  className={`text-xs font-mono p-2 rounded ${darkMode ? "bg-zinc-900 text-zinc-300" : "bg-white text-gray-800"} overflow-x-auto border ${borderColor}`}
+                                >
                                   {ex.output}
                                 </pre>
                               </div>
@@ -1120,10 +1327,11 @@ const Problem = () => {
                     </div>
                   )}
 
-                  {/* Tags Section */}
                   {problem.tags.length > 0 && (
                     <div className="mb-6">
-                      <h3 className={`${textPrimary} font-bold text-sm mb-3 flex items-center gap-1.5`}>
+                      <h3
+                        className={`${textPrimary} font-bold text-sm mb-3 flex items-center gap-1.5`}
+                      >
                         <Tag className="w-3.5 h-3.5" />
                         Topics
                       </h3>
@@ -1144,15 +1352,21 @@ const Problem = () => {
 
               {leftPanelTab === "submissions" && (
                 <div className="space-y-4">
-                  <h1 className={`text-lg font-bold ${textPrimary} mb-2`}>My Submissions</h1>
+                  <h1 className={`text-lg font-bold ${textPrimary} mb-2`}>
+                    My Submissions
+                  </h1>
                   {isLoadingSubmissions ? (
                     <div className="flex items-center justify-center h-40">
                       <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
                     </div>
                   ) : submissions.length === 0 ? (
-                    <div className={`flex flex-col items-center justify-center h-40 ${darkMode ? "bg-zinc-800/20" : "bg-gray-50"} rounded-lg border ${borderColor}`}>
+                    <div
+                      className={`flex flex-col items-center justify-center h-40 ${darkMode ? "bg-zinc-800/20" : "bg-gray-50"} rounded-lg border ${borderColor}`}
+                    >
                       <Send className="w-8 h-8 text-zinc-500 mb-2" />
-                      <p className={`${textSecondary} text-sm`}>No submissions yet</p>
+                      <p className={`${textSecondary} text-sm`}>
+                        No submissions yet
+                      </p>
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -1168,14 +1382,24 @@ const Problem = () => {
                             }}
                           >
                             <div className="flex justify-between items-start mb-2">
-                              <span className={`text-xs ${textSecondary}`}>{sub.date.split(',')[0]}</span>
-                              <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium border ${statusColors.bg} ${statusColors.text} ${statusColors.border}`}>
-                                {sub.status === "Accepted" && <Check className="w-3 h-3 mr-1" />}
-                                {sub.status === "Wrong Answer" ? "Wrong" : sub.status}
+                              <span className={`text-xs ${textSecondary}`}>
+                                {sub.date.split(",")[0]}
+                              </span>
+                              <span
+                                className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium border ${statusColors.bg} ${statusColors.text} ${statusColors.border}`}
+                              >
+                                {sub.status === "Accepted" && (
+                                  <Check className="w-3 h-3 mr-1" />
+                                )}
+                                {sub.status === "Wrong Answer"
+                                  ? "Wrong"
+                                  : sub.status}
                               </span>
                             </div>
                             <div className="flex justify-between text-xs">
-                              <span className={textTertiary}>{sub.language}</span>
+                              <span className={textTertiary}>
+                                {sub.language}
+                              </span>
                               <span className={textPrimary}>{sub.runtime}</span>
                             </div>
                           </div>
@@ -1187,9 +1411,11 @@ const Problem = () => {
               )}
 
               {leftPanelTab === "solutions" && (
-                 <div className="space-y-4">
+                <div className="space-y-4">
                   <div className="mb-4">
-                    <h1 className={`text-lg font-bold ${textPrimary} mb-2`}>Solutions</h1>
+                    <h1 className={`text-lg font-bold ${textPrimary} mb-2`}>
+                      Solutions
+                    </h1>
                     <div className="flex overflow-x-auto gap-2 pb-2">
                       {languageFilterOptions.map((option) => (
                         <button
@@ -1202,39 +1428,44 @@ const Problem = () => {
                       ))}
                       <br></br>
 
-                      
-                    {submissions.length > 0 ?<button
-                    onClick={() => {
-                      setNewSolution({
-                        title: "",
-                        explanation: "",
-                        language: selectedLanguage,
-                     code: codeRef.current, // 🔥 auto-fill current editor code
-                        time_complexity: "",
-                        space_complexity: ""
-                      });
-                      setShowAddSolutionModal(true);
-                    }}
-                    className={`cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg 
+                      {submissions.length > 0 ? (
+                        <button
+                          onClick={() => {
+                            setNewSolution({
+                              title: "",
+                              explanation: "",
+                              language: selectedLanguage,
+                              code: codeRef.current,
+                              time_complexity: "",
+                              space_complexity: "",
+                            });
+                            setShowAddSolutionModal(true);
+                          }}
+                          className={`cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg 
                     ${
                       darkMode
                         ? "bg-green-700 hover:bg-green-600"
                         : "bg-green-500 hover:bg-green-600"
                     } 
                     text-white border border-green-600 text-sm font-medium transition-colors`}
-                  >
-                    Add Solution
-                  </button>:null}
+                        >
+                          Add Solution
+                        </button>
+                      ) : null}
                     </div>
                   </div>
-                   {isLoadingSolutions ? (
+                  {isLoadingSolutions ? (
                     <div className="flex items-center justify-center h-40">
-                         <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+                      <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
                     </div>
                   ) : filteredSolutions.length === 0 ? (
-                    <div className={`flex flex-col items-center justify-center h-40 ${darkMode ? "bg-zinc-800/20" : "bg-gray-50"} rounded-lg border ${borderColor}`}>
+                    <div
+                      className={`flex flex-col items-center justify-center h-40 ${darkMode ? "bg-zinc-800/20" : "bg-gray-50"} rounded-lg border ${borderColor}`}
+                    >
                       <Code className="w-8 h-8 text-zinc-500 mb-2" />
-                      <p className={`${textSecondary} text-sm text-center`}>No solutions found</p>
+                      <p className={`${textSecondary} text-sm text-center`}>
+                        No solutions found
+                      </p>
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -1244,12 +1475,18 @@ const Problem = () => {
                           className={`p-3 rounded-lg ${darkMode ? "bg-zinc-800/30" : "bg-gray-50"} border ${borderColor}`}
                           onClick={() => setSelectedSolutionId(solution._id)}
                         >
-                           <div className="flex justify-between items-start mb-2">
+                          <div className="flex justify-between items-start mb-2">
                             <div className="flex items-center gap-2">
-                              <div className={`w-6 h-6 rounded-full ${darkMode ? "bg-zinc-700" : "bg-gray-300"} flex items-center justify-center`}>
+                              <div
+                                className={`w-6 h-6 rounded-full ${darkMode ? "bg-zinc-700" : "bg-gray-300"} flex items-center justify-center`}
+                              >
                                 <User className="w-3 h-3 text-zinc-400" />
                               </div>
-                              <span className={`text-sm font-medium ${textPrimary}`}>{solution.username}</span>
+                              <span
+                                className={`text-sm font-medium ${textPrimary}`}
+                              >
+                                {solution.username}
+                              </span>
                             </div>
                             {solution.is_verified && (
                               <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
@@ -1258,51 +1495,66 @@ const Problem = () => {
                             )}
                           </div>
                           <div className="flex justify-between items-center">
-                            <span className={`text-xs px-2 py-1 rounded ${darkMode ? "bg-zinc-800 text-zinc-300" : "bg-gray-200 text-gray-700"}`}>
+                            <span
+                              className={`text-xs px-2 py-1 rounded ${darkMode ? "bg-zinc-800 text-zinc-300" : "bg-gray-200 text-gray-700"}`}
+                            >
                               {solution.language}
                             </span>
                             <div className="flex items-center gap-1">
-                                <ThumbsUp className="w-3 h-3 text-emerald-500" />
-                                <span className={`text-xs ${textPrimary}`}>{solution.upvotes || 0}</span>
+                              <ThumbsUp className="w-3 h-3 text-emerald-500" />
+                              <span className={`text-xs ${textPrimary}`}>
+                                {solution.upvotes || 0}
+                              </span>
                             </div>
                           </div>
                         </div>
                       ))}
                     </div>
                   )}
-                 </div>
+                </div>
               )}
             </div>
           </div>
         ) : mobileActiveTab === "editor" ? (
-          <div className={`h-full flex ${mobileView === "vertical" ? "flex-col" : "flex-row"}`}>
-            
-            {/* Editor Section */}
-            <div className={`${mobileView === "vertical" ? "h-2/3" : "w-1/2"} flex flex-col border-r ${borderColor} min-h-0`}>
-              
-              {/* Refactored Editor Header & Action Bar */}
-              <div className={`${bgSecondary} border-b ${borderColor} flex flex-col gap-2 p-2 shrink-0`}>
-                
-                {/* Top Row: Language & Utils */}
+          <div
+            className={`h-full flex ${mobileView === "vertical" ? "flex-col" : "flex-row"}`}
+          >
+            <div
+              className={`${mobileView === "vertical" ? "h-2/3" : "w-1/2"} flex flex-col border-r ${borderColor} min-h-0`}
+            >
+              <div
+                className={`${bgSecondary} border-b ${borderColor} flex flex-col gap-2 p-2 shrink-0`}
+              >
                 <div className="flex items-center justify-between">
                   <div className="relative">
                     <button
-                      onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+                      onClick={() =>
+                        setShowLanguageDropdown(!showLanguageDropdown)
+                      }
                       className={`cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${darkMode ? "bg-zinc-800 hover:bg-zinc-700" : "bg-gray-100 hover:bg-gray-200"} border ${borderColor} text-xs font-medium ${textPrimary}`}
                     >
                       <Code className="w-3.5 h-3.5" />
-                      {selectedLanguage.charAt(0).toUpperCase() + selectedLanguage.slice(1)}
+                      {selectedLanguage.charAt(0).toUpperCase() +
+                        selectedLanguage.slice(1)}
                       <ChevronDown className="w-3 h-3" />
                     </button>
                     {showLanguageDropdown && (
-                      <div className={`absolute top-full left-0 mt-1 min-w-[140px] ${bgSecondary} ${borderColor} border rounded-lg shadow-xl z-50 overflow-hidden`}>
+                      <div
+                        className={`absolute top-full left-0 mt-1 min-w-[140px] ${bgSecondary} ${borderColor} border rounded-lg shadow-xl z-50 overflow-hidden`}
+                      >
                         {languageOptions.map((option) => (
                           <button
                             key={option.value}
                             onClick={() => {
+                              const newCode =
+                                problem?.starter_code?.[option.value] || "";
                               setSelectedLanguage(option.value);
-                              codeRef.current = problem?.starter_code?.[option.value] || ""
-                              setCode(problem?.starter_code?.[option.value] || "");
+                              codeRef.current =
+                                problem?.starter_code?.[option.value] || "";
+                              setCode(
+                                problem?.starter_code?.[option.value] || "",
+                              );
+                              editorRef.current?.setValue(newCode);
                               setShowLanguageDropdown(false);
                             }}
                             className={`w-full text-left px-3 py-2.5 text-xs ${selectedLanguage === option.value ? `${darkMode ? "bg-blue-500/20 text-blue-400" : "bg-blue-100 text-blue-600"}` : `${textSecondary} ${darkMode ? "hover:bg-zinc-800" : "hover:bg-gray-100"}`}`}
@@ -1332,18 +1584,18 @@ const Problem = () => {
                   </div>
                 </div>
 
-                {/* Bottom Row: RUN & SUBMIT (Moved here) */}
                 <div className="flex gap-2">
-                   <button
+                  <button
                     onClick={handleRun}
-                    disabled={isRunning}
+                    disabled={isRunDisabled}
                     className={`cursor-pointer flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-bold transition-all shadow-sm
-                      ${isRunning 
-                        ? "bg-zinc-700 text-zinc-400 cursor-not-allowed" 
-                        : `${darkMode ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700" : "bg-white hover:bg-gray-100 text-gray-700 border border-gray-300"}`
+                      ${
+                        isRunDisabled
+                          ? "bg-zinc-700 text-zinc-400 cursor-not-allowed"
+                          : `${darkMode ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700" : "bg-white hover:bg-gray-100 text-gray-700 border border-gray-300"}`
                       }`}
                   >
-                    {isRunning ? (
+                    {status === "running" || status === "submitting" ? (
                       <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
                     ) : (
                       <Play className="w-3.5 h-3.5 fill-current" />
@@ -1353,14 +1605,19 @@ const Problem = () => {
 
                   <button
                     onClick={handleSubmit}
-                    disabled={isRunning}
+                    disabled={isRunDisabled}
                     className={`cursor-pointer flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-bold transition-all shadow-sm text-white
-                      ${isSubmitted 
-                        ? "bg-emerald-600 hover:bg-emerald-500" 
-                        : "bg-blue-600 hover:bg-blue-500"
+                      ${
+                        isSubmitting
+                          ? "bg-blue-400 cursor-not-allowed"
+                          : isSubmitted
+                          ? "bg-emerald-600 hover:bg-emerald-500"
+                          : "bg-blue-600 hover:bg-blue-500"
                       }`}
                   >
-                    {isSubmitted ? (
+                    {isSubmitting ? (
+                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : isSubmitted ? (
                       <>
                         <Check className="w-3.5 h-3.5" /> Submitted
                       </>
@@ -1373,29 +1630,27 @@ const Problem = () => {
                 </div>
               </div>
 
-              {/* Code Editor */}<div className="flex-1 min-h-0 overflow-hidden">
-
-             <div className="h-full min-h-0">
-
-  <SharedEditor
-    selectedLanguage={selectedLanguage}
-    darkMode={darkMode}
-    fontSize={fontSize}
-    editorRef={editorRef}
-    codeRef={codeRef}
-    initialCode={codeRef}
-    MONACO_LANG_MAP={MONACO_LANG_MAP}
-  />
-</div>
-
-
-
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <div className="h-full min-h-0">
+                  <SharedEditor
+                    selectedLanguage={selectedLanguage}
+                    darkMode={darkMode}
+                    fontSize={fontSize}
+                    editorRef={editorRef}
+                    codeRef={codeRef}
+                    initialCode={codeRef}
+                    MONACO_LANG_MAP={MONACO_LANG_MAP}
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Test Cases & Results Section */}
-            <div className={`${mobileView === "vertical" ? "h-1/3" : "w-1/2"} flex flex-col border-t ${borderColor}`}>
-              <div className={`${bgSecondary} border-b ${borderColor} flex items-center shrink-0`}>
+            <div
+              className={`${mobileView === "vertical" ? "h-1/3" : "w-1/2"} flex flex-col border-t ${borderColor}`}
+            >
+              <div
+                className={`${bgSecondary} border-b ${borderColor} flex items-center shrink-0`}
+              >
                 <button
                   onClick={() => setActiveTab("testcases")}
                   className={`flex-1 px-3 py-2.5 text-xs font-medium relative transition-colors ${activeTab === "testcases" ? `${textPrimary} after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 ${darkMode ? "after:bg-blue-500" : "after:bg-blue-600"}` : `${textTertiary} ${darkMode ? "hover:bg-zinc-800" : "hover:bg-gray-100"}`}`}
@@ -1427,14 +1682,22 @@ const Problem = () => {
                     {problem.testCases?.[activeTestCase] && (
                       <div className="space-y-3">
                         <div>
-                          <div className={`text-xs ${textTertiary} mb-1`}>Input</div>
-                          <pre className={`text-xs font-mono p-2 rounded ${darkMode ? "bg-zinc-900 text-zinc-300" : "bg-white text-gray-800"} overflow-x-auto border ${borderColor}`}>
+                          <div className={`text-xs ${textTertiary} mb-1`}>
+                            Input
+                          </div>
+                          <pre
+                            className={`text-xs font-mono p-2 rounded ${darkMode ? "bg-zinc-900 text-zinc-300" : "bg-white text-gray-800"} overflow-x-auto border ${borderColor}`}
+                          >
                             {problem.testCases[activeTestCase].input}
                           </pre>
                         </div>
                         <div>
-                          <div className={`text-xs ${textTertiary} mb-1`}>Expected Output</div>
-                          <pre className={`text-xs font-mono p-2 rounded ${darkMode ? "bg-zinc-900 text-zinc-300" : "bg-white text-gray-800"} overflow-x-auto border ${borderColor}`}>
+                          <div className={`text-xs ${textTertiary} mb-1`}>
+                            Expected Output
+                          </div>
+                          <pre
+                            className={`text-xs font-mono p-2 rounded ${darkMode ? "bg-zinc-900 text-zinc-300" : "bg-white text-gray-800"} overflow-x-auto border ${borderColor}`}
+                          >
                             {problem.testCases[activeTestCase].expected}
                           </pre>
                         </div>
@@ -1443,61 +1706,7 @@ const Problem = () => {
                   </div>
                 ) : (
                   <div>
-                    <div className="mb-3">
-                      <h4 className={`font-bold ${textPrimary} text-sm`}>Results</h4>
-                    </div>
-                    {!output ? (
-                      <p className={`text-sm ${textSecondary} italic`}>Run your code to see results...</p>
-                    ) : output.status === "Error" ? (
-                      <div className="space-y-2">
-                        <div className="text-sm font-semibold text-rose-400 flex items-center gap-2">
-                          ❌ Runtime Error
-                        </div>
-                        <pre className="text-xs font-mono bg-rose-500/5 border border-rose-500/20 rounded p-2 text-rose-300 whitespace-pre-wrap">
-                          {output.error}
-                        </pre>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <div className={`flex items-center gap-2 text-sm font-semibold ${output.status === "Accepted" ? "text-emerald-400" : "text-rose-400"}`}>
-                          {output.status === "Accepted" ? "✅ Accepted" : "❌ Wrong Answer"}
-                        </div>
-                        {output.actualOutput !== null && (
-                          <div>
-                            <p className="text-xs text-zinc-400 mb-1">Your Output</p>
-                            <pre className={`text-xs font-mono rounded p-2 whitespace-pre-wrap border ${darkMode ? "bg-zinc-950 text-zinc-200 border-zinc-800" : "bg-white text-gray-800 border-gray-200"}`}>
-                              {output.actualOutput || "-"}
-                            </pre>
-                          </div>
-                        )}
-                        {output.status === "Wrong Answer" && output.expectedOutput && (
-                          <div>
-                            <p className="text-xs text-zinc-400 mb-1">Expected Output</p>
-                            <pre className={`text-xs font-mono rounded p-2 whitespace-pre-wrap border ${darkMode ? "bg-zinc-950 text-emerald-300 border-zinc-800" : "bg-white text-emerald-700 border-gray-200"}`}>
-                              {output.expectedOutput}
-                            </pre>
-                          </div>
-                        )}
-                        {output.passedTests !== null && (
-                          <div className="grid grid-cols-3 gap-2 text-xs">
-                            <div className="p-2 rounded border bg-black/20">
-                              <p className="text-zinc-400">Tests</p>
-                              <p className="font-bold text-white">
-                                {output.passedTests != null ? `${output.passedTests}/${output.totalTests}` : "N/A"}
-                              </p>
-                            </div>
-                            <div className="p-2 rounded border bg-black/20">
-                              <p className="text-zinc-400">Time</p>
-                              <p className="font-bold text-white">{output.executionTime ?? output.runtimeMs} ms</p>
-                            </div>
-                            <div className="p-2 rounded border bg-black/20">
-                              <p className="text-zinc-400">Points</p>
-                              <p className="font-bold text-white">{output.points ?? "-"}</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    {renderResultsTab()}
                   </div>
                 )}
               </div>
@@ -1507,10 +1716,10 @@ const Problem = () => {
       </div>
     </div>
   );
-  // ========== Desktop Layout (Original) ==========
+
+  // ========== Desktop Layout ==========
   const DesktopLayout = () => (
     <div className={`h-screen flex flex-col ${bgPrimary} overflow-hidden`}>
-      {/* Timer Modal */}
       {showTimerModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
@@ -1544,7 +1753,9 @@ const Problem = () => {
             </div>
             <div className="space-y-5">
               <div>
-                <label className={`${textSecondary} text-sm font-medium mb-2 block`}>
+                <label
+                  className={`${textSecondary} text-sm font-medium mb-2 block`}
+                >
                   Duration (minutes)
                 </label>
                 <div className="relative">
@@ -1555,17 +1766,20 @@ const Problem = () => {
                     value={customTimerMinutes}
                     onChange={(e) =>
                       setCustomTimerMinutes(
-                        Math.max(1, Math.min(180, Number(e.target.value) || 1))
+                        Math.max(1, Math.min(180, Number(e.target.value) || 1)),
                       )
                     }
                     className={`w-full pl-4 pr-12 py-2.5 rounded-lg text-sm border ${borderColor}
-                      ${darkMode
-                        ? "bg-zinc-900 text-zinc-100 focus:ring-blue-500"
-                        : "bg-gray-50 text-gray-900 focus:ring-blue-500"
+                      ${
+                        darkMode
+                          ? "bg-zinc-900 text-zinc-100 focus:ring-blue-500"
+                          : "bg-gray-50 text-gray-900 focus:ring-blue-500"
                       }
                       focus:outline-none focus:ring-2`}
                   />
-                  <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs ${textTertiary}`}>
+                  <span
+                    className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs ${textTertiary}`}
+                  >
                     min
                   </span>
                 </div>
@@ -1573,7 +1787,9 @@ const Problem = () => {
                   Max 180 minutes • Recommended: 25–50
                 </p>
               </div>
-              <div className={`rounded-lg border ${borderColor} p-3 text-xs ${textSecondary} ${darkMode ? "bg-zinc-800/40" : "bg-gray-100"}`}>
+              <div
+                className={`rounded-lg border ${borderColor} p-3 text-xs ${textSecondary} ${darkMode ? "bg-zinc-800/40" : "bg-gray-100"}`}
+              >
                 ⏳ Current timer will be set to{" "}
                 <span className="font-semibold text-blue-500">
                   {customTimerMinutes} minutes
@@ -1594,9 +1810,10 @@ const Problem = () => {
                 <button
                   onClick={resetTimer}
                   className={`cursor-pointer flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-sm border ${borderColor}
-                    ${darkMode
-                      ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
-                      : "bg-white hover:bg-gray-100 text-gray-700"
+                    ${
+                      darkMode
+                        ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
+                        : "bg-white hover:bg-gray-100 text-gray-700"
                     } transition-colors`}
                 >
                   ↺ Reset
@@ -1608,10 +1825,10 @@ const Problem = () => {
       )}
 
       {/* ===== TOP NAVIGATION ===== */}
-      <div className={`${bgSecondary} border-b ${borderColor} px-5 py-2.5 flex items-center justify-between mobile-hide`}>
-        {/* Left Section */}
+      <div
+        className={`${bgSecondary} border-b ${borderColor} px-5 py-2.5 flex items-center justify-between mobile-hide`}
+      >
         <div className="flex items-center gap-4">
-          {/* Navigation Tabs */}
           <div className="flex items-center gap-1 border-l border-zinc-800 pl-4">
             <button
               onClick={() => setLeftPanelTab("description")}
@@ -1637,7 +1854,6 @@ const Problem = () => {
           </div>
         </div>
 
-        {/* Center Section - Problem Stats */}
         <div className="flex items-center gap-4">
           <div className="text-center">
             <div className={`text-xs ${textTertiary} mb-0.5`}>Acceptance</div>
@@ -1653,103 +1869,24 @@ const Problem = () => {
           </div>
         </div>
 
-        {/* Right Section - Actions */}
-        <div className="flex items-center gap-3">
-          {/* Timer */}
-          <div className={`flex items-center gap-3 px-3.5 py-2 rounded-xl border ${borderColor} ${darkMode ? "bg-zinc-800/70" : "bg-gray-100"} shadow-sm`}>
-            <div className={`flex items-center justify-center w-7 h-7 rounded-lg ${timer < 300 ? "bg-rose-500/15" : "bg-blue-500/15"}`}>
-              <Clock className={`w-3.5 h-3.5 ${timer < 300 ? "text-rose-500" : "text-blue-500"}`} />
-            </div>
-            <span className={`font-mono font-semibold text-sm tracking-wide ${timer < 300 ? "text-rose-500" : textPrimary}`}>
-              {formatTime(timer)}
-            </span>
-            <div className={`h-5 w-px ${darkMode ? "bg-zinc-700" : "bg-gray-300"}`} />
-            <button
-              onClick={() => setIsTimerRunning(!isTimerRunning)}
-              className={`cursor-pointer p-1.5 rounded-lg transition-colors ${darkMode ? "hover:bg-zinc-700 text-zinc-300" : "hover:bg-gray-200 text-gray-700"}`}
-              title={isTimerRunning ? "Pause Timer" : "Start Timer"}
-            >
-              {isTimerRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-            </button>
-            <button
-              onClick={() => setShowTimerModal(true)}
-              className={`cursor-pointer p-1.5 rounded-lg transition-colors ${darkMode ? "hover:bg-zinc-700 text-zinc-300" : "hover:bg-gray-200 text-gray-700"}`}
-              title="Timer Settings"
-            >
-              <Settings className="w-4 h-4" />
-            </button>
-          </div>
-
-          <button
-            className={`cursor-pointer p-2 rounded-lg ${hoverBg} transition-colors`}
-            onClick={resetcode}
-          >
-            <History className={`w-4 h-4 ${textTertiary}`} />
-          </button>
-
-          <div className="relative">
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              className={`cursor-pointer p-2 rounded-lg ${hoverBg} transition-colors`}
-            >
-              <Settings className={`w-4 h-4 ${textTertiary}`} />
-            </button>
-            {showSettings && (
-              <div className={`absolute right-0 mt-2 w-64 ${bgSecondary} ${borderColor} border rounded-lg shadow-xl z-50`}>
-                <div className="p-4">
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className={`${textPrimary} font-bold text-sm`}>Settings</h3>
-                    <X onClick={() => setShowSettings(false)} className={`w-4 h-4 ${textTertiary} cursor-pointer hover:text-zinc-300`} />
-                  </div>
-                  <div className="space-y-3">
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className={`${textSecondary} text-xs font-medium flex items-center gap-1.5`}>
-                          {darkMode ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
-                          Theme
-                        </label>
-                        <button
-                          onClick={() => setDarkMode(!darkMode)}
-                          className={`w-10 h-5 rounded-full transition-colors relative ${darkMode ? "bg-blue-500" : "bg-gray-300"}`}
-                        >
-                          <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${darkMode ? "left-5" : "left-0.5"}`}></div>
-                        </button>
-                      </div>
-                    </div>
-                    <div>
-                      <label className={`${textSecondary} text-xs font-medium mb-2 flex items-center gap-1.5`}>
-                        <Type className="w-3.5 h-3.5" />
-                        Font Size: {fontSize}px
-                      </label>
-                      <input
-                        type="range"
-                        min="12"
-                        max="18"
-                        value={fontSize}
-                        onChange={(e) => setFontSize(Number(e.target.value))}
-                        className="w-full h-1.5 bg-zinc-700 rounded appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+       
       </div>
 
-      {/* ===== MAIN CONTENT ===== */}
       <div ref={containerRef} className="flex flex-1 overflow-hidden">
         {/* ===== LEFT PANEL ===== */}
-        <div style={{ width: `${leftWidth}%` }} className={`overflow-y-auto ${bgSecondary} p-6 ${scrollbarStyles} mobile-hide`}>
+        <div
+          style={{ width: `${leftWidth}%` }}
+          className={`overflow-y-auto ${bgSecondary} p-6 ${scrollbarStyles} mobile-hide`}
+        >
           {leftPanelTab === "description" ? (
             <>
-              {/* Problem Header */}
               <div className="mb-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-3">
-                      <span className={`px-2.5 py-1 rounded text-xs font-semibold border ${diff.bg} ${diff.text} ${diff.border} ring-1 ${diff.ring}`}>
+                      <span
+                        className={`px-2.5 py-1 rounded text-xs font-semibold border ${diff.bg} ${diff.text} ${diff.border} ring-1 ${diff.ring}`}
+                      >
                         {problem.difficulty}
                       </span>
                       <div className="flex items-center gap-1.5 text-xs">
@@ -1782,54 +1919,99 @@ const Problem = () => {
                   </div>
                 </div>
 
-                {/* Stats */}
                 <div className="grid grid-cols-3 gap-3 mb-6">
-                  <div className={`p-3 rounded-lg ${darkMode ? "bg-zinc-800/30" : "bg-gray-50"} border ${borderColor}`}>
-                    <div className={`text-xs ${textTertiary} mb-1`}>Total Submissions</div>
-                    <div className={`font-bold ${textPrimary}`}>{problem.total_submissions?.toLocaleString() || 0}</div>
+                  <div
+                    className={`p-3 rounded-lg ${darkMode ? "bg-zinc-800/30" : "bg-gray-50"} border ${borderColor}`}
+                  >
+                    <div className={`text-xs ${textTertiary} mb-1`}>
+                      Total Submissions
+                    </div>
+                    <div className={`font-bold ${textPrimary}`}>
+                      {problem.total_submissions?.toLocaleString() || 0}
+                    </div>
                   </div>
-                  <div className={`p-3 rounded-lg ${darkMode ? "bg-zinc-800/30" : "bg-gray-50"} border ${borderColor}`}>
-                    <div className={`text-xs ${textTertiary} mb-1`}>Accepted Submissions</div>
-                    <div className={`font-bold ${textPrimary}`}>{problem.accepted_submissions}</div>
+                  <div
+                    className={`p-3 rounded-lg ${darkMode ? "bg-zinc-800/30" : "bg-gray-50"} border ${borderColor}`}
+                  >
+                    <div className={`text-xs ${textTertiary} mb-1`}>
+                      Accepted Submissions
+                    </div>
+                    <div className={`font-bold ${textPrimary}`}>
+                      {problem.accepted_submissions}
+                    </div>
                   </div>
-                  <div className={`p-3 rounded-lg ${darkMode ? "bg-emerald-500/10" : "bg-emerald-100"} border ${darkMode ? "border-emerald-500/20" : "border-emerald-200"}`}>
-                    <div className={`text-xs ${darkMode ? "text-emerald-300" : "text-emerald-700"} mb-1`}>Acceptance Rate</div>
-                    <div className={`font-bold ${darkMode ? "text-emerald-300" : "text-emerald-700"}`}>{problem.acceptanceRate}%</div>
+                  <div
+                    className={`p-3 rounded-lg ${darkMode ? "bg-emerald-500/10" : "bg-emerald-100"} border ${darkMode ? "border-emerald-500/20" : "border-emerald-200"}`}
+                  >
+                    <div
+                      className={`text-xs ${darkMode ? "text-emerald-300" : "text-emerald-700"} mb-1`}
+                    >
+                      Acceptance Rate
+                    </div>
+                    <div
+                      className={`font-bold ${darkMode ? "text-emerald-300" : "text-emerald-700"}`}
+                    >
+                      {problem.acceptanceRate}%
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Examples Section */}
               {problem.examples.length > 0 && (
                 <div className="mb-6">
-                  <h3 className={`${textPrimary} font-bold text-sm mb-3 flex items-center gap-1.5`}>
+                  <h3
+                    className={`${textPrimary} font-bold text-sm mb-3 flex items-center gap-1.5`}
+                  >
                     <Terminal className="w-3.5 h-3.5" />
                     Examples
                   </h3>
                   <div className="space-y-4">
                     {problem.examples.map((ex, idx) => (
-                      <div key={idx} className={`border ${borderColor} rounded-lg overflow-hidden ${darkMode ? "bg-zinc-800/20" : "bg-gray-50"}`}>
-                        <div className={`px-4 py-2.5 ${darkMode ? "bg-zinc-800/40" : "bg-gray-100"} border-b ${borderColor}`}>
-                          <span className={`text-xs font-semibold ${darkMode ? "text-blue-400" : "text-blue-600"}`}>Example {idx + 1}</span>
+                      <div
+                        key={idx}
+                        className={`border ${borderColor} rounded-lg overflow-hidden ${darkMode ? "bg-zinc-800/20" : "bg-gray-50"}`}
+                      >
+                        <div
+                          className={`px-4 py-2.5 ${darkMode ? "bg-zinc-800/40" : "bg-gray-100"} border-b ${borderColor}`}
+                        >
+                          <span
+                            className={`text-xs font-semibold ${darkMode ? "text-blue-400" : "text-blue-600"}`}
+                          >
+                            Example {idx + 1}
+                          </span>
                         </div>
                         <div className="p-4">
                           <div className="space-y-3">
                             <div>
-                              <div className={`text-xs ${textTertiary} mb-1.5`}>Input</div>
-                              <pre className={`text-xs font-mono p-3 rounded ${darkMode ? "bg-zinc-900 text-zinc-300" : "bg-white text-gray-800"} overflow-x-auto border ${borderColor}`}>
+                              <div className={`text-xs ${textTertiary} mb-1.5`}>
+                                Input
+                              </div>
+                              <pre
+                                className={`text-xs font-mono p-3 rounded ${darkMode ? "bg-zinc-900 text-zinc-300" : "bg-white text-gray-800"} overflow-x-auto border ${borderColor}`}
+                              >
                                 {ex.input}
                               </pre>
                             </div>
                             <div>
-                              <div className={`text-xs ${textTertiary} mb-1.5`}>Output</div>
-                              <pre className={`text-xs font-mono p-3 rounded ${darkMode ? "bg-zinc-900 text-zinc-300" : "bg-white text-gray-800"} overflow-x-auto border ${borderColor}`}>
+                              <div className={`text-xs ${textTertiary} mb-1.5`}>
+                                Output
+                              </div>
+                              <pre
+                                className={`text-xs font-mono p-3 rounded ${darkMode ? "bg-zinc-900 text-zinc-300" : "bg-white text-gray-800"} overflow-x-auto border ${borderColor}`}
+                              >
                                 {ex.output}
                               </pre>
                             </div>
                             {ex.explanation && (
                               <div>
-                                <div className={`text-xs ${textTertiary} mb-1.5`}>Explanation</div>
-                                <p className={`text-xs ${textSecondary}`}>{ex.explanation}</p>
+                                <div
+                                  className={`text-xs ${textTertiary} mb-1.5`}
+                                >
+                                  Explanation
+                                </div>
+                                <p className={`text-xs ${textSecondary}`}>
+                                  {ex.explanation}
+                                </p>
                               </div>
                             )}
                           </div>
@@ -1840,14 +2022,17 @@ const Problem = () => {
                 </div>
               )}
 
-              {/* Constraints Section */}
               {problem.constraints.length > 0 && (
                 <div className="mb-6">
-                  <h3 className={`${textPrimary} font-bold text-sm mb-3 flex items-center gap-1.5`}>
+                  <h3
+                    className={`${textPrimary} font-bold text-sm mb-3 flex items-center gap-1.5`}
+                  >
                     <AlertTriangle className="w-3.5 h-3.5" />
                     Constraints
                   </h3>
-                  <div className={`${darkMode ? "bg-zinc-800/20" : "bg-gray-50"} border ${borderColor} rounded-lg p-4`}>
+                  <div
+                    className={`${darkMode ? "bg-zinc-800/20" : "bg-gray-50"} border ${borderColor} rounded-lg p-4`}
+                  >
                     <ul className={`space-y-2 text-xs ${textSecondary}`}>
                       {problem.constraints.map((c, i) => (
                         <li key={i} className="flex items-start">
@@ -1860,16 +2045,20 @@ const Problem = () => {
                 </div>
               )}
 
-              {/* Tags Section */}
               {problem.tags.length > 0 && (
                 <div className="mb-6">
-                  <h3 className={`${textPrimary} font-bold text-sm mb-3 flex items-center gap-1.5`}>
+                  <h3
+                    className={`${textPrimary} font-bold text-sm mb-3 flex items-center gap-1.5`}
+                  >
                     <Tag className="w-3.5 h-3.5" />
                     Topics & Tags
                   </h3>
                   <div className="flex flex-wrap gap-2">
                     {problem.tags.map((tag, index) => (
-                      <span key={index} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${darkMode ? "bg-zinc-800 text-zinc-300 hover:bg-zinc-700 border border-zinc-700" : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300"} transition-colors cursor-pointer`}>
+                      <span
+                        key={index}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium ${darkMode ? "bg-zinc-800 text-zinc-300 hover:bg-zinc-700 border border-zinc-700" : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300"} transition-colors cursor-pointer`}
+                      >
                         {tag}
                       </span>
                     ))}
@@ -1877,17 +2066,23 @@ const Problem = () => {
                 </div>
               )}
 
-              {/* Companies Section */}
               {problem.companies.length > 0 && (
                 <div ref={companiesRef} className="mb-6 scroll-mt-8">
-                  <h3 className={`${textPrimary} font-bold text-sm mb-3 flex items-center gap-1.5`}>
+                  <h3
+                    className={`${textPrimary} font-bold text-sm mb-3 flex items-center gap-1.5`}
+                  >
                     <Building className="w-3.5 h-3.5" />
                     Companies
                   </h3>
-                  <div className={`${darkMode ? "bg-zinc-800/20" : "bg-gray-50"} border ${borderColor} rounded-lg p-4`}>
+                  <div
+                    className={`${darkMode ? "bg-zinc-800/20" : "bg-gray-50"} border ${borderColor} rounded-lg p-4`}
+                  >
                     <div className="flex flex-wrap gap-2">
                       {problem.companies.map((company, index) => (
-                        <span key={index} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${darkMode ? "bg-zinc-800 text-zinc-300 hover:bg-zinc-700" : "bg-gray-100 text-gray-700 hover:bg-gray-200"} transition-colors cursor-pointer flex items-center gap-1.5`}>
+                        <span
+                          key={index}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${darkMode ? "bg-zinc-800 text-zinc-300 hover:bg-zinc-700" : "bg-gray-100 text-gray-700 hover:bg-gray-200"} transition-colors cursor-pointer flex items-center gap-1.5`}
+                        >
                           <Building className="w-3 h-3" />
                           {company}
                         </span>
@@ -1897,30 +2092,46 @@ const Problem = () => {
                 </div>
               )}
 
-              {/* Hints Section */}
               {problem.hints.length > 0 && (
                 <div ref={hintsRef} className="mb-6 scroll-mt-8">
-                  <h3 className={`${textPrimary} font-bold text-sm mb-3 flex items-center gap-1.5`}>
+                  <h3
+                    className={`${textPrimary} font-bold text-sm mb-3 flex items-center gap-1.5`}
+                  >
                     <HelpCircle className="w-3.5 h-3.5" />
                     Hints
                   </h3>
                   <div className="space-y-2">
                     {problem.hints.map((hint, index) => (
-                      <div key={index} className={`border ${borderColor} rounded-lg overflow-hidden ${darkMode ? "bg-zinc-800/20" : "bg-gray-50"}`}>
+                      <div
+                        key={index}
+                        className={`border ${borderColor} rounded-lg overflow-hidden ${darkMode ? "bg-zinc-800/20" : "bg-gray-50"}`}
+                      >
                         <button
-                          onClick={() => setOpenHintIndex(openHintIndex === index ? null : index)}
+                          onClick={() =>
+                            setOpenHintIndex(
+                              openHintIndex === index ? null : index,
+                            )
+                          }
                           className={`cursor-pointer w-full flex justify-between items-center px-4 py-3 ${textPrimary} ${darkMode ? "hover:bg-zinc-800/40" : "hover:bg-gray-100"} transition-colors`}
                         >
                           <div className="flex items-center gap-3">
-                            <div className={`w-6 h-6 rounded ${darkMode ? "bg-amber-500/10" : "bg-amber-100"} flex items-center justify-center`}>
+                            <div
+                              className={`w-6 h-6 rounded ${darkMode ? "bg-amber-500/10" : "bg-amber-100"} flex items-center justify-center`}
+                            >
                               <span className="text-xs">💡</span>
                             </div>
-                            <span className="font-medium text-sm">Hint {index + 1}</span>
+                            <span className="font-medium text-sm">
+                              Hint {index + 1}
+                            </span>
                           </div>
-                          <ChevronDown className={`w-4 h-4 ${textTertiary} transition-transform ${openHintIndex === index ? "rotate-180" : ""}`} />
+                          <ChevronDown
+                            className={`w-4 h-4 ${textTertiary} transition-transform ${openHintIndex === index ? "rotate-180" : ""}`}
+                          />
                         </button>
                         {openHintIndex === index && (
-                          <div className={`px-4 py-3 border-t ${borderColor} ${darkMode ? "bg-zinc-900/20" : "bg-white"}`}>
+                          <div
+                            className={`px-4 py-3 border-t ${borderColor} ${darkMode ? "bg-zinc-900/20" : "bg-white"}`}
+                          >
                             <p className={`${textSecondary} text-sm`}>{hint}</p>
                           </div>
                         )}
@@ -1931,11 +2142,14 @@ const Problem = () => {
               )}
             </>
           ) : leftPanelTab === "submissions" ? (
-            /* ===== SUBMISSIONS TAB ===== */
             <div>
               <div className="mb-6">
-                <h1 className={`text-xl font-bold ${textPrimary} mb-2`}>My Submissions</h1>
-                <p className={`${textSecondary} text-sm`}>View your previous submissions for this problem</p>
+                <h1 className={`text-xl font-bold ${textPrimary} mb-2`}>
+                  My Submissions
+                </h1>
+                <p className={`${textSecondary} text-sm`}>
+                  View your previous submissions for this problem
+                </p>
               </div>
 
               {isLoadingSubmissions ? (
@@ -1945,19 +2159,33 @@ const Problem = () => {
                       <div className="w-12 h-12 border-3 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto"></div>
                       <ListChecks className="w-6 h-6 text-blue-400 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
                     </div>
-                    <p className="text-zinc-400 font-medium">Loading submissions...</p>
+                    <p className="text-zinc-400 font-medium">
+                      Loading submissions...
+                    </p>
                   </div>
                 </div>
               ) : submissions.length === 0 ? (
-                <div className={`flex flex-col items-center justify-center h-64 ${darkMode ? "bg-zinc-800/20" : "bg-gray-50"} rounded-lg border ${borderColor}`}>
+                <div
+                  className={`flex flex-col items-center justify-center h-64 ${darkMode ? "bg-zinc-800/20" : "bg-gray-50"} rounded-lg border ${borderColor}`}
+                >
                   <Send className="w-12 h-12 text-zinc-500 mb-4" />
-                  <h3 className={`${textPrimary} font-medium mb-2`}>No submissions yet</h3>
-                  <p className={`${textSecondary} text-sm text-center max-w-md`}>Submit your solution to see it appear here</p>
+                  <h3 className={`${textPrimary} font-medium mb-2`}>
+                    No submissions yet
+                  </h3>
+                  <p
+                    className={`${textSecondary} text-sm text-center max-w-md`}
+                  >
+                    Submit your solution to see it appear here
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className={`${darkMode ? "bg-zinc-800/30" : "bg-gray-50"} border ${borderColor} rounded-lg overflow-hidden`}>
-                    <div className={`grid grid-cols-12 px-4 py-3 ${darkMode ? "bg-zinc-800/40" : "bg-gray-100"} border-b ${borderColor} text-xs font-medium ${textTertiary}`}>
+                  <div
+                    className={`${darkMode ? "bg-zinc-800/30" : "bg-gray-50"} border ${borderColor} rounded-lg overflow-hidden`}
+                  >
+                    <div
+                      className={`grid grid-cols-12 px-4 py-3 ${darkMode ? "bg-zinc-800/40" : "bg-gray-100"} border-b ${borderColor} text-xs font-medium ${textTertiary}`}
+                    >
                       <div className="col-span-3">Date</div>
                       <div className="col-span-2">Language</div>
                       <div className="col-span-2">Status</div>
@@ -1976,180 +2204,248 @@ const Problem = () => {
                               setSeletcedsubLanguage(sub.language);
                             }}
                           >
-                            <div className={`col-span-3 text-xs ${textSecondary}`}>{sub.date}</div>
-                            <div className={`col-span-2 text-xs ${textSecondary}`}>{sub.language}</div>
+                            <div
+                              className={`col-span-3 text-xs ${textSecondary}`}
+                            >
+                              {sub.date}
+                            </div>
+                            <div
+                              className={`col-span-2 text-xs ${textSecondary}`}
+                            >
+                              {sub.language}
+                            </div>
                             <div className="col-span-2">
-                              <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium border ${statusColors.bg} ${statusColors.text} ${statusColors.border}`}>
-                                {sub.status === "Accepted" && <Check className="w-3 h-3 mr-1" />}
-                                {sub.status === "Wrong Answer" && <AlertIcon className="w-3 h-3 mr-1" />}
-                                {sub.status === "Wrong Answer" ? "Wrong" : sub.status === "Time Limit Exceeded" ? (
+                              <span
+                                className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium border ${statusColors.bg} ${statusColors.text} ${statusColors.border}`}
+                              >
+                                {sub.status === "Accepted" && (
+                                  <Check className="w-3 h-3 mr-1" />
+                                )}
+                                {sub.status === "Wrong Answer" && (
+                                  <AlertIcon className="w-3 h-3 mr-1" />
+                                )}
+                                {sub.status === "Wrong Answer" ? (
+                                  "Wrong"
+                                ) : sub.status === "Time Limit Exceeded" ? (
                                   <span className="inline-flex items-center gap-1">
                                     <Clock className="w-3 h-3 text-amber-600" />
                                     TLE
                                   </span>
-                                ) : sub.status}
+                                ) : (
+                                  sub.status
+                                )}
                               </span>
                             </div>
-                            <div className={`col-span-2 text-xs font-mono ${textPrimary}`}>{sub.runtime}</div>
-                            <div className={`col-span-2 text-xs font-mono ${textPrimary}`}>{sub.memory}</div>
+                            <div
+                              className={`col-span-2 text-xs font-mono ${textPrimary}`}
+                            >
+                              {sub.runtime}
+                            </div>
+                            <div
+                              className={`col-span-2 text-xs font-mono ${textPrimary}`}
+                            >
+                              {sub.memory}
+                            </div>
                           </div>
                         );
                       })}
                     </div>
                   </div>
 
-                  {/* Most Recent Submission Details */}
                   {selectedcode && (
-                    <div className={`border ${borderColor} rounded-lg overflow-hidden ${darkMode ? "bg-zinc-800/20" : "bg-gray-50"}`}>
-                      <div className={`px-4 py-3 ${darkMode ? "bg-zinc-800/40" : "bg-gray-100"} border-b ${borderColor}`}>
-                        <h3 className={`${textPrimary} font-medium text-sm`}>Selected Submission Code</h3>
-                        <p className={`${textTertiary} text-xs mt-1`}>{selectedsubLanguage}</p>
+                    <div
+                      className={`border ${borderColor} rounded-lg overflow-hidden ${darkMode ? "bg-zinc-800/20" : "bg-gray-50"}`}
+                    >
+                      <div
+                        className={`px-4 py-3 ${darkMode ? "bg-zinc-800/40" : "bg-gray-100"} border-b ${borderColor}`}
+                      >
+                        <h3 className={`${textPrimary} font-medium text-sm`}>
+                          Selected Submission Code
+                        </h3>
+                        <p className={`${textTertiary} text-xs mt-1`}>
+                          {selectedsubLanguage}
+                        </p>
                       </div>
                       <div className="p-4">
-                        <pre className={`text-xs font-mono p-4 rounded ${darkMode ? "bg-zinc-900 text-zinc-300" : "bg-white text-gray-800"} overflow-x-auto border ${borderColor}`}>
+                        <pre
+                          className={`text-xs font-mono p-4 rounded ${darkMode ? "bg-zinc-900 text-zinc-300" : "bg-white text-gray-800"} overflow-x-auto border ${borderColor}`}
+                        >
                           {selectedcode}
                         </pre>
                       </div>
                     </div>
                   )}
 
-                  {/* Submission Stats */}
                   <div className="grid grid-cols-3 gap-3">
-                    <div className={`p-4 rounded-lg ${darkMode ? "bg-emerald-500/10 border-emerald-500/20" : "bg-emerald-100 border-emerald-200"} border`}>
-                      <div className={`text-xs ${darkMode ? "text-emerald-300" : "text-emerald-700"} mb-1`}>Accepted</div>
-                      <div className={`text-xl font-bold ${darkMode ? "text-emerald-300" : "text-emerald-700"}`}>
-                        {submissions.filter((s) => s.status === "Accepted").length}
+                    <div
+                      className={`p-4 rounded-lg ${darkMode ? "bg-emerald-500/10 border-emerald-500/20" : "bg-emerald-100 border-emerald-200"} border`}
+                    >
+                      <div
+                        className={`text-xs ${darkMode ? "text-emerald-300" : "text-emerald-700"} mb-1`}
+                      >
+                        Accepted
+                      </div>
+                      <div
+                        className={`text-xl font-bold ${darkMode ? "text-emerald-300" : "text-emerald-700"}`}
+                      >
+                        {
+                          submissions.filter((s) => s.status === "Accepted")
+                            .length
+                        }
                       </div>
                     </div>
-                    <div className={`p-4 rounded-lg ${darkMode ? "bg-amber-500/10 border-amber-500/20" : "bg-amber-100 border-amber-200"} border`}>
-                      <div className={`text-xs ${darkMode ? "text-amber-300" : "text-amber-700"} mb-1`}>Wrong Answer</div>
-                      <div className={`text-xl font-bold ${darkMode ? "text-amber-300" : "text-amber-700"}`}>
-                        {submissions.filter((s) => s.status === "Wrong Answer").length}
+                    <div
+                      className={`p-4 rounded-lg ${darkMode ? "bg-amber-500/10 border-amber-500/20" : "bg-amber-100 border-amber-200"} border`}
+                    >
+                      <div
+                        className={`text-xs ${darkMode ? "text-amber-300" : "text-amber-700"} mb-1`}
+                      >
+                        Wrong Answer
+                      </div>
+                      <div
+                        className={`text-xl font-bold ${darkMode ? "text-amber-300" : "text-amber-700"}`}
+                      >
+                        {
+                          submissions.filter((s) => s.status === "Wrong Answer")
+                            .length
+                        }
                       </div>
                     </div>
-                    <div className={`p-4 rounded-lg ${darkMode ? "bg-zinc-800/30 border-zinc-800" : "bg-gray-100 border-gray-200"} border`}>
-                      <div className={`text-xs ${textTertiary} mb-1`}>Total Attempts</div>
-                      <div className={`text-xl font-bold ${textPrimary}`}>{submissions.length}</div>
+                    <div
+                      className={`p-4 rounded-lg ${darkMode ? "bg-zinc-800/30 border-zinc-800" : "bg-gray-100 border-gray-200"} border`}
+                    >
+                      <div className={`text-xs ${textTertiary} mb-1`}>
+                        Total Attempts
+                      </div>
+                      <div className={`text-xl font-bold ${textPrimary}`}>
+                        {submissions.length}
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
             </div>
           ) : leftPanelTab === "solutions" ? (
-            /* ===== SOLUTIONS TAB ===== */
             <div>
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h1 className={`text-xl font-bold ${textPrimary} mb-2`}>Solutions</h1>
-                    <p className={`${textSecondary} text-sm`}>Browse solutions submitted by other users</p>
+                    <h1 className={`text-xl font-bold ${textPrimary} mb-2`}>
+                      Solutions
+                    </h1>
+                    <p className={`${textSecondary} text-sm`}>
+                      Browse solutions submitted by other users
+                    </p>
                   </div>
-                   <div className="flex items-center gap-3">
-
-                  {/* Add Solution Button */}
-                  {submissions.length > 0 && (
-                    <button
-                      onClick={() => {
-                        setNewSolution({
-                          title: "",
-                          explanation: "",
-                          language: selectedLanguage,
-                          code: codeRef.current,
-                          time_complexity: "",
-                          space_complexity: ""
-                        });
-                        setShowAddSolutionModal(true);
-                      }}
-                      className={`cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg 
+                  <div className="flex items-center gap-3">
+                    {submissions.length > 0 && (
+                      <button
+                        onClick={() => {
+                          setNewSolution({
+                            title: "",
+                            explanation: "",
+                            language: selectedLanguage,
+                            code: codeRef.current,
+                            time_complexity: "",
+                            space_complexity: "",
+                          });
+                          setShowAddSolutionModal(true);
+                        }}
+                        className={`cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg 
                         ${
                           darkMode
                             ? "bg-green-700 hover:bg-green-600"
                             : "bg-green-500 hover:bg-green-600"
                         } 
                         text-white border border-green-600 text-sm font-medium transition-colors`}
-                    >
-                      Add Solution
-                    </button>
-                  )}
-
-                  {/* Language Filter Dropdown */}
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowLanguageFilter(!showLanguageFilter)}
-                      className={`cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg ${
-                        darkMode
-                          ? "bg-zinc-800 hover:bg-zinc-700"
-                          : "bg-gray-100 hover:bg-gray-200"
-                      } border ${borderColor} text-sm font-medium ${textPrimary} transition-colors`}
-                    >
-                      <Filter className="w-4 h-4" />
-                      {solutionsFilter === "all"
-                        ? "All Languages"
-                        : solutionsFilter === "verified"
-                        ? "Verified Only"
-                        : solutionsFilter.charAt(0).toUpperCase() +
-                          solutionsFilter.slice(1)}
-                      <ChevronDown
-                        className={`w-4 h-4 ${textTertiary} transition-transform ${
-                          showLanguageFilter ? "rotate-180" : ""
-                        }`}
-                      />
-                    </button>
-
-                    {showLanguageFilter && (
-                      <div
-                        className={`absolute right-0 mt-2 w-56 ${bgSecondary} ${borderColor} border rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto`}
                       >
-                        <div className="p-2">
-                          {languageFilterOptions.map((option) => (
-                            <button
-                              key={option.value}
-                              onClick={() => {
-                                setSolutionsFilter(option.value);
-                                setShowLanguageFilter(false);
-                              }}
-                              className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded ${
-                                solutionsFilter === option.value
-                                  ? `${
-                                      darkMode
-                                        ? "bg-blue-500/20 text-blue-400"
-                                        : "bg-blue-100 text-blue-600"
-                                    }`
-                                  : `${textSecondary} ${
-                                      darkMode
-                                        ? "hover:bg-zinc-800"
-                                        : "hover:bg-gray-100"
-                                    }`
-                              } transition-colors`}
-                            >
-                              <span className="flex-1 text-left">
-                                {option.label}
-                              </span>
-                              {solutionsFilter === option.value && (
-                                <Check className="w-4 h-4" />
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                        Add Solution
+                      </button>
                     )}
+
+                    <div className="relative">
+                      <button
+                        onClick={() =>
+                          setShowLanguageFilter(!showLanguageFilter)
+                        }
+                        className={`cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg ${
+                          darkMode
+                            ? "bg-zinc-800 hover:bg-zinc-700"
+                            : "bg-gray-100 hover:bg-gray-200"
+                        } border ${borderColor} text-sm font-medium ${textPrimary} transition-colors`}
+                      >
+                        <Filter className="w-4 h-4" />
+                        {solutionsFilter === "all"
+                          ? "All Languages"
+                          : solutionsFilter === "verified"
+                            ? "Verified Only"
+                            : solutionsFilter.charAt(0).toUpperCase() +
+                              solutionsFilter.slice(1)}
+                        <ChevronDown
+                          className={`w-4 h-4 ${textTertiary} transition-transform ${
+                            showLanguageFilter ? "rotate-180" : ""
+                          }`}
+                        />
+                      </button>
+
+                      {showLanguageFilter && (
+                        <div
+                          className={`absolute right-0 mt-2 w-56 ${bgSecondary} ${borderColor} border rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto`}
+                        >
+                          <div className="p-2">
+                            {languageFilterOptions.map((option) => (
+                              <button
+                                key={option.value}
+                                onClick={() => {
+                                  setSolutionsFilter(option.value);
+                                  setShowLanguageFilter(false);
+                                }}
+                                className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded ${
+                                  solutionsFilter === option.value
+                                    ? `${
+                                        darkMode
+                                          ? "bg-blue-500/20 text-blue-400"
+                                          : "bg-blue-100 text-blue-600"
+                                      }`
+                                    : `${textSecondary} ${
+                                        darkMode
+                                          ? "hover:bg-zinc-800"
+                                          : "hover:bg-gray-100"
+                                      }`
+                                } transition-colors`}
+                              >
+                                <span className="flex-1 text-left">
+                                  {option.label}
+                                </span>
+                                {solutionsFilter === option.value && (
+                                  <Check className="w-4 h-4" />
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                   
-                </div>
-                
-                
-
-                {/* Filter Status */}
                 <div className="flex items-center justify-between mb-6">
                   <div className={`text-sm ${textSecondary}`}>
-                    Showing <span className={`font-bold ${textPrimary}`}>{solutions.length}</span> solution{solutions.length !== 1 ? "s" : ""}
+                    Showing{" "}
+                    <span className={`font-bold ${textPrimary}`}>
+                      {solutions.length}
+                    </span>{" "}
+                    solution{solutions.length !== 1 ? "s" : ""}
                     {solutionsFilter !== "all" && (
                       <span className="ml-2">
                         filtered by:{" "}
-                        <span className={`font-medium ${darkMode ? "text-blue-400" : "text-blue-600"}`}>
-                          {solutionsFilter === "verified" ? "Verified Only" : solutionsFilter.charAt(0).toUpperCase() + solutionsFilter.slice(1)}
+                        <span
+                          className={`font-medium ${darkMode ? "text-blue-400" : "text-blue-600"}`}
+                        >
+                          {solutionsFilter === "verified"
+                            ? "Verified Only"
+                            : solutionsFilter.charAt(0).toUpperCase() +
+                              solutionsFilter.slice(1)}
                         </span>
                       </span>
                     )}
@@ -2167,7 +2463,6 @@ const Problem = () => {
                 </div>
               </div>
 
-              {/* Loading State */}
               {isLoadingSolutions ? (
                 <div className="flex items-center justify-center h-64">
                   <div className="text-center space-y-4">
@@ -2175,15 +2470,27 @@ const Problem = () => {
                       <div className="w-12 h-12 border-3 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto"></div>
                       <Code className="w-6 h-6 text-blue-400 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
                     </div>
-                    <p className="text-zinc-400 font-medium">Loading solutions...</p>
+                    <p className="text-zinc-400 font-medium">
+                      Loading solutions...
+                    </p>
                   </div>
                 </div>
               ) : !filteredSolutions ? (
-                <div className={`flex flex-col items-center justify-center h-64 ${darkMode ? "bg-zinc-800/20" : "bg-gray-50"} rounded-lg border ${borderColor}`}>
+                <div
+                  className={`flex flex-col items-center justify-center h-64 ${darkMode ? "bg-zinc-800/20" : "bg-gray-50"} rounded-lg border ${borderColor}`}
+                >
                   <Code className="w-12 h-12 text-zinc-500 mb-4" />
-                  <h3 className={`${textPrimary} font-medium mb-2`}>{solutionsFilter === "all" ? "No solutions yet" : "No matching solutions"}</h3>
-                  <p className={`${textSecondary} text-sm text-center max-w-md`}>
-                    {solutionsFilter === "all" ? "Be the first to submit a solution for this problem!" : `No ${solutionsFilter === "verified" ? "verified" : solutionsFilter} solutions found. Try a different filter.`}
+                  <h3 className={`${textPrimary} font-medium mb-2`}>
+                    {solutionsFilter === "all"
+                      ? "No solutions yet"
+                      : "No matching solutions"}
+                  </h3>
+                  <p
+                    className={`${textSecondary} text-sm text-center max-w-md`}
+                  >
+                    {solutionsFilter === "all"
+                      ? "Be the first to submit a solution for this problem!"
+                      : `No ${solutionsFilter === "verified" ? "verified" : solutionsFilter} solutions found. Try a different filter.`}
                   </p>
                   {solutionsFilter !== "all" && (
                     <button
@@ -2196,9 +2503,12 @@ const Problem = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {/* Solutions List */}
-                  <div className={`${darkMode ? "bg-zinc-800/30" : "bg-gray-50"} border ${borderColor} rounded-lg overflow-hidden`}>
-                    <div className={`grid grid-cols-12 px-4 py-3 ${darkMode ? "bg-zinc-800/40" : "bg-gray-100"} border-b ${borderColor} text-xs font-medium ${textTertiary}`}>
+                  <div
+                    className={`${darkMode ? "bg-zinc-800/30" : "bg-gray-50"} border ${borderColor} rounded-lg overflow-hidden`}
+                  >
+                    <div
+                      className={`grid grid-cols-12 px-4 py-3 ${darkMode ? "bg-zinc-800/40" : "bg-gray-100"} border-b ${borderColor} text-xs font-medium ${textTertiary}`}
+                    >
                       <div className="col-span-1">Votes</div>
                       <div className="col-span-4">Solution</div>
                       <div className="col-span-2">Language</div>
@@ -2211,15 +2521,18 @@ const Problem = () => {
                         filteredSolutions.map((solution) => (
                           <div
                             key={solution._id}
-                            className={`grid grid-cols-12 px-4 py-3 items-center hover:${darkMode ? "bg-zinc-800/20" : "bg-gray-50"} transition-colors cursor-pointer ${selectedSolution?._id === solution._id ? darkMode ? "bg-zinc-800/40" : "bg-blue-50/50" : ""}`}
+                            className={`grid grid-cols-12 px-4 py-3 items-center hover:${darkMode ? "bg-zinc-800/20" : "bg-gray-50"} transition-colors cursor-pointer ${selectedSolution?._id === solution._id ? (darkMode ? "bg-zinc-800/40" : "bg-blue-50/50") : ""}`}
                             onClick={() => setSelectedSolutionId(solution._id)}
                           >
-                            {/* Votes */}
                             <div className="col-span-1">
                               <div className="flex flex-col items-center">
                                 <div className="flex items-center gap-1">
                                   <ThumbsUp className="w-3 h-3 text-emerald-500" />
-                                  <span className={`text-xs font-bold ${textPrimary}`}>{solution.upvotes || 0}</span>
+                                  <span
+                                    className={`text-xs font-bold ${textPrimary}`}
+                                  >
+                                    {solution.upvotes || 0}
+                                  </span>
                                 </div>
                                 {solution.is_verified && (
                                   <div className="mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
@@ -2228,59 +2541,72 @@ const Problem = () => {
                                 )}
                               </div>
                             </div>
-
-                            {/* Solution Preview */}
                             <div className="col-span-4">
                               <div className="flex flex-col">
-                                <span className={`text-sm font-medium ${textPrimary} truncate`}>
+                                <span
+                                  className={`text-sm font-medium ${textPrimary} truncate`}
+                                >
                                   {solution.title || "Untitled Solution"}
                                 </span>
                               </div>
                             </div>
-
-                            {/* Language */}
                             <div className="col-span-2">
-                              <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${darkMode ? "bg-zinc-800 text-zinc-300" : "bg-gray-200 text-gray-700"}`}>
+                              <span
+                                className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${darkMode ? "bg-zinc-800 text-zinc-300" : "bg-gray-200 text-gray-700"}`}
+                              >
                                 {solution.language}
                               </span>
                             </div>
-
-                            {/* User */}
                             <div className="col-span-3">
                               <div className="flex items-center gap-2">
-                                <div className={`w-6 h-6 rounded-full ${darkMode ? "bg-zinc-700" : "bg-gray-300"} flex items-center justify-center`}>
+                                <div
+                                  className={`w-6 h-6 rounded-full ${darkMode ? "bg-zinc-700" : "bg-gray-300"} flex items-center justify-center`}
+                                >
                                   <User className="w-3 h-3 text-zinc-400" />
                                 </div>
-                                <span className={`text-xs ${textSecondary} truncate`}>
+                                <span
+                                  className={`text-xs ${textSecondary} truncate`}
+                                >
                                   {solution.username}
                                 </span>
                               </div>
                             </div>
-
-                            {/* Date */}
-                            <div className={`col-span-2 text-xs ${textSecondary}`}>
-                              {new Date(solution.created_at).toLocaleDateString()}
+                            <div
+                              className={`col-span-2 text-xs ${textSecondary}`}
+                            >
+                              {new Date(
+                                solution.created_at,
+                              ).toLocaleDateString()}
                             </div>
                           </div>
                         ))}
                     </div>
                   </div>
 
-                  {/* Selected Solution Details */}
                   {selectedSolution && (
-                    <div className={`border ${borderColor} rounded-lg overflow-hidden ${darkMode ? "bg-zinc-800/20" : "bg-gray-50"}`}>
-                      <div className={`px-4 py-3 ${darkMode ? "bg-zinc-800/40" : "bg-gray-100"} border-b ${borderColor}`}>
+                    <div
+                      className={`border ${borderColor} rounded-lg overflow-hidden ${darkMode ? "bg-zinc-800/20" : "bg-gray-50"}`}
+                    >
+                      <div
+                        className={`px-4 py-3 ${darkMode ? "bg-zinc-800/40" : "bg-gray-100"} border-b ${borderColor}`}
+                      >
                         <div className="flex items-center justify-between">
                           <div>
-                            <h3 className={`${textPrimary} font-medium text-sm`}>
+                            <h3
+                              className={`${textPrimary} font-medium text-sm`}
+                            >
                               {selectedSolution.title || "Solution Details"}
                             </h3>
                             <div className="flex items-center gap-3 mt-1">
                               <div className="flex items-center gap-1">
                                 <User className="w-3 h-3 text-zinc-400" />
-                                <span className={`text-xs ${textTertiary}`}>{selectedSolution.username}</span>
+                                <span className={`text-xs ${textTertiary}`}>
+                                  {selectedSolution.username}
+                                </span>
                               </div>
-                              <span className={`text-xs px-2 py-0.5 rounded ${darkMode ? "bg-zinc-800 text-zinc-300" : "bg-gray-200 text-gray-700"}`}>
+                              <span
+                                className={`text-xs px-2 py-0.5 rounded ${darkMode ? "bg-zinc-800 text-zinc-300" : "bg-gray-200 text-gray-700"}`}
+                              >
                                 {selectedSolution.language}
                               </span>
                               {selectedSolution.is_verified && (
@@ -2290,14 +2616,20 @@ const Problem = () => {
                                 </span>
                               )}
                               <span className={`text-xs ${textTertiary}`}>
-                                {new Date(selectedSolution.created_at).toLocaleString()}
+                                {new Date(
+                                  selectedSolution.created_at,
+                                ).toLocaleString()}
                               </span>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => {
-                                setExpandedSolutionId(expandedSolutionId === selectedSolution._id ? null : selectedSolution._id);
+                                setExpandedSolutionId(
+                                  expandedSolutionId === selectedSolution._id
+                                    ? null
+                                    : selectedSolution._id,
+                                );
                               }}
                               className={`cursor-pointer p-1.5 rounded ${darkMode ? "hover:bg-zinc-700" : "hover:bg-gray-200"}`}
                             >
@@ -2309,7 +2641,9 @@ const Problem = () => {
                             </button>
                             <button
                               onClick={() => {
-                                navigator.clipboard.writeText(selectedSolution.code);
+                                navigator.clipboard.writeText(
+                                  selectedSolution.code,
+                                );
                                 setCopied(true);
                                 setTimeout(() => setCopied(false), 2000);
                               }}
@@ -2322,28 +2656,43 @@ const Problem = () => {
                         </div>
                       </div>
 
-                      {/* Solution Code */}
                       <div className="p-4">
                         {selectedSolution.description && (
                           <div className="mb-4">
-                            <h4 className={`text-sm font-medium ${textPrimary} mb-2`}>Description</h4>
-                            <p className={`text-sm ${textSecondary}`}>{selectedSolution.description}</p>
+                            <h4
+                              className={`text-sm font-medium ${textPrimary} mb-2`}
+                            >
+                              Description
+                            </h4>
+                            <p className={`text-sm ${textSecondary}`}>
+                              {selectedSolution.description}
+                            </p>
                           </div>
                         )}
 
                         <div className="mb-4">
                           <div className="flex items-center justify-between mb-2">
-                            <h4 className={`text-sm font-medium ${textPrimary}`}>Code</h4>
+                            <h4
+                              className={`text-sm font-medium ${textPrimary}`}
+                            >
+                              Code
+                            </h4>
                             <div className="flex items-center gap-2">
                               <button
-                                onClick={() => handlevote("upvote", selectedSolution._id)}
+                                onClick={() =>
+                                  handlevote("upvote", selectedSolution._id)
+                                }
                                 className={`cursor-pointer flex items-center gap-1 px-2 py-1 rounded text-xs ${darkMode ? "hover:bg-zinc-800" : "hover:bg-gray-100"}`}
                               >
                                 <ThumbsUp className="w-3 h-3 text-emerald-500" />
-                                <span className={textSecondary}>{selectedSolution.upvotes || 0}</span>
+                                <span className={textSecondary}>
+                                  {selectedSolution.upvotes || 0}
+                                </span>
                               </button>
                               <button
-                                onClick={() => handlevote("downvote", selectedSolution._id)}
+                                onClick={() =>
+                                  handlevote("downvote", selectedSolution._id)
+                                }
                                 className={`cursor-pointer flex items-center gap-1 px-2 py-1 rounded text-xs ${darkMode ? "hover:bg-zinc-800" : "hover:bg-gray-100"}`}
                               >
                                 <ThumbsDown className="w-3 h-3 text-rose-500" />
@@ -2351,82 +2700,150 @@ const Problem = () => {
                             </div>
                           </div>
 
-                          <div className={expandedSolutionId === selectedSolution._id ? "" : "max-h-96 overflow-hidden"}>
-                            <pre className={`text-xs font-mono p-4 rounded ${darkMode ? "bg-zinc-900 text-zinc-300" : "bg-white text-gray-800"} overflow-x-auto border ${borderColor}`}>
+                          <div
+                            className={
+                              expandedSolutionId === selectedSolution._id
+                                ? ""
+                                : "max-h-96 overflow-hidden relative"
+                            }
+                          >
+                            <pre
+                              className={`text-xs font-mono p-4 rounded ${darkMode ? "bg-zinc-900 text-zinc-300" : "bg-white text-gray-800"} overflow-x-auto border ${borderColor}`}
+                            >
                               {selectedSolution.code}
                             </pre>
 
                             {expandedSolutionId !== selectedSolution._id && (
-                              <div className="relative">
-                                <div className={`absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t ${darkMode ? "from-zinc-800" : "from-gray-50"} to-transparent`}></div>
-                                <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2">
-                                  <button
-                                    onClick={() => setExpandedSolutionId(selectedSolution._id)}
-                                    className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs font-medium ${darkMode ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-300" : "bg-gray-200 hover:bg-gray-300 text-gray-700"} flex items-center gap-1`}
-                                  >
-                                    <ChevronDown className="w-3 h-3" />
-                                    Show Full Code
-                                  </button>
-                                </div>
+                              <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-zinc-800 to-transparent flex items-end justify-center pb-2">
+                                <button
+                                  onClick={() =>
+                                    setExpandedSolutionId(selectedSolution._id)
+                                  }
+                                  className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs font-medium ${darkMode ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-300" : "bg-gray-200 hover:bg-gray-300 text-gray-700"} flex items-center gap-1 border ${borderColor} shadow-md`}
+                                >
+                                  <ChevronDown className="w-3 h-3" />
+                                  Show Full Code
+                                </button>
                               </div>
                             )}
                           </div>
                         </div>
 
-                        {/* Solution Stats */}
                         <div className="grid grid-cols-2 gap-3">
-                          <div className={`p-3 rounded-lg ${darkMode ? "bg-zinc-800/30" : "bg-gray-100"} border ${borderColor}`}>
-                            <div className={`text-xs ${textTertiary} mb-1`}>Time Complexity</div>
-                            <div className={`text-sm font-medium ${textPrimary}`}>{selectedSolution.time_complexity || "Not specified"}</div>
+                          <div
+                            className={`p-3 rounded-lg ${darkMode ? "bg-zinc-800/30" : "bg-gray-100"} border ${borderColor}`}
+                          >
+                            <div className={`text-xs ${textTertiary} mb-1`}>
+                              Time Complexity
+                            </div>
+                            <div
+                              className={`text-sm font-medium ${textPrimary}`}
+                            >
+                              {selectedSolution.time_complexity ||
+                                "Not specified"}
+                            </div>
                           </div>
-                          <div className={`p-3 rounded-lg ${darkMode ? "bg-zinc-800/30" : "bg-gray-100"} border ${borderColor}`}>
-                            <div className={`text-xs ${textTertiary} mb-1`}>Space Complexity</div>
-                            <div className={`text-sm font-medium ${textPrimary}`}>{selectedSolution.space_complexity || "Not specified"}</div>
+                          <div
+                            className={`p-3 rounded-lg ${darkMode ? "bg-zinc-800/30" : "bg-gray-100"} border ${borderColor}`}
+                          >
+                            <div className={`text-xs ${textTertiary} mb-1`}>
+                              Space Complexity
+                            </div>
+                            <div
+                              className={`text-sm font-medium ${textPrimary}`}
+                            >
+                              {selectedSolution.space_complexity ||
+                                "Not specified"}
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* Solutions Stats */}
                   <div className="grid grid-cols-4 gap-3">
-                    <div className={`p-4 rounded-lg ${darkMode ? "bg-blue-500/10 border-blue-500/20" : "bg-blue-100 border-blue-200"} border`}>
-                      <div className={`text-xs ${darkMode ? "text-blue-300" : "text-blue-700"} mb-1`}>Total Solutions</div>
-                      <div className={`text-xl font-bold ${darkMode ? "text-blue-300" : "text-blue-700"}`}>{solutions.length}</div>
+                    <div
+                      className={`p-4 rounded-lg ${darkMode ? "bg-blue-500/10 border-blue-500/20" : "bg-blue-100 border-blue-200"} border`}
+                    >
+                      <div
+                        className={`text-xs ${darkMode ? "text-blue-300" : "text-blue-700"} mb-1`}
+                      >
+                        Total Solutions
+                      </div>
+                      <div
+                        className={`text-xl font-bold ${darkMode ? "text-blue-300" : "text-blue-700"}`}
+                      >
+                        {solutions.length}
+                      </div>
                     </div>
-                    <div className={`p-4 rounded-lg ${darkMode ? "bg-emerald-500/10 border-emerald-500/20" : "bg-emerald-100 border-emerald-200"} border`}>
-                      <div className={`text-xs ${darkMode ? "text-emerald-300" : "text-emerald-700"} mb-1`}>Verified</div>
-                      <div className={`text-xl font-bold ${darkMode ? "text-emerald-300" : "text-emerald-700"}`}>
+                    <div
+                      className={`p-4 rounded-lg ${darkMode ? "bg-emerald-500/10 border-emerald-500/20" : "bg-emerald-100 border-emerald-200"} border`}
+                    >
+                      <div
+                        className={`text-xs ${darkMode ? "text-emerald-300" : "text-emerald-700"} mb-1`}
+                      >
+                        Verified
+                      </div>
+                      <div
+                        className={`text-xl font-bold ${darkMode ? "text-emerald-300" : "text-emerald-700"}`}
+                      >
                         {solutions.filter((s) => s.is_verified).length}
                       </div>
                     </div>
-                    <div className={`p-4 rounded-lg ${darkMode ? "bg-amber-500/10 border-amber-500/20" : "bg-amber-100 border-amber-200"} border`}>
+                    <div
+                      className={`p-4 rounded-lg ${darkMode ? "bg-amber-500/10 border-amber-500/20" : "bg-amber-100 border-amber-200"} border`}
+                    >
                       <div className="flex items-center justify-between">
                         <div>
-                          <div className={`text-xs ${darkMode ? "text-amber-300" : "text-amber-700"} mb-1`}>Top Language</div>
-                          <div className={`text-xl font-bold ${darkMode ? "text-amber-300" : "text-amber-700"}`}>
+                          <div
+                            className={`text-xs ${darkMode ? "text-amber-300" : "text-amber-700"} mb-1`}
+                          >
+                            Top Language
+                          </div>
+                          <div
+                            className={`text-xl font-bold ${darkMode ? "text-amber-300" : "text-amber-700"}`}
+                          >
                             {(() => {
                               const langCount = {};
                               solutions.forEach((s) => {
-                                langCount[s.language] = (langCount[s.language] || 0) + 1;
+                                langCount[s.language] =
+                                  (langCount[s.language] || 0) + 1;
                               });
-                              const topLang = Object.entries(langCount).sort((a, b) => b[1] - a[1])[0];
+                              const topLang = Object.entries(langCount).sort(
+                                (a, b) => b[1] - a[1],
+                              )[0];
                               return topLang ? topLang[0] : "-";
                             })()}
                           </div>
                         </div>
-                        <Code className={`w-8 h-8 ${darkMode ? "text-amber-300/40" : "text-amber-700/40"}`} />
+                        <Code
+                          className={`w-8 h-8 ${darkMode ? "text-amber-300/40" : "text-amber-700/40"}`}
+                        />
                       </div>
                     </div>
-                    <div className={`p-4 rounded-lg ${darkMode ? "bg-purple-500/10 border-purple-500/20" : "bg-purple-100 border-purple-200"} border`}>
+                    <div
+                      className={`p-4 rounded-lg ${darkMode ? "bg-purple-500/10 border-purple-500/20" : "bg-purple-100 border-purple-200"} border`}
+                    >
                       <div className="flex items-center justify-between">
                         <div>
-                          <div className={`text-xs ${darkMode ? "text-purple-300" : "text-purple-700"} mb-1`}>Most Upvoted</div>
-                          <div className={`text-xl font-bold ${darkMode ? "text-purple-300" : "text-purple-700"}`}>
-                            {solutions.length > 0 ? Math.max(...solutions.map((s) => s.upvotes || 0)) : "-"}
+                          <div
+                            className={`text-xs ${darkMode ? "text-purple-300" : "text-purple-700"} mb-1`}
+                          >
+                            Most Upvoted
+                          </div>
+                          <div
+                            className={`text-xl font-bold ${darkMode ? "text-purple-300" : "text-purple-700"}`}
+                          >
+                            {solutions.length > 0
+                              ? Math.max(
+                                  ...solutions.map((s) => s.upvotes || 0),
+                                )
+                              : "-"}
                           </div>
                         </div>
-                        <ThumbsUp className={`w-8 h-8 ${darkMode ? "text-purple-300/40" : "text-purple-700/40"}`} />
+                        <ThumbsUp
+                          className={`w-8 h-8 ${darkMode ? "text-purple-300/40" : "text-purple-700/40"}`}
+                        />
                       </div>
                     </div>
                   </div>
@@ -2443,38 +2860,54 @@ const Problem = () => {
         />
 
         {/* ===== RIGHT PANEL - EDITOR ===== */}
-        <div style={{ width: `${100 - leftWidth}%` }} className={`flex flex-col ${bgPrimary} mobile-hide`}>
+        <div
+          style={{ width: `${100 - leftWidth}%` }}
+          className={`flex flex-col ${bgPrimary} mobile-hide`}
+        >
           {/* Editor Header */}
           <div className={`${bgSecondary} border-b ${borderColor} px-4 py-3`}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
-                {/* Language Selection */}
                 <div className="relative">
                   <button
-                    onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+                    onClick={() =>
+                      setShowLanguageDropdown(!showLanguageDropdown)
+                    }
                     className={`cursor-pointer flex items-center gap-2 px-3 py-1.5 rounded ${darkMode ? "bg-zinc-800 hover:bg-zinc-700" : "bg-gray-100 hover:bg-gray-200"} border ${borderColor} text-sm font-medium ${textPrimary} transition-colors`}
                   >
                     <Code className="w-3.5 h-3.5" />
-                    {selectedLanguage.charAt(0).toUpperCase() + selectedLanguage.slice(1)}
-                    <ChevronDown className={`w-3.5 h-3.5 ${textTertiary} transition-transform ${showLanguageDropdown ? "rotate-180" : ""}`} />
+                    {selectedLanguage.charAt(0).toUpperCase() +
+                      selectedLanguage.slice(1)}
+                    <ChevronDown
+                      className={`w-3.5 h-3.5 ${textTertiary} transition-transform ${showLanguageDropdown ? "rotate-180" : ""}`}
+                    />
                   </button>
 
                   {showLanguageDropdown && (
-                    <div className={`absolute top-full mt-1 min-w-[160px] ${bgSecondary} ${borderColor} border rounded-lg shadow-lg z-50`}>
+                    <div
+                      className={`absolute top-full mt-1 min-w-[160px] ${bgSecondary} ${borderColor} border rounded-lg shadow-lg z-50`}
+                    >
                       <div className="p-1">
                         {languageOptions.map((option) => (
                           <button
                             key={option.value}
                             onClick={() => {
+                              const newCode = problem?.starter_code?.[option.value] || "";
                               setSelectedLanguage(option.value);
-                              setCode(problem?.starter_code?.[option.value] || "");
-                              codeRef.current = problem?.starter_code?.[option.value] || ""
+                              setCode(
+                                problem?.starter_code?.[option.value] || "",
+                              );
+                              editorRef.current?.setValue(newCode);
+                              codeRef.current =
+                                problem?.starter_code?.[option.value] || "";
                               setShowLanguageDropdown(false);
                             }}
                             className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded ${selectedLanguage === option.value ? `${darkMode ? "bg-blue-500/20 text-blue-400" : "bg-blue-100 text-blue-600"}` : `${textSecondary} ${darkMode ? "hover:bg-zinc-800" : "hover:bg-gray-100"}`} transition-colors`}
                           >
                             <span>{option.label}</span>
-                            {selectedLanguage === option.value && <Check className="w-3.5 h-3.5" />}
+                            {selectedLanguage === option.value && (
+                              <Check className="w-3.5 h-3.5" />
+                            )}
                           </button>
                         ))}
                       </div>
@@ -2482,7 +2915,6 @@ const Problem = () => {
                   )}
                 </div>
 
-                {/* Copy Button */}
                 <button
                   onClick={handleCopyCode}
                   className={`cursor-pointer p-1.5 rounded ${darkMode ? "hover:bg-zinc-800" : "hover:bg-gray-100"} transition-colors relative`}
@@ -2490,28 +2922,35 @@ const Problem = () => {
                 >
                   <Copy className={`w-4 h-4 ${textTertiary}`} />
                   {copied && (
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 bg-zinc-800 text-white text-xs rounded border border-zinc-700">
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 bg-zinc-800 text-white text-xs rounded border border-zinc-700 whitespace-nowrap z-50">
                       Copied!
                     </div>
                   )}
                 </button>
               </div>
 
-              {/* Run and Submit Buttons */}
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-2 text-xs mr-4">
-                  <div className={`flex items-center gap-1 px-2 py-1 rounded ${darkMode ? "bg-zinc-800" : "bg-gray-100"} border ${borderColor}`}>
+                  <div
+                    className={`flex items-center gap-1 px-2 py-1 rounded ${darkMode ? "bg-zinc-800" : "bg-gray-100"} border ${borderColor}`}
+                  >
                     <Clock className="w-3 h-3 text-blue-500" />
-                    <span className={textSecondary}>Time Limit: {problem.time_limit / 1000}s</span>
+                    <span className={textSecondary}>
+                      Time Limit: {problem.time_limit / 1000}s
+                    </span>
                   </div>
                 </div>
 
                 <button
                   onClick={handleRun}
-                  disabled={isRunning}
-                  className={`cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors ${isRunning ? "bg-zinc-600 cursor-not-allowed" : `${darkMode ? "bg-zinc-800 hover:bg-zinc-700" : "bg-gray-200 hover:bg-gray-300"}`} ${textSecondary}`}
+                  disabled={isRunDisabled}
+                  className={`cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                    isRunDisabled
+                      ? "bg-zinc-600 cursor-not-allowed"
+                      : `${darkMode ? "bg-zinc-800 hover:bg-zinc-700" : "bg-gray-200 hover:bg-gray-300"}`
+                  } ${textSecondary}`}
                 >
-                  {isRunning ? (
+                  {status === "running" || status === "submitting" ? (
                     <>
                       <div className="w-3 h-3 border-2 border-zinc-400/30 border-t-zinc-400 rounded-full animate-spin"></div>
                       Running...
@@ -2526,13 +2965,24 @@ const Problem = () => {
 
                 <button
                   onClick={handleSubmit}
-                  disabled={isRunning}
-                  className={`cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors ${isSubmitted ? `${darkMode ? "bg-emerald-600 hover:bg-emerald-700" : "bg-emerald-500 hover:bg-emerald-600"}` : `${darkMode ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-500 hover:bg-blue-600"}`} text-white`}
+                  disabled={isRunDisabled}
+                  className={`cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                    submitResult?.success
+                      ? `${darkMode ? "bg-emerald-600 hover:bg-emerald-700" : "bg-emerald-500 hover:bg-emerald-600"}`
+                      : isSubmitting
+                      ? "bg-blue-400 cursor-not-allowed"
+                      : `${darkMode ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-500 hover:bg-blue-600"}`
+                  } text-white`}
                 >
-                  {isSubmitted ? (
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      Submitting...
+                    </>
+                  ) : submitResult?.success ? (
                     <>
                       <Check className="w-3.5 h-3.5" />
-                      Submitted
+                      Accepted
                     </>
                   ) : (
                     <>
@@ -2547,186 +2997,128 @@ const Problem = () => {
 
           {/* Code Editor */}
           <div className="flex-1 min-h-0">
-      <div className="h-full min-h-0">
-
-  <SharedEditor
-    selectedLanguage={selectedLanguage}
-    darkMode={darkMode}
-    fontSize={fontSize}
-    editorRef={editorRef}
-    codeRef={codeRef}
-    initialCode={codeRef}
-    MONACO_LANG_MAP={MONACO_LANG_MAP}
-  />
-</div>
-
-
+            <div className="h-full min-h-0">
+              <SharedEditor
+                selectedLanguage={selectedLanguage}
+                darkMode={darkMode}
+                fontSize={fontSize}
+                editorRef={editorRef}
+                codeRef={codeRef}
+                initialCode={codeRef}
+                MONACO_LANG_MAP={MONACO_LANG_MAP}
+              />
+            </div>
           </div>
 
           {/* Test Cases & Results Panel */}
-          <div className={`border-t ${borderColor} ${bgSecondary} ${scrollbarStyles}`} style={{ height: testCaseHeight }}>
-            {/* Resize Handle */}
+          <div
+            className={`border-t ${borderColor} ${bgSecondary} flex flex-col`}
+            style={{ height: testCaseHeight }}
+          >
             <div
               onMouseDown={() => setIsResizingTestCase(true)}
-              className={`h-1.5 cursor-row-resize ${darkMode ? "bg-zinc-800 hover:bg-blue-500" : "bg-gray-300 hover:bg-blue-400"} transition-colors`}
-            />
+              className={`h-2 cursor-row-resize ${darkMode ? "hover:bg-zinc-800" : "hover:bg-gray-200"} transition-colors w-full flex justify-center items-center`}
+            >
+              <div
+                className={`w-10 h-1 rounded-full ${darkMode ? "bg-zinc-600" : "bg-gray-400"}`}
+              ></div>
+            </div>
 
-            <div className="h-full overflow-hidden flex flex-col">
-              {/* Tabs */}
-              <div className={`border-b ${borderColor} flex items-center`}>
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <div
+                className={`flex items-center px-4 pt-1 border-b ${borderColor}`}
+              >
                 <button
                   onClick={() => setActiveTab("testcases")}
-                  className={`px-4 py-2.5 text-xs font-medium relative transition-colors ${activeTab === "testcases" ? `${textPrimary} after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 ${darkMode ? "after:bg-blue-500" : "after:bg-blue-600"}` : `${textTertiary} ${darkMode ? "hover:bg-zinc-800" : "hover:bg-gray-100"}`}`}
+                  className={`px-3 py-2 mr-2 text-sm font-medium relative transition-colors flex items-center gap-2 ${
+                    activeTab === "testcases"
+                      ? `${textPrimary} after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 ${darkMode ? "after:bg-emerald-500" : "after:bg-emerald-600"}`
+                      : `${textTertiary} ${hoverBg}`
+                  }`}
                 >
-                  Test Cases
+                  <CheckCircle className="w-4 h-4" />
+                  Testcase
                 </button>
                 <button
                   onClick={() => setActiveTab("results")}
-                  className={`px-4 py-2.5 text-xs font-medium relative transition-colors ${activeTab === "results" ? `${textPrimary} after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 ${darkMode ? "after:bg-blue-500" : "after:bg-blue-600"}` : `${textTertiary} ${darkMode ? "hover:bg-zinc-800" : "hover:bg-gray-100"}`}`}
+                  className={`px-3 py-2 text-sm font-medium relative transition-colors flex items-center gap-2 ${
+                    activeTab === "results"
+                      ? `${textPrimary} after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 ${darkMode ? "after:bg-emerald-500" : "after:bg-emerald-600"}`
+                      : `${textTertiary} ${hoverBg}`
+                  }`}
                 >
-                  Results
+                  <PlayCircle className="w-4 h-4" />
+                  Test Result
                 </button>
               </div>
 
-              {/* Content */}
               <div className="flex-1 overflow-auto p-4">
                 {activeTab === "testcases" ? (
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className={`font-bold ${textPrimary} text-sm`}>Test Cases</h4>
-                      <div className={`text-xs ${textTertiary}`}>{problem.testCases?.length || 0} test cases</div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {problem.testCases?.map((_, index) => (
+                  <div className="max-w-4xl">
+                    <div className="flex gap-2 mb-5 overflow-x-auto pb-1">
+                      {editedTestCases.map((_, idx) => (
                         <button
-                          key={index}
-                          onClick={() => setActiveTestCase(index)}
-                          className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${activeTestCase === index ? `${darkMode ? "bg-blue-600 text-white" : "bg-blue-500 text-white"}` : `${darkMode ? "bg-zinc-800 text-zinc-300 hover:bg-zinc-700" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}`}
+                          key={idx}
+                          onClick={() => setActiveTestCase(idx)}
+                          className={`flex-shrink-0 px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                            activeTestCase === idx
+                              ? darkMode
+                                ? "bg-zinc-700 text-zinc-100"
+                                : "bg-gray-200 text-gray-900"
+                              : darkMode
+                                ? "bg-transparent text-zinc-400 hover:bg-zinc-800"
+                                : "bg-transparent text-gray-500 hover:bg-gray-100"
+                          }`}
                         >
-                          Case {index + 1}
+                          Case {idx + 1}
                         </button>
                       ))}
                     </div>
 
-                    {problem.testCases?.[activeTestCase] && (
+                    {editedTestCases[activeTestCase] && (
                       <div className="space-y-4">
-                        <div>
-                          <div className={`text-xs ${textTertiary} mb-2`}>Input</div>
-                          <pre className={`text-xs font-mono p-3 rounded ${darkMode ? "bg-zinc-900 text-zinc-300" : "bg-white text-gray-800"} overflow-x-auto border ${borderColor}`}>
-                            {problem.testCases[activeTestCase].input}
-                          </pre>
-                        </div>
-                        <div>
-                          <div className={`text-xs ${textTertiary} mb-2`}>Expected Output</div>
-                          <pre className={`text-xs font-mono p-3 rounded ${darkMode ? "bg-zinc-900 text-zinc-300" : "bg-white text-gray-800"} overflow-x-auto border ${borderColor}`}>
-                            {problem.testCases[activeTestCase].expected}
-                          </pre>
-                        </div>
+                        {editedTestCases[activeTestCase].input
+                          .replace(/\\n/g, "\n")
+                          .split("\n")
+                          .map((inp, partIndex) => (
+                            <div
+                              key={partIndex}
+                              className="flex flex-col gap-1.5"
+                            >
+                              <span
+                                className={`text-xs font-medium ${darkMode ? "text-zinc-400" : "text-gray-500"}`}
+                              >
+                                param_{partIndex + 1} =
+                              </span>
+                              <textarea
+                                value={inp}
+                                onChange={(e) =>
+                                  handleTestCaseChange(
+                                    activeTestCase,
+                                    partIndex,
+                                    e.target.value,
+                                  )
+                                }
+                                className={`w-full font-mono text-sm rounded-lg p-3 min-h-[44px] focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors ${
+                                  darkMode
+                                    ? "bg-zinc-800 text-zinc-200 border border-zinc-700"
+                                    : "bg-gray-100 text-gray-800 border border-gray-200"
+                                }`}
+                                style={{ overflow: "hidden" }}
+                                onInput={(e) => {
+                                  e.target.style.height = "auto";
+                                  e.target.style.height =
+                                    e.target.scrollHeight + "px";
+                                }}
+                              />
+                            </div>
+                          ))}
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div>
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className={`font-bold ${textPrimary} text-sm`}>Results</h4>
-
-                      {output && (
-                        <div className="flex items-center gap-1.5">
-                          <div className={`w-2 h-2 rounded-full ${output.status === "Accepted" ? "bg-emerald-500" : "bg-rose-500"}`}></div>
-                          <span className={`text-xs ${output.status === "Accepted" ? "text-emerald-400" : "text-rose-400"}`}>
-                            {output.status}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Output Box */}
-                    <div className={`rounded-lg p-4 border ${borderColor} ${darkMode ? "bg-zinc-900/60" : "bg-gray-100"}`}>
-                      {!output ? (
-                        <p className={`text-sm ${textSecondary}`}>▶ Run your code to see results here</p>
-                      ) : output.status === "Error" ? (
-                        <div className="space-y-2">
-                          <div className="text-sm font-semibold text-rose-400 flex items-center gap-2">❌ Runtime Error</div>
-                          <pre className="text-xs font-mono bg-rose-500/5 border border-rose-500/20 rounded p-3 text-rose-300 whitespace-pre-wrap">
-                            {output.error}
-                          </pre>
-                        </div>
-                      ) : (
-                        <div className="space-y-4">
-                          {/* Status Header */}
-                          <div className={`flex items-center gap-2 text-sm font-semibold ${output.status === "Accepted" ? "text-emerald-400" : "text-rose-400"}`}>
-                            {output.status === "Accepted" ? "✅ Accepted" : "❌ Wrong Answer"}
-                            <span className="text-xs font-normal text-zinc-400">— Code executed</span>
-                          </div>
-
-                          {/* Run Output */}
-                          {output.actualOutput !== null && (
-                            <div>
-                              <p className="text-xs uppercase tracking-wide text-zinc-400 mb-1">Your Output</p>
-                              <pre className={`text-xs font-mono rounded p-3 whitespace-pre-wrap border ${darkMode ? "bg-zinc-950 text-zinc-200 border-zinc-800" : "bg-white text-gray-800 border-gray-200"}`}>
-                                {output.actualOutput || "-"}
-                              </pre>
-                            </div>
-                          )}
-
-                          {/* Expected Output (only for wrong answer) */}
-                          {output.status === "Wrong Answer" && output.expectedOutput && (
-                            <div>
-                              <p className="text-xs uppercase tracking-wide text-zinc-400 mb-1">Expected Output</p>
-                              <pre className={`text-xs font-mono rounded p-3 whitespace-pre-wrap border ${darkMode ? "bg-zinc-950 text-emerald-300 border-zinc-800" : "bg-white text-emerald-700 border-gray-200"}`}>
-                                {output.expectedOutput}
-                              </pre>
-                            </div>
-                          )}
-
-                          {/* Submit Summary */}
-                          {output.passedTests !== null && (
-                            <div className="grid grid-cols-3 gap-3 text-xs">
-                              <div className="p-3 rounded border bg-black/20">
-                                <p className="text-zinc-400">Tests</p>
-                                <p className="font-bold text-white">
-                                  {output.passedTests != null ? `${output.passedTests}/${output.totalTests}` : "Submit Code to Run all Cases"}
-                                </p>
-                              </div>
-
-                              <div className="p-3 rounded border bg-black/20">
-                                <p className="text-zinc-400">Runtime</p>
-                                <p className="font-bold text-white">{output.executionTime ?? output.runtimeMs} ms</p>
-                              </div>
-
-                              <div className="p-3 rounded border bg-black/20">
-                                <p className="text-zinc-400">Points</p>
-                                <p className="font-bold text-white">{output.points ?? "Submit Code to Get Points"}</p>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Stats */}
-                    {output && output.status !== "Error" && (
-                      <div className="mt-4 grid grid-cols-3 gap-2">
-                        <div className={`p-2 rounded ${darkMode ? "bg-zinc-800/30" : "bg-gray-50"} border ${borderColor} text-center`}>
-                          <div className={`text-xs ${textTertiary} mb-0.5`}>Status</div>
-                          <div className={`text-xs font-bold ${output.status === "Accepted" ? "text-emerald-400" : "text-rose-400"}`}>
-                            {output.status}
-                          </div>
-                        </div>
-
-                        <div className={`p-2 rounded ${darkMode ? "bg-zinc-800/30" : "bg-gray-50"} border ${borderColor} text-center`}>
-                          <div className={`text-xs ${textTertiary} mb-0.5`}>Runtime</div>
-                          <div className={`text-xs font-bold ${textPrimary}`}>{output.executionTime ?? "N/A"} ms</div>
-                        </div>
-
-                        <div className={`p-2 rounded ${darkMode ? "bg-zinc-800/30" : "bg-gray-50"} border ${borderColor} text-center`}>
-                          <div className={`text-xs ${textTertiary} mb-0.5`}>Memory</div>
-                          <div className={`text-xs font-bold ${textPrimary}`}>N/A</div>
-                        </div>
-                      </div>
-                    )}
+                  <div className="max-w-4xl">
+                    {renderResultsTab()}
                   </div>
                 )}
               </div>
@@ -2735,240 +3127,186 @@ const Problem = () => {
         </div>
       </div>
     </div>
-  ); 
+  );
 
-  
+  return (
+    <>
+      <div className={isMobile ? "block" : "hidden"}>
+        <MobileLayout />
+      </div>
 
+      <div className={isMobile ? "hidden" : "block"}>
+        <DesktopLayout />
+      </div>
 
+      {showAddSolutionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowAddSolutionModal(false)}
+          />
 
-
-  // Return appropriate layout based on screen size
- return (
-  <>
-    <div className={isMobile ? "block" : "hidden"}>
-      <MobileLayout
-        problem={problem}
-        problemId={problemId}
-        selectedLanguage={selectedLanguage}
-        setSelectedLanguage={setSelectedLanguage}
-        darkMode={darkMode}
-        setDarkMode={setDarkMode}
-        fontSize={fontSize}
-        setFontSize={setFontSize}
-        handleRun={handleRun}
-        handleSubmit={handleSubmit}
-        resetcode={resetcode}
-        codeRef={codeRef}
-        editorRef={editorRef}
-        output={output}
-        isRunning={isRunning}
-        isSubmitted={isSubmitted}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        leftPanelTab={leftPanelTab}
-        setLeftPanelTab={setLeftPanelTab}
-        timer={timer}
-        formatTime={formatTime}
-      />
-    </div>
-
-    <div className={isMobile ? "hidden" : "block"}>
-      <DesktopLayout
-        problem={problem}
-        problemId={problemId}
-        selectedLanguage={selectedLanguage}
-        setSelectedLanguage={setSelectedLanguage}
-        darkMode={darkMode}
-        setDarkMode={setDarkMode}
-        fontSize={fontSize}
-        setFontSize={setFontSize}
-        handleRun={handleRun}
-        handleSubmit={handleSubmit}
-        resetcode={resetcode}
-        codeRef={codeRef}
-        editorRef={editorRef}
-        output={output}
-        isRunning={isRunning}
-        isSubmitted={isSubmitted}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        leftPanelTab={leftPanelTab}
-        setLeftPanelTab={setLeftPanelTab}
-        timer={timer}
-        formatTime={formatTime}
-      />
-    </div>
-    {showAddSolutionModal && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
-        <div
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          onClick={() => setShowAddSolutionModal(false)}
-        />
-
-        <div
-          className={`${bgSecondary} relative w-[600px] max-h-[90vh] overflow-y-auto rounded-xl border ${borderColor} shadow-2xl p-6 z-10`}
-        >
-          <div className="flex justify-between items-center mb-4">
-            <h2 className={`text-lg font-bold ${textPrimary}`}>
-              Add Solution
-            </h2>
-            <X
-              className={`w-4 h-4 cursor-pointer ${textTertiary}`}
-              onClick={() => setShowAddSolutionModal(false)}
-            />
-          </div>
-
-          <div className="space-y-4">
-            <input
-              type="text"
-              placeholder="Solution Title"
-              value={newSolution.title}
-              onChange={(e) =>
-                setNewSolution({ ...newSolution, title: e.target.value })
-              }
-              className={`w-full px-3 py-2 rounded border ${borderColor} ${
-                darkMode
-                  ? "bg-zinc-900 text-zinc-100"
-                  : "bg-white text-gray-900"
-              }`}
-            />
-
-            <textarea
-              placeholder="Explanation"
-              value={newSolution.explanation}
-              onChange={(e) =>
-                setNewSolution({ ...newSolution, explanation: e.target.value })
-              }
-              rows={3}
-              className={`w-full px-3 py-2 rounded border ${borderColor} ${
-                darkMode
-                  ? "bg-zinc-900 text-zinc-100"
-                  : "bg-white text-gray-900"
-              }`}
-            />
-
-            <select
-              value={newSolution.language}
-              onChange={(e) =>
-                setNewSolution({ ...newSolution, language: e.target.value })
-              }
-              className={`w-full px-3 py-2 rounded border ${borderColor} ${
-                darkMode
-                  ? "bg-zinc-900 text-zinc-100"
-                  : "bg-white text-gray-900"
-              }`}
-            >
-              {languageOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-
-            <textarea
-              placeholder="Paste your solution code"
-              value={newSolution.code}
-              onChange={(e) =>
-                setNewSolution({ ...newSolution, code: e.target.value })
-              }
-              rows={8}
-              className={`w-full font-mono px-3 py-2 rounded border ${borderColor} ${
-                darkMode
-                  ? "bg-zinc-900 text-zinc-100"
-                  : "bg-white text-gray-900"
-              }`}
-            />
-
-            <div className="grid grid-cols-2 gap-3">
-              <input
-                type="text"
-                placeholder="Time Complexity (e.g. O(n))"
-                value={newSolution.time_complexity}
-                onChange={(e) =>
-                  setNewSolution({
-                    ...newSolution,
-                    time_complexity: e.target.value,
-                  })
-                }
-                className={`px-3 py-2 rounded border ${borderColor} ${
-                  darkMode
-                    ? "bg-zinc-900 text-zinc-100"
-                    : "bg-white text-gray-900"
-                }`}
-              />
-
-              <input
-                type="text"
-                placeholder="Space Complexity (e.g. O(1))"
-                value={newSolution.space_complexity}
-                onChange={(e) =>
-                  setNewSolution({
-                    ...newSolution,
-                    space_complexity: e.target.value,
-                  })
-                }
-                className={`px-3 py-2 rounded border ${borderColor} ${
-                  darkMode
-                    ? "bg-zinc-900 text-zinc-100"
-                    : "bg-white text-gray-900"
-                }`}
+          <div
+            className={`${bgSecondary} relative w-[600px] max-h-[90vh] overflow-y-auto rounded-xl border ${borderColor} shadow-2xl p-6 z-10`}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h2 className={`text-lg font-bold ${textPrimary}`}>
+                Add Solution
+              </h2>
+              <X
+                className={`w-4 h-4 cursor-pointer ${textTertiary}`}
+                onClick={() => setShowAddSolutionModal(false)}
               />
             </div>
 
-            <button
-              onClick={handleAddSolution}
-              disabled={isSubmittingSolution}
-              className="w-full py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors"
-            >
-              {isSubmittingSolution ? "Submitting..." : "Submit Solution"}
-            </button>
+            <div className="space-y-4">
+              <input
+                type="text"
+                placeholder="Solution Title"
+                value={newSolution.title}
+                onChange={(e) =>
+                  setNewSolution({ ...newSolution, title: e.target.value })
+                }
+                className={`w-full px-3 py-2 rounded border ${borderColor} ${
+                  darkMode
+                    ? "bg-zinc-900 text-zinc-100"
+                    : "bg-white text-gray-900"
+                }`}
+              />
+
+              <textarea
+                placeholder="Explanation"
+                value={newSolution.explanation}
+                onChange={(e) =>
+                  setNewSolution({
+                    ...newSolution,
+                    explanation: e.target.value,
+                  })
+                }
+                rows={3}
+                className={`w-full px-3 py-2 rounded border ${borderColor} ${
+                  darkMode
+                    ? "bg-zinc-900 text-zinc-100"
+                    : "bg-white text-gray-900"
+                }`}
+              />
+
+              <select
+                value={newSolution.language}
+                onChange={(e) =>
+                  setNewSolution({ ...newSolution, language: e.target.value })
+                }
+                className={`w-full px-3 py-2 rounded border ${borderColor} ${
+                  darkMode
+                    ? "bg-zinc-900 text-zinc-100"
+                    : "bg-white text-gray-900"
+                }`}
+              >
+                {languageOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+
+              <textarea
+                placeholder="Paste your solution code"
+                value={newSolution.code}
+                onChange={(e) =>
+                  setNewSolution({ ...newSolution, code: e.target.value })
+                }
+                rows={8}
+                className={`w-full font-mono px-3 py-2 rounded border ${borderColor} ${
+                  darkMode
+                    ? "bg-zinc-900 text-zinc-100"
+                    : "bg-white text-gray-900"
+                }`}
+              />
+
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  placeholder="Time Complexity (e.g. O(n))"
+                  value={newSolution.time_complexity}
+                  onChange={(e) =>
+                    setNewSolution({
+                      ...newSolution,
+                      time_complexity: e.target.value,
+                    })
+                  }
+                  className={`px-3 py-2 rounded border ${borderColor} ${
+                    darkMode
+                      ? "bg-zinc-900 text-zinc-100"
+                      : "bg-white text-gray-900"
+                  }`}
+                />
+
+                <input
+                  type="text"
+                  placeholder="Space Complexity (e.g. O(1))"
+                  value={newSolution.space_complexity}
+                  onChange={(e) =>
+                    setNewSolution({
+                      ...newSolution,
+                      space_complexity: e.target.value,
+                    })
+                  }
+                  className={`px-3 py-2 rounded border ${borderColor} ${
+                    darkMode
+                      ? "bg-zinc-900 text-zinc-100"
+                      : "bg-white text-gray-900"
+                  }`}
+                />
+              </div>
+
+              <button
+                onClick={handleAddSolution}
+                disabled={isSubmittingSolution}
+                className="w-full py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors"
+              >
+                {isSubmittingSolution ? "Submitting..." : "Submit Solution"}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    )}
-  </>
-);
-
+      )}
+    </>
+  );
 };
 
-
-const SharedEditor = React.memo(({
-  selectedLanguage,
-  darkMode,
-  fontSize,
-  editorRef,
-  codeRef,
-  initialCode,
-  MONACO_LANG_MAP
-}) =>
-{
-  return (
-    <Editor
-      height="100%"
-      language={MONACO_LANG_MAP[selectedLanguage] || "plaintext"}
-      defaultValue={codeRef.current}
-      onMount={(editor) =>
-      {
-        if (!editorRef.current)
-        {
-         
-          editorRef.current = editor;
-          codeRef.current = editor.getValue();
-        }
-      }}
-      onChange={(value) =>
-      {
-        codeRef.current = value || "";
-      }}
-      theme={darkMode ? "vs-dark" : "light"}
-      options={{
-        fontSize,
-        minimap: { enabled: false },
-        automaticLayout: true,
-      }}
-    />
-  );
-});
-
+const SharedEditor = React.memo(
+  ({
+    selectedLanguage,
+    darkMode,
+    fontSize,
+    editorRef,
+    codeRef,
+    initialCode,
+    MONACO_LANG_MAP,
+  }) => {
+    return (
+      <Editor
+        height="100%"
+        language={MONACO_LANG_MAP[selectedLanguage] || "plaintext"}
+        defaultValue={codeRef.current}
+        onMount={(editor) => {
+          if (!editorRef.current) {
+            editorRef.current = editor;
+            codeRef.current = editor.getValue();
+          }
+        }}
+        onChange={(value) => {
+          codeRef.current = value || "";
+        }}
+        theme={darkMode ? "vs-dark" : "light"}
+        options={{
+          fontSize,
+          minimap: { enabled: false },
+          automaticLayout: true,
+        }}
+      />
+    );
+  },
+);
 
 export default Problem;
