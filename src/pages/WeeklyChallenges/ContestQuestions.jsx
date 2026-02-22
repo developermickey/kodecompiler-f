@@ -174,11 +174,7 @@ const ContestQuestion = () => {
   const contestQuestions = useSelector(
     (store) => store?.contest?.contest?.challenge?.questions,
   );
-  // const testCase = useSelector(
-  //   (store) =>
-  //     store?.contest?.contest?.challenge?.questions[0]?.test_cases[0]?.input,
-  // );
-  // console.log(testCase, "TESTCASE1");
+
 
   // Problem Formatting Logic
   useEffect(() => {
