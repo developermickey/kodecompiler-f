@@ -162,7 +162,6 @@ const ContestQuestion = () => {
   const [question_number, setQuestionNumber] = useState(0); // For now, we use question number 1
   // Fetch Contest Details
   useEffect(() => {
-    console.log("Fetching contest details for ID:", id);
     dispatch(fetchContestDetails(id));
   }, [id, dispatch]);
 
@@ -196,7 +195,6 @@ const ContestQuestion = () => {
     };
     setCode(formattedProblem.starter_code[selectedLanguage] || "");
     setProblem(formattedProblem);
-    console.log("Formatted problem:", formattedProblem);
   }, [contest, selectedLanguage]);
 
   // Resizing Logic
@@ -317,7 +315,6 @@ const ContestQuestion = () => {
         },
       );
 
-      console.log("Submit response:", response.data);
 
       // Handle various response formats
       const data = response.data;
