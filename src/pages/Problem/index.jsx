@@ -62,7 +62,11 @@ import Editor from "@monaco-editor/react";
 import NotFound from "../NotFound";
 import { API_BASE_URL } from "../../config/api";
 import { useDispatch, useSelector } from "react-redux";
-import { getResult, runCode, resetCodeState } from "../../redux/slices/codeSlice";
+import {
+  getResult,
+  runCode,
+  resetCodeState,
+} from "../../redux/slices/codeSlice";
 import apiClient from "../../redux/api/axios";
 
 const Problem = () => {
@@ -118,7 +122,12 @@ const Problem = () => {
   const [isSubmittingSolution, setIsSubmittingSolution] = useState(false);
 
   // Redux Execution States
-  const { output: runOutput, status, error: runError, jobId } = useSelector((store) => store?.code || {});
+  const {
+    output: runOutput,
+    status,
+    error: runError,
+    jobId,
+  } = useSelector((store) => store?.code || {});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitResult, setSubmitResult] = useState(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -548,7 +557,7 @@ const Problem = () => {
       credentials: "include",
       body: JSON.stringify({
         solution_id: solutionId,
-        vote_type: vote, 
+        vote_type: vote,
       }),
     });
 
@@ -597,11 +606,17 @@ const Problem = () => {
     setActiveTab("results");
 
     const currentTestCase = editedTestCases[activeTestCase];
-    const rawInput = currentTestCase ? currentTestCase.input : problem.testCases[0].input;
+    const rawInput = currentTestCase
+      ? currentTestCase.input
+      : problem.testCases[0].input;
     const sanitizedInput = rawInput.replace(/\\n/g, "\n");
 
     dispatch(
-      runCode({ language: selectedLanguage, code: codeRef.current, input: sanitizedInput })
+      runCode({
+        language: selectedLanguage,
+        code: codeRef.current,
+        input: sanitizedInput,
+      }),
     );
   };
 
@@ -622,11 +637,16 @@ const Problem = () => {
       });
 
       const data = response.data;
-      const isSuccess = data?.status === "Accepted" || data?.status?.toLowerCase() === "accepted";
+      const isSuccess =
+        data?.status === "Accepted" ||
+        data?.status?.toLowerCase() === "accepted";
 
       setSubmitResult({
         success: isSuccess,
-        message: data?.status || data?.message || (isSuccess ? "Accepted" : "Wrong Answer"),
+        message:
+          data?.status ||
+          data?.message ||
+          (isSuccess ? "Accepted" : "Wrong Answer"),
         passed: data?.passed_tests,
         total: data?.total_tests,
         details: data?.test_results || data?.details,
@@ -653,18 +673,18 @@ const Problem = () => {
       };
 
       localStorage.setItem("latest-submission", JSON.stringify(item));
-      
+
       // Auto refresh submissions if that's the open tab
       if (leftPanelTab === "submissions") {
         setLeftPanelTab("description"); // trigger re-render cycle to fetch latest
         setTimeout(() => setLeftPanelTab("submissions"), 50);
       }
-
     } catch (err) {
       console.error(err);
       setSubmitResult({
         success: false,
-        message: err.response?.data?.error || "Submission failed. Please try again.",
+        message:
+          err.response?.data?.error || "Submission failed. Please try again.",
         error: true,
       });
     } finally {
@@ -676,7 +696,7 @@ const Problem = () => {
     const defaultCode = problem.starter_code[selectedLanguage] || "";
     setCode(defaultCode);
     codeRef.current = defaultCode;
-    editorRef.current?.setValue(defaultCode); 
+    editorRef.current?.setValue(defaultCode);
   };
 
   if (!problem) {
@@ -785,7 +805,8 @@ const Problem = () => {
     })),
   ];
 
-  const isRunDisabled = status === "running" || status === "submitting" || isSubmitting;
+  const isRunDisabled =
+    status === "running" || status === "submitting" || isSubmitting;
 
   // Reusable Results Rendering Block (Shared for Mobile and Desktop layouts)
   const renderResultsTab = () => (
@@ -824,94 +845,103 @@ const Problem = () => {
           </div>
 
           {/* Pill Tabs for Batch Submissions */}
-          {Array.isArray(submitResult.details) && submitResult.details.length > 0 && (
-            <>
-              <div className="flex flex-wrap items-center gap-2 mb-2 overflow-x-auto pb-1">
-                {submitResult.details.map((res, idx) => {
-                  const isActive = activeResultTestCase === idx;
-                  return (
-                    <button
-                      key={idx}
-                      onClick={() => setActiveResultTestCase(idx)}
-                      className={`relative px-4 py-1.5 rounded-lg text-xs font-bold transition-all border ${
-                        isActive
-                          ? darkMode
-                            ? "bg-zinc-800 border-zinc-600 text-white"
-                            : "bg-gray-200 border-gray-300 text-gray-900"
-                          : "border-transparent text-zinc-500 hover:bg-zinc-800/50"
-                      }`}
-                    >
-                      Case {idx + 1}
-                      <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-2 w-2">
-                        <span
-                          className={`relative inline-flex rounded-full h-2 w-2 ${
-                            res.passed || res.status === "Accepted"
-                              ? "bg-emerald-500"
-                              : "bg-rose-500"
-                          }`}
-                        ></span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+          {Array.isArray(submitResult.details) &&
+            submitResult.details.length > 0 && (
+              <>
+                <div className="flex flex-wrap items-center gap-2 mb-2 overflow-x-auto pb-1">
+                  {submitResult.details.map((res, idx) => {
+                    const isActive = activeResultTestCase === idx;
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => setActiveResultTestCase(idx)}
+                        className={`relative px-4 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+                          isActive
+                            ? darkMode
+                              ? "bg-zinc-800 border-zinc-600 text-white"
+                              : "bg-gray-200 border-gray-300 text-gray-900"
+                            : "border-transparent text-zinc-500 hover:bg-zinc-800/50"
+                        }`}
+                      >
+                        Case {idx + 1}
+                        <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-2 w-2">
+                          <span
+                            className={`relative inline-flex rounded-full h-2 w-2 ${
+                              res.passed || res.status === "Accepted"
+                                ? "bg-emerald-500"
+                                : "bg-rose-500"
+                            }`}
+                          ></span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
 
-              {/* Detail View */}
-              {(() => {
-                const detail = submitResult.details[activeResultTestCase] || submitResult.details[0];
-                if (!detail) return null;
-                return (
-                  <div className="space-y-4">
-                    {detail.error && (
-                      <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 font-mono text-xs whitespace-pre-wrap">
-                        {detail.error}
+                {/* Detail View */}
+                {(() => {
+                  const detail =
+                    submitResult.details[activeResultTestCase] ||
+                    submitResult.details[0];
+                  if (!detail) return null;
+                  return (
+                    <div className="space-y-4">
+                      {detail.error && (
+                        <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 font-mono text-xs whitespace-pre-wrap">
+                          {detail.error}
+                        </div>
+                      )}
+                      <div className="group">
+                        <div
+                          className={`text-xs font-medium ${textTertiary} mb-1 uppercase`}
+                        >
+                          Input
+                        </div>
+                        <div
+                          className={`p-3 rounded-lg font-mono text-sm ${
+                            darkMode ? "bg-zinc-800/50" : "bg-gray-100"
+                          }`}
+                        >
+                          {detail.input}
+                        </div>
                       </div>
-                    )}
-                    <div className="group">
-                      <div className={`text-xs font-medium ${textTertiary} mb-1 uppercase`}>
-                        Input
+                      <div className="group">
+                        <div
+                          className={`text-xs font-medium ${textTertiary} mb-1 uppercase`}
+                        >
+                          Output
+                        </div>
+                        <div
+                          className={`p-3 rounded-lg font-mono text-sm border ${
+                            detail.passed || detail.status === "Accepted"
+                              ? "bg-zinc-800/50 border-transparent"
+                              : "bg-rose-900/10 border-rose-500/20 text-rose-400"
+                          }`}
+                        >
+                          {detail.actual || detail.actualOutput || "-"}
+                        </div>
                       </div>
-                      <div
-                        className={`p-3 rounded-lg font-mono text-sm ${
-                          darkMode ? "bg-zinc-800/50" : "bg-gray-100"
-                        }`}
-                      >
-                        {detail.input}
+                      <div className="group">
+                        <div
+                          className={`text-xs font-medium ${textTertiary} mb-1 uppercase`}
+                        >
+                          Expected
+                        </div>
+                        <div
+                          className={`p-3 rounded-lg font-mono text-sm ${
+                            darkMode
+                              ? "bg-zinc-800/50 text-emerald-400"
+                              : "bg-gray-100 text-emerald-600"
+                          }`}
+                        >
+                          {detail.expected || detail.expectedOutput || "-"}
+                        </div>
                       </div>
                     </div>
-                    <div className="group">
-                      <div className={`text-xs font-medium ${textTertiary} mb-1 uppercase`}>
-                        Output
-                      </div>
-                      <div
-                        className={`p-3 rounded-lg font-mono text-sm border ${
-                          detail.passed || detail.status === "Accepted"
-                            ? "bg-zinc-800/50 border-transparent"
-                            : "bg-rose-900/10 border-rose-500/20 text-rose-400"
-                        }`}
-                      >
-                        {detail.actual || detail.actualOutput || "-"}
-                      </div>
-                    </div>
-                    <div className="group">
-                      <div className={`text-xs font-medium ${textTertiary} mb-1 uppercase`}>
-                        Expected
-                      </div>
-                      <div
-                        className={`p-3 rounded-lg font-mono text-sm ${
-                          darkMode
-                            ? "bg-zinc-800/50 text-emerald-400"
-                            : "bg-gray-100 text-emerald-600"
-                        }`}
-                      >
-                        {detail.expected || detail.expectedOutput || "-"}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-            </>
-          )}
+                  );
+                })()}
+              </>
+            )}
 
           {/* Batch Stats */}
           {submitResult.total !== undefined && submitResult.total !== null && (
@@ -956,10 +986,10 @@ const Problem = () => {
                     {runError
                       ? "Runtime Error"
                       : expected !== null && expected !== undefined
-                      ? isCorrect
-                        ? "Accepted"
-                        : "Wrong Answer"
-                      : "Finished"}
+                        ? isCorrect
+                          ? "Accepted"
+                          : "Wrong Answer"
+                        : "Finished"}
                   </h2>
                 </div>
 
@@ -970,7 +1000,9 @@ const Problem = () => {
                 )}
 
                 <div className="group">
-                  <div className={`text-xs font-medium ${textTertiary} mb-1 uppercase`}>
+                  <div
+                    className={`text-xs font-medium ${textTertiary} mb-1 uppercase`}
+                  >
                     Input
                   </div>
                   <div
@@ -983,7 +1015,9 @@ const Problem = () => {
                 </div>
 
                 <div className="group">
-                  <div className={`text-xs font-medium ${textTertiary} mb-1 uppercase`}>
+                  <div
+                    className={`text-xs font-medium ${textTertiary} mb-1 uppercase`}
+                  >
                     Output
                   </div>
                   <div
@@ -999,7 +1033,9 @@ const Problem = () => {
 
                 {expected !== null && expected !== undefined && (
                   <div className="group">
-                    <div className={`text-xs font-medium ${textTertiary} mb-1 uppercase`}>
+                    <div
+                      className={`text-xs font-medium ${textTertiary} mb-1 uppercase`}
+                    >
                       Expected
                     </div>
                     <div
@@ -1164,8 +1200,6 @@ const Problem = () => {
               <Monitor className="w-4 h-4 text-zinc-300" />
             )}
           </button>
-
-         
         </div>
       </div>
 
@@ -1611,8 +1645,8 @@ const Problem = () => {
                         isSubmitting
                           ? "bg-blue-400 cursor-not-allowed"
                           : isSubmitted
-                          ? "bg-emerald-600 hover:bg-emerald-500"
-                          : "bg-blue-600 hover:bg-blue-500"
+                            ? "bg-emerald-600 hover:bg-emerald-500"
+                            : "bg-blue-600 hover:bg-blue-500"
                       }`}
                   >
                     {isSubmitting ? (
@@ -1705,9 +1739,7 @@ const Problem = () => {
                     )}
                   </div>
                 ) : (
-                  <div>
-                    {renderResultsTab()}
-                  </div>
+                  <div>{renderResultsTab()}</div>
                 )}
               </div>
             </div>
@@ -1868,8 +1900,6 @@ const Problem = () => {
             </div>
           </div>
         </div>
-
-       
       </div>
 
       <div ref={containerRef} className="flex flex-1 overflow-hidden">
@@ -2892,7 +2922,8 @@ const Problem = () => {
                           <button
                             key={option.value}
                             onClick={() => {
-                              const newCode = problem?.starter_code?.[option.value] || "";
+                              const newCode =
+                                problem?.starter_code?.[option.value] || "";
                               setSelectedLanguage(option.value);
                               setCode(
                                 problem?.starter_code?.[option.value] || "",
@@ -2970,8 +3001,8 @@ const Problem = () => {
                     submitResult?.success
                       ? `${darkMode ? "bg-emerald-600 hover:bg-emerald-700" : "bg-emerald-500 hover:bg-emerald-600"}`
                       : isSubmitting
-                      ? "bg-blue-400 cursor-not-allowed"
-                      : `${darkMode ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-500 hover:bg-blue-600"}`
+                        ? "bg-blue-400 cursor-not-allowed"
+                        : `${darkMode ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-500 hover:bg-blue-600"}`
                   } text-white`}
                 >
                   {isSubmitting ? (
@@ -3117,9 +3148,7 @@ const Problem = () => {
                     )}
                   </div>
                 ) : (
-                  <div className="max-w-4xl">
-                    {renderResultsTab()}
-                  </div>
+                  <div className="max-w-4xl">{renderResultsTab()}</div>
                 )}
               </div>
             </div>
@@ -3310,3 +3339,4 @@ const SharedEditor = React.memo(
 );
 
 export default Problem;
+
