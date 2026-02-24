@@ -247,8 +247,7 @@ const InterviewExperiences = () => {
       }
 
       const data = await res.json(); 
-      console.log("Experience added:", data);
-      
+     
       // Show success popup
       setShowSuccessPopup(true);
       

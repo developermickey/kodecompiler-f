@@ -763,7 +763,6 @@ const SidebarContent = ({
   const handleCreateFile = (data) => {
     setContextMenu({ ...contextMenu, show: false });
     setFolderPath(data.path);
-    // console.log("Creating file in folder:", data);
     setSaveModalOpen(true);
   };
 
@@ -1084,10 +1083,7 @@ const SidebarContent = ({
 
             {contextMenu.type === "folder" && (
               <button
-                // onClick={() => {
-                //   console.log("Create file in:", contextMenu.data);
-                //   setContextMenu({ ...contextMenu, show: false });
-                // }}
+              
                 onClick={() => {
                   handleCreateFile(contextMenu.data);
                 }}

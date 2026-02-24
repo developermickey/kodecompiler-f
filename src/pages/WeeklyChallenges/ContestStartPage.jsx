@@ -42,7 +42,6 @@ export default function ContestStartPage() {
     if (!user) {
       window.location.href = `/login`;
     }
-    console.log(user);
     const fetchContestData = async () => {
       try {
         setLoading(true);
@@ -282,7 +281,6 @@ export default function ContestStartPage() {
 
   const handleStart = () => {
     if (agreed) {
-      console.log("NAVIGATING TO:", `/challenge/${contestData?._id}/start`);
 
       navigate(`/challenge/${contestData._id}/start`);
     }

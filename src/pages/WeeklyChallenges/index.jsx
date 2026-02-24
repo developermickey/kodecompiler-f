@@ -72,8 +72,6 @@ const ContestHero = ({ active, upcoming }) => {
   const handleAction = (id) => {
     if (activeContest) {
       window.location.href = `/challenge/${id}`;
-    } else {
-      console.log("Registering:", id);
     }
   };
 
@@ -626,11 +624,9 @@ const ContestCard = ({ contest }) => {
   const isCompleted = questionsSolved === totalQuestions && totalQuestions > 0;
 
   const handleClick = () => {
-    if (isUpcoming) {
-      console.log("Register logic");
-    } else {
+   
       window.location.href = `/challenge/${contest._id}`;
-    }
+    
   };
 
   return (
