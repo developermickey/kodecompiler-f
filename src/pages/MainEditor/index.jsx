@@ -82,7 +82,6 @@ const MainCompilerLight = () => {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [extension, setExtension] = useState("");
 
-
   // --- Refs ---
   const containerRef = useRef(null);
   const langMenuRef = useRef(null);
@@ -186,7 +185,7 @@ const MainCompilerLight = () => {
         { withCredentials: true },
       );
       const fetchedTitle = res.data.title || "Untitled";
-      
+
       setCodeName(fetchedTitle);
       setCode(res.data.code);
       setActiveCodeId(code_id);
@@ -253,15 +252,15 @@ const MainCompilerLight = () => {
       .unwrap()
       .then(() => showNotification("Saved successfully."))
       .catch((err) => showNotification("Failed to save."));
+
+    setCodeName("Untitled Project");
   };
 
   const handleModalSave = () => {
     dispatch(createFolder(folderPath));
     dispatch(
       createCode({
-    title: extension
-  ? `${codeName}${extension}`
-  : codeName,
+        title: extension ? `${codeName}${extension}` : codeName,
         language,
         code,
         description: "",
@@ -272,10 +271,14 @@ const MainCompilerLight = () => {
       .unwrap()
       .then(() => showNotification("Created successfully."))
       .catch((err) => showNotification("Failed to save."));
+
+    setCodeName("Untitled Project");
   };
 
   const handleCreateCode = () => {
     setShowSaveModal((prev) => !prev);
+    setCodeName("Untitled Project");
+    setExtension("");
   };
 
   // --- Monaco Setup ---
@@ -539,6 +542,8 @@ const MainCompilerLight = () => {
                   folders={folders}
                   userCodes={userCodes}
                   activeCodeId={activeCodeId}
+                  extension={extension}
+                  setExtension={setExtension}
                   showNotification={showNotification}
                   handleCodeClick={handleCodeClick}
                   close={() => setIsFilePanelOpen(false)}
@@ -661,7 +666,7 @@ const MainCompilerLight = () => {
           handleModalSave={handleModalSave}
           setCodeName={setCodeName}
           codeName={codeName}
-          extension={extension}          
+          extension={extension}
           setExtension={setExtension}
         />
       )}
@@ -679,6 +684,8 @@ const SidebarContent = ({
   code,
   language,
   isMobile,
+  extension,
+  setExtension,
   input,
   folders,
   showNotification,
@@ -692,6 +699,7 @@ const SidebarContent = ({
   // --- Renaming State ---
   const [renamingId, setRenamingId] = useState(null);
   const [renameValue, setRenameValue] = useState("");
+  const [renamingType, setRenamingType] = useState(null); // 'folder' or 'file'
 
   // --- Context Menu State ---
   const [contextMenu, setContextMenu] = useState({
@@ -831,9 +839,21 @@ const SidebarContent = ({
           </span>
 
           {/* Folder Name */}
-          <span className="truncate text-sm font-medium text-gray-700">
-            {node.name}
-          </span>
+          {renamingId === node.originalData?._id ? (
+            <input
+              autoFocus
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              onKeyDown={handleRenameKeyDown}
+              onBlur={handleRenameSubmit}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white border border-blue-400 rounded px-1 py-0.5 text-sm outline-none focus:ring-1 focus:ring-blue-500 min-w-0 flex-1"
+            />
+          ) : (
+            <span className="truncate text-sm font-medium text-gray-700">
+              {node.name}
+            </span>
+          )}
         </div>
 
         {/* 2. RENDER CHILDREN (Files & Sub-folders) */}
@@ -868,7 +888,19 @@ const SidebarContent = ({
                       : "text-gray-400"
                   }
                 />
-                <span className="truncate">{code.title || "Untitled"}</span>
+                {renamingId === code._id ? (
+                  <input
+                    autoFocus
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onKeyDown={handleRenameKeyDown}
+                    onBlur={handleRenameSubmit}
+                    onClick={(e) => e.stopPropagation()}
+                    className="bg-white border border-blue-400 rounded px-1 py-0.5 text-sm outline-none focus:ring-1 focus:ring-blue-500 min-w-0 flex-1"
+                  />
+                ) : (
+                  <span className="truncate">{code.title || "Untitled"}</span>
+                )}
               </div>
             ))}
           </div>
@@ -889,21 +921,24 @@ const SidebarContent = ({
 
   const handleRenameStart = () => {
     setRenamingId(contextMenu.data._id);
-    // Use 'title' for files, 'path' or name for folders depending on your DB structure
+    setRenamingType(contextMenu.type);
     setRenameValue(contextMenu.data.title || contextMenu.data.path || "");
     setContextMenu({ ...contextMenu, show: false });
   };
 
   const handleRenameSubmit = async () => {
-    if (!renameValue.trim()) return setRenamingId(null);
+    if (!renameValue.trim()) {
+      setRenamingId(null);
+      setRenamingType(null);
+      return;
+    }
 
-    if (contextMenu.type === "folder") {
+    if (renamingType === "folder") {
       // Dispatch folder rename
       // await dispatch(renameFolder({ id: renamingId, name: renameValue }));
       await dispatch(fetchFolders()); // Refresh folders
     } else {
       // Dispatch file rename
-      // Assuming editCode takes { id, payload }
       await dispatch(
         saveCode({
           code_id: renamingId,
@@ -913,6 +948,7 @@ const SidebarContent = ({
       await dispatch(getUserCodes()); // Refresh files
     }
     setRenamingId(null);
+    setRenamingType(null);
   };
 
   const handleDelete = async () => {
@@ -937,7 +973,10 @@ const SidebarContent = ({
   // Helper to detect Enter key on Rename Input
   const handleRenameKeyDown = (e) => {
     if (e.key === "Enter") handleRenameSubmit();
-    if (e.key === "Escape") setRenamingId(null);
+    if (e.key === "Escape") {
+      setRenamingId(null);
+      setRenamingType(null);
+    }
   };
 
   const folderTree = folders ? buildFolderTree(folders) : {};
@@ -982,13 +1021,27 @@ const SidebarContent = ({
               {/* Handle files that have NO folder (root level files) */}
               {userCodes
                 ?.filter((c) => !c.folderPath)
-                .map((code) => (
+                .map((code, index) => (
                   /* Render root files here (reuse the file div style from above) */
                   <div
+                    key={index}
                     onClick={() => handleCodeClick(code._id)}
                     className="..."
                   >
-                    <FileCode size={14} /> {code.title}
+                    <FileCode size={14} />
+                    {renamingId === code._id ? (
+                      <input
+                        autoFocus
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onKeyDown={handleRenameKeyDown}
+                        onBlur={handleRenameSubmit}
+                        onClick={(e) => e.stopPropagation()}
+                        className="bg-white border border-blue-400 rounded px-1 py-0.5 text-sm outline-none focus:ring-1 focus:ring-blue-500 min-w-0 flex-1"
+                      />
+                    ) : (
+                      <span className="truncate">{code.title || "Untitled"}</span>
+                    )}
                   </div>
                 ))}
             </div>
@@ -1054,8 +1107,8 @@ const SidebarContent = ({
           handleModalSave={handleModalSave}
           setCodeName={setCodeName}
           codeName={codeName}
-          extension={extension}           
-    setExtension={setExtension}
+          extension={extension}
+          setExtension={setExtension}
         />
       )}
     </>
@@ -1095,7 +1148,7 @@ const SaveModal = ({
   setCodeName,
   codeName,
   extension,
-  setExtension
+  setExtension,
 }) => {
   // Handle "Enter" key to submit
   const handleKeyDown = (e) => {
@@ -1173,22 +1226,22 @@ const SaveModal = ({
               />
             </div>
 
-             <div className="space-y-1.5">
-  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
-    File Extension
-  </label>
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
+                File Extension
+              </label>
 
-  <div className="relative group">
-    {/* Icon */}
-    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors">
-      <FileCode size={16} />
-    </div>
+              <div className="relative group">
+                {/* Icon */}
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors">
+                  <FileCode size={16} />
+                </div>
 
-    {/* Select */}
-    <select
-      value={extension}
-      onChange={(e) => setExtension(e.target.value)}
-      className="
+                {/* Select */}
+                <select
+                  value={extension}
+                  onChange={(e) => setExtension(e.target.value)}
+                  className="
         w-full pl-10 pr-10 py-2.5 
         bg-gray-50 border border-gray-200 
         rounded-lg text-sm text-gray-700 
@@ -1199,28 +1252,25 @@ const SaveModal = ({
         transition-all
         cursor-pointer
       "
-    >
-      <option value="" disabled>
-        Select Extension
-      </option>
-      <option value=".js">JavaScript (.js)</option>
-      <option value=".py">Python (.py)</option>
-      <option value=".java">Java (.java)</option>
-      <option value=".cpp">C++ (.cpp)</option>
-      <option value=".c">C (.c)</option>
-      <option value=".go">Go (.go)</option>
-      <option value=".rs">Rust (.rs)</option>
-    </select>
+                >
+                  <option value="" disabled>
+                    Select Extension
+                  </option>
+                  <option value=".js">JavaScript (.js)</option>
+                  <option value=".py">Python (.py)</option>
+                  <option value=".java">Java (.java)</option>
+                  <option value=".cpp">C++ (.cpp)</option>
+                  <option value=".c">C (.c)</option>
+                  <option value=".go">Go (.go)</option>
+                  <option value=".rs">Rust (.rs)</option>
+                </select>
 
-    {/* Custom Dropdown Arrow */}
-    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 group-focus-within:text-blue-500 transition-colors">
-      <ChevronDown size={16} />
-    </div>
-  </div>
-</div>
-
-
-            
+                {/* Custom Dropdown Arrow */}
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 group-focus-within:text-blue-500 transition-colors">
+                  <ChevronDown size={16} />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
