@@ -172,6 +172,9 @@ const MainCompilerLight = () => {
       cpp: "cpp",
       c: "cpp",
       cc: "cpp",
+      // ADD YOUR NEW ONES HERE:
+      go: "go",
+      rs: "rust",
     };
     return extensionMap[ext] || null;
   };
@@ -359,18 +362,20 @@ const MainCompilerLight = () => {
 
               {isLangMenuOpen && (
                 <div className="absolute top-full right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-xl z-50 py-1 animate-in fade-in zoom-in-95">
-                  {["python", "javascript", "java", "cpp"].map((lang) => (
-                    <div
-                      key={lang}
-                      onClick={() => handleLanguageSelect(lang)}
-                      className="px-4 py-2.5 text-sm hover:bg-blue-50 hover:text-blue-600 cursor-pointer capitalize flex items-center justify-between group"
-                    >
-                      {lang === "cpp" ? "C++" : lang}
-                      {language === lang && (
-                        <Check size={14} className="text-blue-600" />
-                      )}
-                    </div>
-                  ))}
+                  {["python", "javascript", "java", "cpp", "go", "rust"].map(
+                    (lang) => (
+                      <div
+                        key={lang}
+                        onClick={() => handleLanguageSelect(lang)}
+                        className="px-4 py-2.5 text-sm hover:bg-blue-50 hover:text-blue-600 cursor-pointer capitalize flex items-center justify-between group"
+                      >
+                        {lang === "cpp" ? "C++" : lang}
+                        {language === lang && (
+                          <Check size={14} className="text-blue-600" />
+                        )}
+                      </div>
+                    ),
+                  )}
                 </div>
               )}
             </div>
@@ -1039,7 +1044,9 @@ const SidebarContent = ({
                         className="bg-white border border-blue-400 rounded px-1 py-0.5 text-sm outline-none focus:ring-1 focus:ring-blue-500 min-w-0 flex-1"
                       />
                     ) : (
-                      <span className="truncate">{code.title || "Untitled"}</span>
+                      <span className="truncate">
+                        {code.title || "Untitled"}
+                      </span>
                     )}
                   </div>
                 ))}
@@ -1083,7 +1090,6 @@ const SidebarContent = ({
 
             {contextMenu.type === "folder" && (
               <button
-              
                 onClick={() => {
                   handleCreateFile(contextMenu.data);
                 }}
