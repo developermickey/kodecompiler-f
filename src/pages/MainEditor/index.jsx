@@ -40,6 +40,7 @@ import {
   deleteFolder,
   fetchFolders,
 } from "../../redux/slices/folderSlice";
+import { API_BASE_URL } from "../../config/api";
 
 const MainCompilerLight = () => {
   const dispatch = useDispatch();
@@ -184,7 +185,7 @@ const MainCompilerLight = () => {
     setIsCodeLoading(true);
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/codes/${code_id}`,
+        `${API_BASE_URL}/api/codes/${code_id}`,
         { withCredentials: true },
       );
       const fetchedTitle = res.data.title || "Untitled";
