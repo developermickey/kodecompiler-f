@@ -5,21 +5,15 @@ import {
   Play,
   Code2,
   Terminal,
-  Settings,
   Sparkles,
   GripVertical,
   AlertCircle,
   Loader2,
   CheckCircle2,
   XCircle,
-  Clock,
-  Send,
-  Cpu
 } from "lucide-react";
-// IMPORTANT: Update this import path to point to your actual code slice file
 import {
   runCode,
-  getResult,
   resetCodeState,
 } from "../../redux/slices/codeSlice";
 
@@ -37,10 +31,8 @@ const GuestEditor = () => {
 
   // Redux state
   const {
-    jobId,
     status,
     output: reduxOutput,
-    isRunning,
     error,
   } = useSelector((state) => state.code);
 
@@ -80,23 +72,6 @@ const GuestEditor = () => {
     return () => dispatch(resetCodeState());
   }, [dispatch]);
 
-  // --- Polling Logic for Code Execution ---
-  useEffect(() => {
-    let pollInterval;
-
-    if (jobId && (status === "submitted" || status === "running")) {
-      pollInterval = setInterval(() => {
-        dispatch(getResult(jobId));
-      }, 1500); // Poll every 1.5 seconds
-    }
-
-    // Stop polling once finished
-    if (status === "completed" || status === "failed") {
-      clearInterval(pollInterval);
-    }
-
-    return () => clearInterval(pollInterval);
-  }, [jobId, status, dispatch]);
 
   // --- Layout Resizers ---
   useEffect(() => {
@@ -201,20 +176,8 @@ const GuestEditor = () => {
   const renderOutput = () => {
     if (status === "submitting") return (
       <div className="flex items-center space-x-2 text-indigo-600">
-        <Send className="w-4 h-4 animate-pulse" />
-        <span>Submitting to server...</span>
-      </div>
-    );
-    if (status === "submitted") return (
-      <div className="flex items-center space-x-2 text-amber-600">
-        <Clock className="w-4 h-4 animate-pulse" />
-        <span>Job created. Waiting in queue...</span>
-      </div>
-    );
-    if (status === "running") return (
-      <div className="flex items-center space-x-2 text-blue-600">
-        <Cpu className="w-4 h-4 animate-pulse" />
-        <span>Executing code...</span>
+        <Loader2 className="w-4 h-4 animate-spin" />
+        <span>Running code...</span>
       </div>
     );
 
@@ -295,19 +258,19 @@ const GuestEditor = () => {
 
               <button
                 onClick={handleRunCode}
-                disabled={isRunning}
+                disabled={status === "submitting"}
                 className={`px-5 py-2 rounded-lg text-sm font-semibold text-white flex items-center space-x-2 transition-all shadow-sm ${
-                  isRunning
+                  status === "submitting"
                     ? "bg-slate-400 cursor-not-allowed"
                     : "bg-indigo-600 hover:bg-indigo-700 hover:shadow-md hover:-translate-y-[1px] active:translate-y-0"
                 }`}
               >
-                {isRunning ? (
+                {status === "submitting" ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <Play className="w-4 h-4" fill="currentColor" />
                 )}
-                <span>{isRunning ? "Running..." : "Run Code"}</span>
+                <span>{status === "submitting" ? "Running..." : "Run Code"}</span>
               </button>
             </div>
           </div>
@@ -377,17 +340,6 @@ const GuestEditor = () => {
               <h2 className="text-xs font-semibold text-slate-700 uppercase tracking-widest">
                 Output
               </h2>
-              {(status === "running" || status === "submitted") && (
-                <div className="ml-auto flex items-center space-x-1.5">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </span>
-                  <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">
-                    Polling
-                  </span>
-                </div>
-              )}
             </header>
             <div className="flex-1 p-4 overflow-auto bg-[#fafafa]">
               <pre className="font-mono text-[13px] leading-relaxed whitespace-pre-wrap break-words">

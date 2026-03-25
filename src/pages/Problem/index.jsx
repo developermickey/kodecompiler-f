@@ -63,7 +63,6 @@ import NotFound from "../NotFound";
 import { API_BASE_URL } from "../../config/api";
 import { useDispatch, useSelector } from "react-redux";
 import {
-  getResult,
   runCode,
   resetCodeState,
 } from "../../redux/slices/codeSlice";
@@ -126,7 +125,7 @@ const Problem = () => {
     output: runOutput,
     status,
     error: runError,
-    jobId,
+    execution_time: runExecutionTime,
   } = useSelector((store) => store?.code || {});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitResult, setSubmitResult] = useState(null);
@@ -586,21 +585,9 @@ const Problem = () => {
     setEditedTestCases(newTestCases);
   };
 
-  // Poll for run results using Redux logic
-  useEffect(() => {
-    if (!jobId) return;
-    const interval = setInterval(() => {
-      dispatch(getResult(jobId));
-    }, 2000);
-    if (status === "completed" || status === "failed") {
-      clearInterval(interval);
-    }
-    return () => clearInterval(interval);
-  }, [jobId, dispatch, status]);
-
   // REDUX BASED RUN
   const handleRun = () => {
-    if (status === "running" || status === "submitting" || isSubmitting) return;
+    if (status === "submitting" || isSubmitting) return;
 
     setSubmitResult(null);
     setActiveTab("results");
@@ -622,7 +609,7 @@ const Problem = () => {
 
   // REDUX ALIGNED SUBMIT
   const handleSubmit = async () => {
-    if (isSubmitting || status === "running" || status === "submitting") return;
+    if (isSubmitting || status === "submitting") return;
 
     setIsSubmitting(true);
     setSubmitResult(null);
@@ -805,14 +792,13 @@ const Problem = () => {
     })),
   ];
 
-  const isRunDisabled =
-    status === "running" || status === "submitting" || isSubmitting;
+  const isRunDisabled = status === "submitting" || isSubmitting;
 
   // Reusable Results Rendering Block (Shared for Mobile and Desktop layouts)
   const renderResultsTab = () => (
     <div className="h-full">
       {/* 1. LOADING */}
-      {status === "running" || status === "submitting" || isSubmitting ? (
+      {status === "submitting" || isSubmitting ? (
         <div className="h-full flex flex-col items-center justify-center space-y-4 py-8">
           <div className="w-8 h-8 border-4 border-zinc-700 border-t-blue-500 rounded-full animate-spin" />
           <p className={`text-sm font-medium ${textSecondary} animate-pulse`}>
@@ -1629,7 +1615,7 @@ const Problem = () => {
                           : `${darkMode ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700" : "bg-white hover:bg-gray-100 text-gray-700 border border-gray-300"}`
                       }`}
                   >
-                    {status === "running" || status === "submitting" ? (
+                    {status === "submitting" ? (
                       <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
                     ) : (
                       <Play className="w-3.5 h-3.5 fill-current" />
@@ -2981,7 +2967,7 @@ const Problem = () => {
                       : `${darkMode ? "bg-zinc-800 hover:bg-zinc-700" : "bg-gray-200 hover:bg-gray-300"}`
                   } ${textSecondary}`}
                 >
-                  {status === "running" || status === "submitting" ? (
+                  {status === "submitting" ? (
                     <>
                       <div className="w-3 h-3 border-2 border-zinc-400/30 border-t-zinc-400 rounded-full animate-spin"></div>
                       Running...

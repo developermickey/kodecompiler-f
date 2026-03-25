@@ -26,7 +26,6 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchContestDetails } from "../../redux/slices/contestSlice";
 import apiClient from "../../redux/api/axios";
 import {
-  getResult,
   runCode,
   resetCodeState,
 } from "../../redux/slices/codeSlice";
@@ -249,7 +248,7 @@ const ContestQuestion = () => {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  const { output, status, error, jobId, userCodes } = useSelector(
+  const { output, status, error, execution_time } = useSelector(
     (store) => store?.code,
   );
 
@@ -267,7 +266,7 @@ const ContestQuestion = () => {
 
   // --- HANDLERS ---
   const handleRun = () => {
-    if (status === "running" || status === "submitting" || isSubmitting) return;
+    if (status === "submitting" || isSubmitting) return;
 
     setSubmitResult(null);
     setActiveTab("results");
@@ -285,20 +284,8 @@ const ContestQuestion = () => {
     // to indicate this is now a custom input
     setActiveTestCase(null);
   };
-  // Poll for run results
-  useEffect(() => {
-    if (!jobId) return;
-    const interval = setInterval(() => {
-      dispatch(getResult(jobId));
-    }, 2000);
-    if (status === "completed" || status === "failed") {
-      clearInterval(interval);
-    }
-    return () => clearInterval(interval);
-  }, [jobId, dispatch, status]);
-
   const handleSubmit = async () => {
-    if (isSubmitting || status === "running") return;
+    if (isSubmitting || status === "submitting") return;
 
     setIsSubmitting(true);
     setSubmitResult(null);
@@ -716,15 +703,15 @@ const ContestQuestion = () => {
                   <div className="flex gap-2">
                     <button
                       onClick={handleRun}
-                      disabled={status === "running" || isSubmitting}
+                      disabled={status === "submitting" || isSubmitting}
                       className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all shadow-sm
                       ${
-                        status === "running" || isSubmitting
+                        status === "submitting" || isSubmitting
                           ? "bg-zinc-700 text-zinc-400 cursor-not-allowed"
                           : `${darkMode ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700" : "bg-white hover:bg-gray-100 text-gray-700 border border-gray-300"}`
                       }`}
                     >
-                      {status === "running" ? (
+                      {status === "submitting" ? (
                         <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <Play className="w-3 h-3" />
@@ -733,7 +720,7 @@ const ContestQuestion = () => {
                     </button>
                     <button
                       onClick={handleSubmit}
-                      disabled={status === "running" || isSubmitting}
+                      disabled={status === "submitting" || isSubmitting}
                       className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all shadow-sm text-white 
                       ${isSubmitting ? "bg-blue-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-500"}`}
                     >
@@ -888,8 +875,8 @@ const ContestQuestion = () => {
                   {/* ----------------- TAB: RESULTS ----------------- */}
                   {activeTab === "results" && (
                     <div className="h-full">
-                      {/* 1. LOADING */}
-                      {status === "running" || isSubmitting ? (
+                  {/* 1. LOADING */}
+                      {status === "submitting" || isSubmitting ? (
                         <div className="h-full flex flex-col items-center justify-center space-y-4">
                           <div className="w-8 h-8 border-4 border-zinc-700 border-t-blue-500 rounded-full animate-spin" />
                           <p
@@ -1492,16 +1479,16 @@ const ContestQuestion = () => {
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleRun}
-                  disabled={status === "running" || isSubmitting}
+                  disabled={status === "submitting" || isSubmitting}
                   className={`cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                    status === "running" || isSubmitting
+                    status === "submitting" || isSubmitting
                       ? "bg-zinc-600 cursor-not-allowed"
                       : darkMode
                         ? "bg-zinc-800 hover:bg-zinc-700"
                         : "bg-gray-200 hover:bg-gray-300"
                   } ${textSecondary}`}
                 >
-                  {status === "running" ? (
+                  {status === "submitting" ? (
                     <>
                       <div className="w-3 h-3 border-2 border-zinc-400/30 border-t-zinc-400 rounded-full animate-spin"></div>
                       Running...
@@ -1516,7 +1503,7 @@ const ContestQuestion = () => {
 
                 <button
                   onClick={handleSubmit}
-                  disabled={status === "running" || isSubmitting}
+                  disabled={status === "submitting" || isSubmitting}
                   className={`cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
                     submitResult?.success
                       ? darkMode
@@ -1701,7 +1688,7 @@ const ContestQuestion = () => {
               {activeTab === "results" && (
                 <div className="h-full">
                   {/* 1. LOADING */}
-                  {status === "running" || isSubmitting ? (
+                  {status === "submitting" || isSubmitting ? (
                     <div className="h-full flex flex-col items-center justify-center space-y-4">
                       <div className="w-8 h-8 border-4 border-zinc-700 border-t-blue-500 rounded-full animate-spin" />
                       <p

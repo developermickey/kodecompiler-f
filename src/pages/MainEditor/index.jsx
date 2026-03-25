@@ -28,7 +28,6 @@ import {
 } from "lucide-react";
 import {
   runCode,
-  getResult,
   getUserCodes,
   saveCode,
   createCode,
@@ -46,7 +45,7 @@ const MainCompilerLight = () => {
   const dispatch = useDispatch();
 
   // --- Redux State ---
-  const { output, status, error, jobId, userCodes } = useSelector(
+  const { output, status, error, userCodes } = useSelector(
     (store) => store?.code,
   );
 
@@ -114,7 +113,7 @@ const MainCompilerLight = () => {
   };
 
   const handleRun = () => {
-    if (status === "running") return;
+    if (status === "submitting") return;
 
     dispatch(runCode({ language, code, input }));
   };
@@ -124,17 +123,6 @@ const MainCompilerLight = () => {
       setMobileTab("output");
     }
   }, [status]);
-
-  useEffect(() => {
-    if (!jobId) return;
-    const interval = setInterval(() => {
-      dispatch(getResult(jobId));
-    }, 2000);
-    if (status === "completed" || status === "failed") {
-      clearInterval(interval);
-    }
-    return () => clearInterval(interval);
-  }, [jobId, dispatch, status]);
 
   const handleLanguageSelect = (lang) => {
     setLanguage(lang);
@@ -384,19 +372,19 @@ const MainCompilerLight = () => {
             {/* Run Button */}
             <button
               onClick={handleRun}
-              disabled={status === "running"}
+              disabled={status === "submitting"}
               className={`
                 flex items-center gap-2 px-3 md:px-5 py-1.5 rounded-md shadow-sm text-xs md:text-sm font-semibold transition-all active:scale-95
-                ${status === "running" ? "bg-blue-100 text-blue-400 cursor-wait" : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20"}
+                ${status === "submitting" ? "bg-blue-100 text-blue-400 cursor-wait" : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20"}
               `}
             >
-              {status === "running" ? (
+              {status === "submitting" ? (
                 <Loader2 size={16} className="animate-spin" />
               ) : (
                 <Play size={16} fill="currentColor" />
               )}
               <span className="hidden md:inline">
-                {status === "running" ? "Running" : "Run Code"}
+                {status === "submitting" ? "Running" : "Run Code"}
               </span>
             </button>
 
@@ -516,7 +504,7 @@ const MainCompilerLight = () => {
             <div className="flex flex-col" style={{ height: `${ioHeight}%` }}>
               <div className="bg-gray-50 px-3 py-2 text-xs font-bold text-gray-500 border-b flex justify-between">
                 <span>OUTPUT</span>
-                {status === "running" && (
+                {status === "submitting" && (
                   <span className="text-blue-500 animate-pulse">
                     Processing...
                   </span>
@@ -612,7 +600,7 @@ const MainCompilerLight = () => {
                   <label className="text-xs font-bold text-gray-500 uppercase">
                     Console Output
                   </label>
-                  {status === "running" && (
+                  {status === "submitting" && (
                     <span className="text-xs text-blue-600 font-medium animate-pulse">
                       Running...
                     </span>
@@ -622,14 +610,13 @@ const MainCompilerLight = () => {
                 <div
                   className={`flex-1 rounded-lg border p-3 font-mono text-xs sm:text-sm overflow-auto whitespace-pre-wrap ${error ? "bg-red-50 border-red-200 text-red-700" : "bg-gray-900 border-gray-800 text-green-400"}`}
                 >
-                  {status === "running"
+                  {status === "submitting"
                     ? "..."
                     : output || error || "Run code to see output"}
                 </div>
 
                 {/* Quick stat info */}
                 <div className="mt-2 flex gap-4 text-[10px] text-gray-400">
-                  <span>Job ID: {jobId ? jobId.slice(0, 8) : "N/A"}</span>
                   <span>Lang: {language}</span>
                 </div>
               </div>
@@ -656,7 +643,7 @@ const MainCompilerLight = () => {
               icon={<Terminal size={20} />}
               label="Output"
               hasIndicator={
-                status === "running" || (output && mobileTab !== "output")
+                status === "submitting" || (output && mobileTab !== "output")
               }
             />
           </div>
