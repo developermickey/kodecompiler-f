@@ -6,27 +6,12 @@ export const runCode = createAsyncThunk(
     "code/runCode",
     async (code, { rejectWithValue }) => {
         try {
-            // apiClient handles baseURL and headers automatically
+            // API returns the final result directly: { success, output, error, execution_time }
             const { data } = await apiClient.post("/execute", code);
-            return data; // { job_id }
+            return data;
         } catch (err) {
             return rejectWithValue(
                 err.response?.data || { message: "Execution failed" }
-            );
-        }
-    }
-);
-
-/* ===================== GET RESULT ===================== */
-export const getResult = createAsyncThunk(
-    "code/getResult",
-    async (job_id, { rejectWithValue }) => {
-        try {
-            const { data } = await apiClient.get(`/execute/${job_id}/status`);
-            return data; // { status, output?, error? }
-        } catch (err) {
-            return rejectWithValue(
-                err.response?.data || { message: "Failed to fetch result" }
             );
         }
     }
@@ -94,65 +79,44 @@ export const deleteCode = createAsyncThunk(
 const codeSlice = createSlice({
     name: "code",
     initialState: {
-        jobId: null,
-        status: null, // submitting | submitted | running | completed | failed
+        status: null, // submitting | completed | failed
         output: null,
-        isRunning: false,
         error: null,
+        execution_time: null,
         userCodes: [],
         isSaving: false,
         isCreating: false,
     },
     reducers: {
-        // Best Practice: Add a reset action to clear state when leaving the page
         resetCodeState: (state) => {
-            state.jobId = null;
             state.status = null;
             state.output = null;
             state.error = null;
-            state.isRunning = false;
+            state.execution_time = null;
         },
     },
     extraReducers: (builder) => {
         builder
             /* ---------- RUN CODE ---------- */
             .addCase(runCode.pending, (state) => {
-                state.isRunning = true;
                 state.error = null;
                 state.status = "submitting";
-                state.output = null; // Clear previous output
+                state.output = null;
+                state.execution_time = null;
             })
             .addCase(runCode.fulfilled, (state, action) => {
-                state.isRunning = false;
-                state.jobId = action.payload.job_id;
-                state.status = "submitted";
+                const { success, output, error, execution_time } = action.payload;
+                state.status = success ? "completed" : "failed";
+                state.output = output ?? null;
+                state.error = error ?? null;
+                state.execution_time = execution_time ?? null;
             })
             .addCase(runCode.rejected, (state, action) => {
-                state.isRunning = false;
-                state.error = action.payload;
                 state.status = "failed";
-            })
-
-            /* ---------- GET RESULT ---------- */
-            .addCase(getResult.pending, (state) => {
-                state.status = "running";
-            })
-
-            .addCase(getResult.fulfilled, (state, action) => {
-                state.status = action.payload.status;
-
-                // Only update output if it exists (prevents overwriting with null)
-                if (action.payload.output !== undefined) {
-                    state.output = action.payload.output;
-                }
-
-                if (action.payload.error) {
-                    state.error = action.payload.error;
-                }
-            })
-            .addCase(getResult.rejected, (state, action) => {
-                state.status = "failed";
-                state.error = action.payload;
+                state.error =
+                    action.payload?.message ||
+                    action.payload?.error ||
+                    "Execution failed";
             })
 
             /* ---------- GET USER CODES ---------- */
